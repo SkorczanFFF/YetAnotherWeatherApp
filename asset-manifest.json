@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/YetAnotherWeatherApp/static/css/main.0deaeebd.css",
+    "main.js": "/YetAnotherWeatherApp/static/js/main.b12f1894.js",
+    "index.html": "/YetAnotherWeatherApp/index.html",
+    "main.0deaeebd.css.map": "/YetAnotherWeatherApp/static/css/main.0deaeebd.css.map",
+    "main.b12f1894.js.map": "/YetAnotherWeatherApp/static/js/main.b12f1894.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.0deaeebd.css",
+    "static/js/main.b12f1894.js"
+  ]
+}
