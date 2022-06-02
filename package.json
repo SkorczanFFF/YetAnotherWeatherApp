@@ -1,7 +1,7 @@
 {
   "name": "YetAnotherWeatherApp",
   "version": "0.1.0",
-  "homepage": "https://imię.github.io/nazwa",
+  "homepage": "https://skorczanfff.github.io/YetAnotherWeatherApp",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
