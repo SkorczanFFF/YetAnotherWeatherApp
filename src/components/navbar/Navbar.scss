@@ -7,13 +7,13 @@
   .location-icon-container {
     background-color: #000e3d9d;
     box-shadow: 0 4px 30px #0000001a;
-    height: 27px;
+    height: 32px;
     border-radius: 5px 0 0 5px;
     transition: all 0.25s;
     cursor: pointer;
     .location-icon {
       padding: 5px;
-      font-size: 1.125em;
+      font-size: 1.4em;
       color: #d7f6ff;
       &:hover {
         color: #000e3d9d;
@@ -25,7 +25,7 @@
   }
 
   .search-input {
-    height: 25px;
+    height: 30px;
     border: none;
     background: #c7d4ff38;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
@@ -44,11 +44,11 @@
 
   .search-button {
     border: none;
-    padding: .35em .5em .15em .5em;
+    padding: .25em .35em 0 .35em;
     border-radius: 0 5px 5px 0;
     background: #000e3d9d;
     transition: all 0.25s;
-    font-size: 1em;
+    font-size: 1.25em;
     color: rgba(243, 243, 243, 0.856);
     margin: auto;
     cursor: pointer;

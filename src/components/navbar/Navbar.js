@@ -5,6 +5,10 @@ import './Navbar.scss'
 
 const Navbar = ({setQuery}) => {
   const [city, setCity] = useState("")
+  
+  const handleSearch = () => {
+    if (city !== "") setQuery({q: city}) 
+  }
 
   const handleLocation = () => {
     if (navigator.geolocation) {
@@ -25,11 +29,12 @@ const Navbar = ({setQuery}) => {
       </a>
       <form className='search-container'>
         <div className='location-icon-container' onClick={handleLocation}>
-          <IoLocationSharp className='location-icon' onClick={handleLocation}/>
+          <IoLocationSharp className='location-icon' />
         </div>
         <input value={city}
-          onChange={(e) => setCity(e.currentTarget.value)} type='text' placeholder='Enter city' className='search-input'/>
-        <button type='submit' className='search-button' ><BsSearch /></button>
+          onChange={(e) => setCity(e.currentTarget.value)} type='text' placeholder='Enter city' className='search-input'
+        />
+        <div className='search-button' onClick={handleSearch}><BsSearch /></div>
       </form>
       <div className='git'>
         <a href="https://github.com/SkorczanFFF/YetAnotherWeatherApp" className='git-a'>GitHub</a><BsGithub className='git-icon' />
