@@ -8,4 +8,16 @@ body {
 
 .App {
   height: 100vh;
+  .weather {
+    margin: 1rem auto 0 auto;
+    padding: 1rem;
+    color: #000e3d9d;
+  }
+}
+
+.border {
+  border: 2px solid rgba(255, 255, 255, 0.05);
+}
+.border-light {
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }

@@ -1,12 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import CLOUDS from 'vanta/dist/vanta.clouds.min'
-import Navbar from './components/search/Navbar'
-import Weather from './components/weather/Weather'
-import Footer from './components/footer/Footer'
 import * as THREE from "three"
+import Navbar from './components/navbar/Navbar'
+import CurrentWeather from './components/weather/current/CurrentWeather'
+import Footer from './components/footer/Footer'
+import getFormattedWeatherData from "./services/weatherService"
 
-const App = () => {
+function App() {
+  const [query, setQuery] = useState({q: "katowice"})
+  const [units, setUnits] = useState("metric")
+  const [weather, setWeather] = useState(null)
   const [vantaEffect, setVantaEffect] = useState(0)
+  
+  useEffect(() => {
+    const fetchWeather = async () => {
+      console.log("fetching weather for " + query.q)
+      await getFormattedWeatherData({ ...query, units }).then((data) => {
+        setWeather(data)
+        console.log(`Fetched weather for ${data.name}, ${data.country}.`)
+      })
+    }
+    fetchWeather();
+  }, [query, units]);
+  
   useEffect(() => {
     if (!vantaEffect) {
       setVantaEffect(CLOUDS({
@@ -30,11 +46,20 @@ const App = () => {
       if (vantaEffect) vantaEffect.destroy()
     }
   }, [vantaEffect])
-  return <div className="App" id="App" >
-    <Navbar />
-      <Weather />
-    <Footer />
-  </div>
+
+  return (
+    <div className="App" id="App" >
+      <Navbar setQuery={setQuery} units={units} setUnits={setUnits}/>
+        <section className="weather">
+          {weather && (
+            <>
+              <CurrentWeather weather={weather} />
+            </>
+          )}
+        </section>
+      <Footer />
+    </div>
+  )
 }
 
 export default App
