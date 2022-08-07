@@ -1,0 +1,71 @@
+.weekly-container {
+  padding: 2rem 0;
+  width: min-content;
+  margin: 0 auto;
+  .forecast-info {
+    font-size: 1.25rem;
+    padding-left: .25rem;
+    color: #ad5841;
+    font-weight: 400;
+    u {
+      font-weight: 100;
+      color: #000e3d9d;
+      text-decoration: overline;
+    }
+  }
+  .weekly-items{
+    text-align: center;
+    display: inline-flex;
+    justify-content: center;
+    margin: 0 auto;
+    .atom {
+      box-shadow: 0 4px 30px rgba(109, 109, 109, 0.13);
+      min-width: 120px;
+      height: 135px;
+      padding: 1em;
+      margin: 0 .25rem;
+      transition: .25s ease-in-out;
+      cursor: pointer;
+      &:nth-child(4) {
+        margin-top: .1rem;
+        padding: .9rem;
+        &:hover {
+          padding: 1rem;
+          margin-top: 0;
+        }
+      }
+      .weekday {
+        margin-top: 0;
+        font-weight: 300;
+      }
+      .weekly-weather-icon {
+        width: 90px;
+        margin-top: -.75rem;
+      }
+      .weekly-temp-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        .weekly-temp {
+          margin: 0;
+        }
+        .feels-like-temp {
+          font-weight: 300;
+          margin: 0;
+        }
+      }
+    }
+    .atom-left {
+      transform: perspective(900px) rotateY(15deg);
+      &:hover {
+        transform: perspective(900px) rotateY(0deg);
+      }
+    }
+    .atom-right {
+      transform: perspective(900px) rotateY(-15deg);
+      &:hover {
+        transform: perspective(900px) rotateY(0deg);
+      }
+    }
+  }
+}

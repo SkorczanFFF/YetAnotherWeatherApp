@@ -1,0 +1,106 @@
+.search-container {
+  width: 400px;
+  margin: auto;
+  padding: 1.5em;
+  display: flex;
+  flex-direction: row;
+  .location-icon-container {
+    background-color: #000e3d9d;
+    box-shadow: 0 4px 30px #0000001a;
+    height: 27px;
+    border-radius: 5px 0 0 5px;
+    transition: all 0.25s;
+    cursor: pointer;
+    .location-icon {
+      padding: 5px;
+      font-size: 1.125em;
+      color: #d7f6ff;
+      &:hover {
+        color: #000e3d9d;
+      }
+    }
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.705);
+    }
+  }
+
+  .search-input {
+    height: 25px;
+    border: none;
+    background: #c7d4ff38;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    font-size: 1em;
+    padding-left: 0.65em;
+    flex: 1;
+    transition: ease-in-out .25s;
+    font-family: 'Noto Sans', sans-serif;  
+    text-transform: capitalize;
+    &:focus {
+      outline: none;
+      background: #00406b2c;
+      color:rgb(255, 255, 255)
+    }
+  }
+
+  .search-button {
+    border: none;
+    padding: .35em .5em .15em .5em;
+    border-radius: 0 5px 5px 0;
+    background: #000e3d9d;
+    transition: all 0.25s;
+    font-size: 1em;
+    color: rgba(243, 243, 243, 0.856);
+    margin: auto;
+    cursor: pointer;
+    &:hover {
+      background: rgba(255, 255, 255, 0.705);
+      color: #000e3d9d;
+    }
+  }
+}
+
+.logo {
+  position: fixed;
+  left: 5px;
+  top: 5px;
+  font-size: 10px;
+  transition: .25s ease-in-out;
+  color: #000e3d75;
+  text-align: center;
+  letter-spacing: 2px;
+  line-height: 10px;
+  font-weight: 700;
+  cursor: grab;
+  text-decoration: none;
+  filter: blur(.4px);
+  &:hover {
+    color: white;filter: blur(.5px);
+  }
+}
+
+.git {
+  color: #000e3d77;
+  position: fixed;
+  right: 5px;
+  top: 5px;
+  font-size: 15px;
+  transition: .25s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  &:hover {
+    color: white;
+  }
+  .git-a {
+    margin: 0;
+    text-decoration: none;
+    color: #000e3d77;
+    transition: .15s ease-in-out;
+    &:hover {
+      color: white;
+    }
+  }
+  .git-icon {
+    margin: 2px 0 0 3px;
+  }
+}
