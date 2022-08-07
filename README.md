@@ -1,14 +1,20 @@
 # Yet Another Weather App
-  Mockup release. No real data provided and desktop only. Prepare your graphics card, but GTX 560Ti should be enough.
+  As you can see above. Yet another weather app. But with some fresh looking UI and animated background. So far desktop version only - project uses WebGL so prepare graphics card like GTX550ti or better. 
+  Feel free to hover items. 
+  And have fun! Don't get wet, check the weather first!
 
-  Feel free to hover items.
 ## LIVE DEMO
 https://skorczanfff.github.io/YetAnotherWeatherApp/
 
-### Mockup release credits
+### How it's made?
+This app was made with priceless help of these bad boys:
 - React
+- OpenWeather API 2.5
 - vanta.js
+- luxon
 - react-icons 
 - react-tooltip
-- SCSS
+- Sass
 - a bit o creativity
+
+
