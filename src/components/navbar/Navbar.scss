@@ -32,19 +32,19 @@
     font-size: 1em;
     padding-left: 0.65em;
     flex: 1;
-    transition: ease-in-out .25s;
-    font-family: 'Noto Sans', sans-serif;  
+    transition: ease-in-out 0.25s;
+    font-family: "Chakra Petch", sans-serif;
     text-transform: capitalize;
     &:focus {
       outline: none;
       background: #00406b2c;
-      color:rgb(255, 255, 255)
+      color: rgb(255, 255, 255);
     }
   }
 
   .search-button {
     border: none;
-    padding: .25em .35em 0 .35em;
+    padding: 0.25em 0.35em 0 0.35em;
     border-radius: 0 5px 5px 0;
     background: #000e3d9d;
     transition: all 0.25s;
@@ -64,7 +64,7 @@
   left: 5px;
   top: 5px;
   font-size: 10px;
-  transition: .25s ease-in-out;
+  transition: 0.25s ease-in-out;
   color: #000e3d75;
   text-align: center;
   letter-spacing: 2px;
@@ -72,9 +72,10 @@
   font-weight: 700;
   cursor: grab;
   text-decoration: none;
-  filter: blur(.4px);
+  filter: blur(0.4px);
   &:hover {
-    color: white;filter: blur(.5px);
+    color: white;
+    filter: blur(0.5px);
   }
 }
 
@@ -84,7 +85,7 @@
   right: 5px;
   top: 5px;
   font-size: 15px;
-  transition: .25s ease-in-out;
+  transition: 0.25s ease-in-out;
   cursor: pointer;
   display: flex;
   flex-direction: row;
@@ -95,7 +96,7 @@
     margin: 0;
     text-decoration: none;
     color: #000e3d77;
-    transition: .15s ease-in-out;
+    transition: 0.15s ease-in-out;
     &:hover {
       color: white;
     }
