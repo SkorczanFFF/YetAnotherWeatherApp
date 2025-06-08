@@ -3,7 +3,7 @@ import CLOUDS from "vanta/dist/vanta.clouds.min";
 import * as THREE from "three";
 import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
-import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
+import WeeklyForecast from "./components/weather/weekly/WeklyForecast"; // Commented out since module not found
 import Footer from "./components/footer/Footer";
 import getFormattedWeatherData from "./services/weatherService";
 
