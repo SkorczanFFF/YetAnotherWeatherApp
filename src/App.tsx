@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import CLOUDS from "vanta/dist/vanta.clouds.min";
 import * as THREE from "three";
 import Navbar from "./components/navbar/Navbar";
@@ -19,19 +19,46 @@ interface VantaEffect {
 
 type Units = "metric" | "imperial";
 
-function App(): JSX.Element {
+interface WeatherData {
+  dt: number;
+  timezone: string;
+  name: string;
+  country: string;
+  temp: number;
+  temp_max: number;
+  temp_min: number;
+  pressure: number;
+  feels_like: number;
+  sunrise: number;
+  sunset: number;
+  humidity: number;
+  speed: number;
+  details: string;
+  icon: string;
+  daily: Array<{
+    title: string;
+    temp: number;
+    temp_min: number;
+    icon: string;
+  }>;
+}
+
+const App = (): React.ReactElement => {
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
   const [units, setUnits] = useState<Units>("metric");
-  const [weather, setWeather] = useState<any>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [vantaEffect, setVantaEffect] = useState<VantaEffect | null>(null);
 
   useEffect(() => {
     const fetchWeather = async () => {
       console.log("fetching weather for " + query.q);
-      await getFormattedWeatherData({ ...query, units }).then((data) => {
+      try {
+        const data = await getFormattedWeatherData({ ...query, units });
         setWeather(data);
         console.log(`Fetched weather for ${data.name}, ${data.country}.`);
-      });
+      } catch (error) {
+        console.error("Error fetching weather:", error);
+      }
     };
     fetchWeather();
   }, [query, units]);
@@ -68,14 +95,18 @@ function App(): JSX.Element {
       <section className="weather">
         {weather && (
           <>
-            <CurrentWeather weather={weather} />
-            <WeeklyForecast items={weather.daily} />
+            <CurrentWeather
+              weather={weather}
+              units={units}
+              setUnits={setUnits}
+            />
+            <WeeklyForecast items={weather.daily} units={units} />
           </>
         )}
       </section>
       <Footer />
     </div>
   );
-}
+};
 
 export default App;
