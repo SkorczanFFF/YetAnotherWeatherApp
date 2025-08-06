@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import CLOUDS from "vanta/dist/vanta.clouds.min";
 import * as THREE from "three";
+import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
@@ -105,6 +106,7 @@ const App = (): React.ReactElement => {
         )}
       </section>
       <Footer />
+      <Analytics />
     </div>
   );
 };
