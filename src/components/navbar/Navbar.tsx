@@ -3,24 +3,38 @@ import { IoLocationSharp } from "react-icons/io5";
 import { BsGithub, BsSearch } from "react-icons/bs";
 import "./Navbar.scss";
 
-const Navbar = ({ setQuery, units, setUnits }) => {
-  const [city, setCity] = useState("");
+interface WeatherQuery {
+  q?: string;
+  lat?: number;
+  lon?: number;
+}
 
-  const handleSearch = () => {
+type Units = "metric" | "imperial";
+
+interface NavbarProps {
+  setQuery: (query: WeatherQuery) => void;
+  units: Units;
+  setUnits: (units: Units) => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ setQuery, units, setUnits }) => {
+  const [city, setCity] = useState<string>("");
+
+  const handleSearch = (): void => {
     if (city !== "") setQuery({ q: city });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     handleSearch();
   };
 
-  const handleLocation = () => {
+  const handleLocation = (): void => {
     if (navigator.geolocation) {
       console.log("Fetching users location.");
       navigator.geolocation.getCurrentPosition((pos) => {
-        let lat = pos.coords.latitude;
-        let lon = pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
         setQuery({ lat, lon });
         console.log("Location fetched!" + lat + " " + lon);
       });
@@ -62,4 +76,4 @@ const Navbar = ({ setQuery, units, setUnits }) => {
   );
 };
 
-export default Navbar;
+export default Navbar; 
