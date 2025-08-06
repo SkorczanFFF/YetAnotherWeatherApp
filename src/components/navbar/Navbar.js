@@ -10,6 +10,11 @@ const Navbar = ({ setQuery, units, setUnits }) => {
     if (city !== "") setQuery({ q: city });
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleSearch();
+  };
+
   const handleLocation = () => {
     if (navigator.geolocation) {
       console.log("Fetching users location.");
@@ -29,7 +34,7 @@ const Navbar = ({ setQuery, units, setUnits }) => {
         <br />
         WEATHER APP
       </a>
-      <form className="search-container">
+      <form className="search-container" onSubmit={handleSubmit}>
         <div className="location-icon-container" onClick={handleLocation}>
           <IoLocationSharp className="location-icon" />
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
+import React, { useState, useEffect } from "react";
 import CLOUDS from "vanta/dist/vanta.clouds.min";
 import * as THREE from "three";
 import Navbar from "./components/navbar/Navbar";
