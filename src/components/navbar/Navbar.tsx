@@ -76,4 +76,4 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery, units, setUnits }) => {
   );
 };
 
-export default Navbar; 
+export default Navbar;

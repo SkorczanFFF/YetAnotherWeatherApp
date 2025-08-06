@@ -45,4 +45,4 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
   );
 };
 
-export default WeeklyForecast; 
+export default WeeklyForecast;
