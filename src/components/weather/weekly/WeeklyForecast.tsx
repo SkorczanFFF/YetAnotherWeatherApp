@@ -1,15 +1,7 @@
 import React from "react";
 import { iconUrlFromCode } from "../../../services/weatherService";
+import { DailyWeather, Units } from "../../../types/weather";
 import "./WeeklyForecast.scss";
-
-interface DailyWeather {
-  title: string;
-  temp: number;
-  temp_min: number;
-  icon: string;
-}
-
-type Units = "metric" | "imperial";
 
 interface WeeklyForecastProps {
   items: DailyWeather[];
@@ -17,10 +9,8 @@ interface WeeklyForecastProps {
 }
 
 const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
-  console.log(items);
   return (
-    <>
-      <div className="weekly-container">
+    <div className="weekly-container">
         <p className="forecast-info">
           Weekly <u>forecast</u>
         </p>
@@ -41,7 +31,6 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
           ))}
         </div>
       </div>
-    </>
   );
 };
 

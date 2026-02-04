@@ -91,13 +91,23 @@ interface FormattedWeatherData
   extends FormattedCurrentWeather,
     FormattedWeeklyWeather {}
 
+interface OpenMeteoQueryParams {
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  temperature_unit: string;
+  wind_speed_unit: string;
+  current: string;
+  daily: string;
+}
+
 const BASE_URL = "https://api.open-meteo.com/v1";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
 const getWeatherData = async (
   endpoint: string,
-  searchParams: Record<string, any>
-): Promise<any> => {
+  searchParams: OpenMeteoQueryParams
+): Promise<OpenMeteoResponse> => {
   const url = new URL(BASE_URL + "/" + endpoint);
 
   // Add search params to URL
@@ -106,8 +116,6 @@ const getWeatherData = async (
       url.searchParams.append(key, value.toString());
     }
   });
-
-  console.log("Fetching data from:", url.toString());
 
   try {
     const response = await fetch(url.toString());
@@ -131,17 +139,12 @@ const getWeatherData = async (
 };
 
 const geocodeCity = async (city: string): Promise<GeocodingResult | null> => {
-  console.log(`Geocoding city: ${city}`);
-
   try {
-    // Create URL with parameters
     const url = new URL(GEOCODING_URL);
     url.searchParams.append("name", city);
-    url.searchParams.append("count", "1"); // Only get the top result
+    url.searchParams.append("count", "1");
     url.searchParams.append("language", "en");
     url.searchParams.append("format", "json");
-
-    console.log("Geocoding URL:", url.toString());
 
     const response = await fetch(url.toString());
 
@@ -152,11 +155,8 @@ const geocodeCity = async (city: string): Promise<GeocodingResult | null> => {
     }
 
     const data = await response.json();
-    console.log("Geocoding response:", data);
 
-    // Check if we got any results
     if (!data.results || data.results.length === 0) {
-      console.log(`No geocoding results found for "${city}"`);
       return null;
     }
 
@@ -220,8 +220,6 @@ const formatCurrentWeather = (
   locationName?: string,
   countryCode?: string
 ): FormattedCurrentWeather => {
-  console.log("Formatting current weather from data:", data);
-
   const { latitude: lat, longitude: lon, timezone, current, daily } = data;
 
   // Extract current weather data
@@ -318,9 +316,7 @@ const getFormattedWeatherData = async (
     let locationName: string | undefined;
     let countryCode: string | undefined;
 
-    // If we have a city name but no coordinates, use geocoding to get coordinates
     if (searchParams.q && (!lat || !lon)) {
-      console.log(`Looking up coordinates for city: ${searchParams.q}`);
       const geocodingResult = await geocodeCity(searchParams.q);
 
       if (!geocodingResult) {
@@ -333,10 +329,6 @@ const getFormattedWeatherData = async (
       lon = geocodingResult.longitude;
       locationName = geocodingResult.name;
       countryCode = geocodingResult.country_code;
-
-      console.log(
-        `Found coordinates: ${lat}, ${lon} for ${locationName}, ${countryCode}`
-      );
     }
 
     // After geocoding, we should have coordinates

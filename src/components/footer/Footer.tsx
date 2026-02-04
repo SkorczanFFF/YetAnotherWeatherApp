@@ -1,7 +1,7 @@
 import React from 'react'
 import './Footer.scss'
 
-const Navbar = () => {
+const Footer: React.FC = () => {
   return (
     <footer className='footer'>
       <a href="https://mskorus.pl/" className='footer-a'>&copy; Maciej Skorus</a>
@@ -9,4 +9,4 @@ const Navbar = () => {
   )
 }
 
-export default Navbar
+export default Footer

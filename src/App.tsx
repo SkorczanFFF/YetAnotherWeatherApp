@@ -7,58 +7,32 @@ import CurrentWeather from "./components/weather/current/CurrentWeather";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
 import getFormattedWeatherData from "./services/weatherService";
-
-interface WeatherQuery {
-  q?: string;
-  lat?: number;
-  lon?: number;
-}
+import { WeatherQuery, Units, WeatherData } from "./types/weather";
 
 interface VantaEffect {
   destroy: () => void;
-}
-
-type Units = "metric" | "imperial";
-
-interface WeatherData {
-  dt: number;
-  timezone: string;
-  name: string;
-  country: string;
-  temp: number;
-  temp_max: number;
-  temp_min: number;
-  pressure: number;
-  feels_like: number;
-  sunrise: number;
-  sunset: number;
-  humidity: number;
-  speed: number;
-  details: string;
-  icon: string;
-  daily: Array<{
-    title: string;
-    temp: number;
-    temp_min: number;
-    icon: string;
-  }>;
 }
 
 const App = (): React.ReactElement => {
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
   const [units, setUnits] = useState<Units>("metric");
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [vantaEffect, setVantaEffect] = useState<VantaEffect | null>(null);
 
   useEffect(() => {
     const fetchWeather = async () => {
-      console.log("fetching weather for " + query.q);
+      setLoading(true);
+      setError(null);
       try {
         const data = await getFormattedWeatherData({ ...query, units });
         setWeather(data);
-        console.log(`Fetched weather for ${data.name}, ${data.country}.`);
-      } catch (error) {
-        console.error("Error fetching weather:", error);
+      } catch (err) {
+        setError("Failed to fetch weather data. Please try again.");
+        console.error("Error fetching weather:", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchWeather();
@@ -92,9 +66,11 @@ const App = (): React.ReactElement => {
 
   return (
     <div className="App" id="App">
-      <Navbar setQuery={setQuery} units={units} setUnits={setUnits} />
+      <Navbar setQuery={setQuery} />
       <section className="weather">
-        {weather && (
+        {loading && <p className="loading">Loading weather data...</p>}
+        {error && <p className="error">{error}</p>}
+        {!loading && !error && weather && (
           <>
             <CurrentWeather
               weather={weather}

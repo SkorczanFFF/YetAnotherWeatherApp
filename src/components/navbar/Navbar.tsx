@@ -1,27 +1,30 @@
 import React, { useState } from "react";
 import { IoLocationSharp } from "react-icons/io5";
 import { BsGithub, BsSearch } from "react-icons/bs";
+import { WeatherQuery } from "../../types/weather";
 import "./Navbar.scss";
-
-interface WeatherQuery {
-  q?: string;
-  lat?: number;
-  lon?: number;
-}
-
-type Units = "metric" | "imperial";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery) => void;
-  units: Units;
-  setUnits: (units: Units) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ setQuery, units, setUnits }) => {
+const isValidCityName = (name: string): boolean => {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length < 2 || trimmed.length > 100) return false;
+  return /^[\p{L}\s\-'.]+$/u.test(trimmed);
+};
+
+const Navbar: React.FC<NavbarProps> = ({ setQuery }) => {
   const [city, setCity] = useState<string>("");
 
   const handleSearch = (): void => {
-    if (city !== "") setQuery({ q: city });
+    const trimmedCity = city.trim();
+    if (!trimmedCity) return;
+    if (!isValidCityName(trimmedCity)) {
+      alert("Please enter a valid city name.");
+      return;
+    }
+    setQuery({ q: trimmedCity });
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
@@ -31,13 +34,24 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery, units, setUnits }) => {
 
   const handleLocation = (): void => {
     if (navigator.geolocation) {
-      console.log("Fetching users location.");
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        setQuery({ lat, lon });
-        console.log("Location fetched!" + lat + " " + lon);
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          setQuery({ lat, lon });
+        },
+        (err) => {
+          const messages: Record<number, string> = {
+            1: "Location permission denied. Please enable it in browser settings.",
+            2: "Location unavailable. Please try again.",
+            3: "Location request timed out. Please try again.",
+          };
+          alert(messages[err.code] || "Unable to get location.");
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
     }
   };
 
