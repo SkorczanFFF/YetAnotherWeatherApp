@@ -9,10 +9,52 @@ body {
 .App {
   height: 100vh;
   .weather {
+    position: relative;
     margin: 1rem auto 0 auto;
     padding: 1rem;
     color: #000e3d9d;
+    min-height: 200px;
+
+    &.is-loading {
+      .main-info,
+      .atom {
+        filter: blur(8px);
+      }
+    }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+
+    .loader {
+      width: 45px;
+      aspect-ratio: 0.75;
+      --c: no-repeat linear-gradient(#ad5841 0 0);
+      background:
+        var(--c) 0% 50%,
+        var(--c) 50% 50%,
+        var(--c) 100% 50%;
+      background-size: 20% 60%;
+      animation: l9 1s infinite;
+    }
   }
+}
+
+@keyframes l9 {
+  33% { background-position: 0% 0%, 50% 100%, 100% 0%; }
+  66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
+}
+
+/* Ensure react-tooltip appears above other content (tooltips render in a portal) */
+.react-tooltip,
+.current-weather-tooltip {
+  z-index: 9999 !important;
 }
 
 .border {

@@ -39,8 +39,8 @@ const WeatherTooltip: React.FC<WeatherTooltipProps> = ({ id, content }) => (
     id={id}
     place="bottom"
     variant="light"
-    className="tooltip"
-    delayHide={2000}
+    className="current-weather-tooltip"
+    delayHide={50}
     content={content}
   />
 );
@@ -75,25 +75,25 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
         </p>
         <div className="wrapper">
           <div className="left-wing wing">
-            <div data-tooltip-id="wind" className="wing-item left">
+            <div data-tooltip-id="wind" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
               {formatted.speed}{" "}
               <WiStrongWind className="wing-icon" />
             </div>
             <WeatherTooltip id="wind" content="Wind strength" />
 
-            <div data-tooltip-id="feels-like" className="wing-item left">
+            <div data-tooltip-id="feels-like" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
               {formatted.feelsLike}{" "}
               <WiThermometerInternal className="wing-icon" />
             </div>
             <WeatherTooltip id="feels-like" content="Perceived temperature" />
 
-            <div data-tooltip-id="max-temp" className="wing-item left">
+            <div data-tooltip-id="max-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
               {formatted.tempMax}{" "}
               <WiThermometer className="wing-icon" />
             </div>
             <WeatherTooltip id="max-temp" content="Maximum temperature" />
 
-            <div data-tooltip-id="sunrise" className="wing-item left">
+            <div data-tooltip-id="sunrise" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
               {formatted.sunrise}{" "}
               <WiSunrise className="wing-icon" />
             </div>
@@ -107,31 +107,43 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
               className="weather-icon"
             />
             <p className="main-condition">{weather.details}</p>
-            <h1 className="main-degrees" onClick={handleUnitsClick}>
+            <h1
+              className="main-degrees"
+              onClick={handleUnitsClick}
+              role="button"
+              tabIndex={0}
+              aria-label="Click to switch temperature unit between Celsius and Fahrenheit"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleUnitsClick();
+                }
+              }}
+            >
               {formatted.temp}
             </h1>
           </div>
 
           <div className="right-wing wing">
-            <div data-tooltip-id="pressure" className="wing-item">
+            <div data-tooltip-id="pressure" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
               <WiBarometer className="wing-icon" />{" "}
               {formatted.pressure}
             </div>
             <WeatherTooltip id="pressure" content="Pressure" />
 
-            <div data-tooltip-id="humidity" className="wing-item">
+            <div data-tooltip-id="humidity" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
               <WiHumidity className="wing-icon" />{" "}
               {formatted.humidity}
             </div>
             <WeatherTooltip id="humidity" content="Humidity" />
 
-            <div data-tooltip-id="min-temp" className="wing-item">
+            <div data-tooltip-id="min-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
               <WiThermometerExterior className="wing-icon" />{" "}
               {formatted.tempMin}
             </div>
             <WeatherTooltip id="min-temp" content="Minimum temperature" />
 
-            <div data-tooltip-id="sunset" className="wing-item">
+            <div data-tooltip-id="sunset" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
               <WiSunset className="wing-icon" />{" "}
               {formatted.sunset}
             </div>

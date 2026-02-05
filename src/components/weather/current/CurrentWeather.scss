@@ -5,6 +5,7 @@
   text-align: center;
   padding: 1em;
   box-shadow: 0 4px 30px #9c9c9c1a;
+  backdrop-filter: blur(8px);
   .date-time {
     font-size: 1.25rem;
     padding: 0;
@@ -73,6 +74,7 @@
         font-size: 4rem;
         margin: 0;
         font-weight: 300;
+        cursor: pointer;
       }
     }
   

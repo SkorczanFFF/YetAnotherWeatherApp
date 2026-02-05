@@ -26,6 +26,7 @@
       margin: 0 .25rem;
       transition: .25s ease-in-out;
       cursor: pointer;
+      backdrop-filter: blur(8px);
       &:nth-child(4) {
         margin-top: .1rem;
         padding: .9rem;

@@ -67,10 +67,9 @@ const App = (): React.ReactElement => {
   return (
     <div className="App" id="App">
       <Navbar setQuery={setQuery} />
-      <section className="weather">
-        {loading && <p className="loading">Loading weather data...</p>}
+      <section className={`weather${loading ? " is-loading" : ""}`}>
         {error && <p className="error">{error}</p>}
-        {!loading && !error && weather && (
+        {weather && (
           <>
             <CurrentWeather
               weather={weather}
@@ -79,6 +78,11 @@ const App = (): React.ReactElement => {
             />
             <WeeklyForecast items={weather.daily} units={units} />
           </>
+        )}
+        {loading && (
+          <div className="loading" aria-live="polite" aria-busy="true">
+            <div className="loader" aria-hidden="true" />
+          </div>
         )}
       </section>
       <Footer />
