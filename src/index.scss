@@ -7,7 +7,47 @@ body {
 }
 
 .App {
+  position: relative;
   height: 100vh;
+
+  .weather-scene-container {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    .weather-scene-flash {
+      position: absolute;
+      inset: 0;
+      background: #fff;
+      z-index: 1;
+      transition: opacity 0.05s ease-out;
+    }
+  }
+
+  .navbar,
+  .weather,
+  .footer {
+    position: relative;
+    z-index: 1;
+  }
+
+  .navbar,
+  .weather,
+  .footer {
+    &.xray,
+    &.xray * {
+      text-shadow:
+        0 0 2px rgba(255, 255, 255, 0.95),
+        0 0 4px rgba(255, 255, 255, 0.75),
+        -1px -1px 1px rgba(255, 255, 255, 0.6),
+        1px -1px 1px rgba(255, 255, 255, 0.6),
+        -1px 1px 1px rgba(255, 255, 255, 0.6),
+        1px 1px 1px rgba(255, 255, 255, 0.6),
+        0 1px 2px rgba(0, 0, 0, 0.35),
+        0 0 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+
   .weather {
     position: relative;
     margin: 1rem auto 0 auto;
@@ -55,6 +95,19 @@ body {
 .react-tooltip,
 .current-weather-tooltip {
   z-index: 9999 !important;
+}
+
+/* Text readable on both light (day) and dark (night) background */
+.xray {
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 4px rgba(255, 255, 255, 0.75),
+    -1px -1px 1px rgba(255, 255, 255, 0.6),
+    1px -1px 1px rgba(255, 255, 255, 0.6),
+    -1px 1px 1px rgba(255, 255, 255, 0.6),
+    1px 1px 1px rgba(255, 255, 255, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 3px rgba(0, 0, 0, 0.2);
 }
 
 .border {

@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from "react";
-import CLOUDS from "vanta/dist/vanta.clouds.min";
-import * as THREE from "three";
 import { Analytics } from "@vercel/analytics/react";
 import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
+import WeatherScene from "./components/weather-scene/WeatherScene";
+import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
+import type { DebugOverrides } from "./components/weather-scene/types";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherQuery, Units, WeatherData } from "./types/weather";
-
-interface VantaEffect {
-  destroy: () => void;
-}
 
 const App = (): React.ReactElement => {
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
@@ -19,7 +16,22 @@ const App = (): React.ReactElement => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [vantaEffect, setVantaEffect] = useState<VantaEffect | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugOverrides, setDebugOverrides] = useState<DebugOverrides | null>(
+    null
+  );
+  const isDebugMode = isOverridesDirty(debugOverrides);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F7") {
+        e.preventDefault();
+        setDebugOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -38,36 +50,11 @@ const App = (): React.ReactElement => {
     fetchWeather();
   }, [query, units]);
 
-  useEffect(() => {
-    if (!vantaEffect) {
-      setVantaEffect(
-        CLOUDS({
-          el: "#App",
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: false,
-          minHeight: 850.0,
-          minWidth: 1150.0,
-          skyColor: 0x5bb4d7,
-          cloudColor: 0xb5c1e1,
-          cloudShadowColor: 0xd2c4a,
-          sunColor: 0xf29c30,
-          sunGlareColor: 0xf05c2b,
-          sunlightColor: 0xffd3bc,
-          speed: 0.5,
-          THREE: THREE,
-        })
-      );
-    }
-    return () => {
-      if (vantaEffect) vantaEffect.destroy();
-    };
-  }, [vantaEffect]);
-
   return (
     <div className="App" id="App">
-      <Navbar setQuery={setQuery} />
-      <section className={`weather${loading ? " is-loading" : ""}`}>
+      <WeatherScene weather={weather} overrides={debugOverrides} />
+      <Navbar setQuery={setQuery} isDebugMode={isDebugMode} />
+      <section className={`weather xray${loading ? " is-loading" : ""}`}>
         {error && <p className="error">{error}</p>}
         {weather && (
           <>
@@ -86,6 +73,12 @@ const App = (): React.ReactElement => {
         )}
       </section>
       <Footer />
+      <DebugMenu
+        open={debugOpen}
+        onClose={() => setDebugOpen(false)}
+        overrides={debugOverrides}
+        onOverridesChange={setDebugOverrides}
+      />
       <Analytics />
     </div>
   );

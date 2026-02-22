@@ -6,6 +6,7 @@ import "./Navbar.scss";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery) => void;
+  isDebugMode?: boolean;
 }
 
 const isValidCityName = (name: string): boolean => {
@@ -14,7 +15,7 @@ const isValidCityName = (name: string): boolean => {
   return /^[\p{L}\s\-'.]+$/u.test(trimmed);
 };
 
-const Navbar: React.FC<NavbarProps> = ({ setQuery }) => {
+const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false }) => {
   const [city, setCity] = useState<string>("");
 
   const handleSearch = (): void => {
@@ -56,11 +57,17 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery }) => {
   };
 
   return (
-    <nav className="navbar">
+    <nav className="navbar xray">
       <a href="https://mskorus.pl/" className="logo">
-        <u>YET ANOTHER</u>
-        <br />
-        WEATHER APP
+        {isDebugMode ? (
+          "DEBUG"
+        ) : (
+          <>
+            <u>YET ANOTHER</u>
+            <br />
+            WEATHER APP
+          </>
+        )}
       </a>
       <form className="search-container" onSubmit={handleSubmit}>
         <div className="location-icon-container" onClick={handleLocation}>

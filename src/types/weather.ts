@@ -30,4 +30,7 @@ export interface WeatherData {
   details: string;
   icon: string;
   daily: DailyWeather[];
+  weather_code: number;
+  is_day: number;
+  wind_direction?: number;
 }

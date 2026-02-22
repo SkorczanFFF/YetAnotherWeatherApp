@@ -73,6 +73,9 @@ interface FormattedCurrentWeather {
   details: string;
   icon: string;
   speed: number;
+  weather_code: number;
+  is_day: number;
+  wind_direction?: number;
 }
 
 interface DailyWeather {
@@ -230,6 +233,7 @@ const formatCurrentWeather = (
     pressure_msl: pressure,
     weather_code,
     wind_speed_10m: speed,
+    wind_direction_10m: wind_direction,
     time: dt_str,
     is_day,
   } = current;
@@ -278,6 +282,9 @@ const formatCurrentWeather = (
     details,
     icon,
     speed,
+    weather_code,
+    is_day,
+    wind_direction,
   };
 };
 
