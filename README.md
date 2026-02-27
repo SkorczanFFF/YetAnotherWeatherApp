@@ -21,6 +21,16 @@ Don't get wet — check the weather first!
 - **Debug menu (F7)** — override scene parameters; app title shows "DEBUG" when any override is active
 - **Accessibility** — ARIA attributes, keyboard-navigable unit toggle
 
+## How the weather scene behaves
+
+- **Rain vs drizzle**: Rain falls quickly in straight or slightly slanted streaks. Drizzle looks finer and softer, so the scene feels “misty” rather than stormy.
+- **Snow**: Snowflakes fall more slowly than rain and gently sway from side to side, so they drift and float instead of shooting straight down.
+- **Wind**: Stronger wind tilts rain and pushes snow and mist sideways, but snow still feels lighter and less “pushed” than rain.
+- **Fog and mist**: Fog makes distant parts of the scene fade into a soft gray, and high humidity makes fog appear thicker. Mist is lighter and lets more of the background show through.
+- **Clouds**: Clouds move slowly across the sky and respond to wind, but they appear to glide more gently than rain or snow because they are “higher up”.
+- **Thunderstorms**: Heavy rain, darker sky, and occasional bright flashes simulate lightning during stormy conditions.
+- **Cold vibe**: On cold days, a subtle frost texture appears over the scene, giving the glass panels and background a chilly feeling.
+
 ## Tech Stack
 
 | Category | Technology |

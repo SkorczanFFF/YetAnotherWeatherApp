@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Tooltip } from "react-tooltip";
+import { DateTime } from "luxon";
 import {
   WiHumidity,
   WiStrongWind,
@@ -45,11 +46,33 @@ const WeatherTooltip: React.FC<WeatherTooltipProps> = ({ id, content }) => (
   />
 );
 
+const getLiveTimeParts = (timezone: string) => {
+  const now = DateTime.now().setZone(timezone);
+  return {
+    datePart: now.toFormat("cccc, dd LLLL yyyy"),
+    hours: now.toFormat("HH"),
+    minutes: now.toFormat("mm"),
+  };
+};
+
 const CurrentWeather: React.FC<CurrentWeatherProps> = ({
   weather,
   units,
   setUnits,
 }) => {
+  const [liveTime, setLiveTime] = useState(() => getLiveTimeParts(weather.timezone));
+  const [colonVisible, setColonVisible] = useState(true);
+
+  useEffect(() => {
+    const tick = () => {
+      setLiveTime(getLiveTimeParts(weather.timezone));
+      setColonVisible((v) => !v);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [weather.timezone]);
+
   const formatted = useMemo(() => ({
     speed: formatSpeed(weather.speed, units),
     feelsLike: formatTemperature(weather.feels_like, units),
@@ -58,7 +81,6 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
     tempMin: formatTemperature(weather.temp_min, units),
     pressure: `${weather.pressure.toFixed()}hPa`,
     humidity: `${weather.humidity.toFixed()}%`,
-    dateTime: formatToLocalTime(weather.dt, weather.timezone),
     sunrise: formatToLocalTime(weather.sunrise, weather.timezone, "HH:mm"),
     sunset: formatToLocalTime(weather.sunset, weather.timezone, "HH:mm"),
     location: `${weather.name}, ${weather.country}`,
@@ -70,8 +92,10 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
 
   return (
     <div className="main-info border">
-        <p className="date-time">
-          {formatted.dateTime}
+        <p className="date-time" aria-live="polite">
+          {liveTime.datePart}, {liveTime.hours}
+          <span className={`date-time-colon ${colonVisible ? "date-time-colon--visible" : "date-time-colon--hidden"}`} aria-hidden="true">:</span>
+          {liveTime.minutes}
         </p>
         <div className="wrapper">
           <div className="left-wing wing">

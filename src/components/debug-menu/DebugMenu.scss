@@ -4,22 +4,24 @@
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
   padding: 1rem;
   font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
 }
 
 .debug-menu-panel {
   background: #1a1a2e;
   color: #ffffff;
   border-radius: 8px;
-  min-width: 280px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: auto;
+  width: 280px;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   font-family: inherit;
 }
@@ -28,19 +30,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
+  min-width: 0;
 
   h2 {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
     color: #ffffff;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
 .debug-menu-close {
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #ffffff;
@@ -58,6 +67,8 @@
 .debug-menu-body {
   padding: 1rem;
   color: #ffffff;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .debug-menu-group {
@@ -75,7 +86,10 @@
   select,
   input[type="text"],
   input[type="number"] {
+    box-sizing: border-box;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     padding: 0.35rem 0.5rem;
     background: #0f0f1a;
     border: 1px solid rgba(255, 255, 255, 0.3);

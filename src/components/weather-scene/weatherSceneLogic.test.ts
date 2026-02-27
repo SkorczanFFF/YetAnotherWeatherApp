@@ -4,12 +4,22 @@ import {
 } from "./weatherSceneLogic";
 
 describe("getSceneConfigFromWeatherCode", () => {
-  it("returns clear for code 0", () => {
+  it("returns clear for code 0 with intensity light", () => {
     const config = getSceneConfigFromWeatherCode(0);
     expect(config.type).toBe("clear");
+    expect(config.intensity).toBe("light");
     expect(config.particleCount).toBe(0);
     expect(config.fogDensity).toBe(0);
     expect(config.thunderstorm).toBe(false);
+  });
+
+  it("returns clear with distinct intensity for codes 0-3 (1.7)", () => {
+    expect(getSceneConfigFromWeatherCode(0).intensity).toBe("light");
+    expect(getSceneConfigFromWeatherCode(1).intensity).toBe("light");
+    expect(getSceneConfigFromWeatherCode(2).intensity).toBe("moderate");
+    expect(getSceneConfigFromWeatherCode(3).intensity).toBe("heavy");
+    expect(getSceneConfigFromWeatherCode(2).cloudCover).toBe(0.55);
+    expect(getSceneConfigFromWeatherCode(3).cloudCover).toBe(0.95);
   });
 
   it("returns fog for code 45 and 48", () => {

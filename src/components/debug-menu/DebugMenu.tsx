@@ -41,7 +41,9 @@ export function isOverridesDirty(overrides: DebugOverrides | null): boolean {
     (o.windSpeed !== undefined && o.windSpeed !== "auto") ||
     (o.windDirection !== undefined && o.windDirection !== "auto") ||
     (o.parallaxAmount !== undefined && o.parallaxAmount !== "auto") ||
-    (o.thunderstorm !== undefined && o.thunderstorm !== "auto")
+    (o.thunderstorm !== undefined && o.thunderstorm !== "auto") ||
+    (o.temperature !== undefined && o.temperature !== "auto") ||
+    (o.humidity !== undefined && o.humidity !== "auto")
   );
 }
 
@@ -90,6 +92,28 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           </button>
         </div>
         <div className="debug-menu-body">
+          <div className="debug-menu-group debug-menu-summary">
+            <label>Resolved scene config (read-only)</label>
+            <pre>
+              {JSON.stringify(
+                {
+                  effectType: o.effectType ?? "auto",
+                  intensity: o.intensity ?? "auto",
+                  particleCount: o.particleCount ?? "auto",
+                  fogDensity: o.fogDensity ?? "auto",
+                  timeOfDay: o.timeOfDay ?? "auto",
+                  windSpeed: o.windSpeed ?? "auto",
+                  windDirection: o.windDirection ?? "auto",
+                  parallaxAmount: o.parallaxAmount ?? "auto",
+                  thunderstorm: o.thunderstorm ?? "auto",
+                  temperature: o.temperature ?? "auto",
+                  humidity: o.humidity ?? "auto",
+                },
+                null,
+                2
+              )}
+            </pre>
+          </div>
           <div className="debug-menu-group">
             <label>Effect type</label>
             <select
@@ -186,6 +210,38 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               onChange={(e) => {
                 const v = e.target.value.trim();
                 set("windSpeed", v === "" ? "auto" : Number(v) ?? 0);
+              }}
+            />
+          </div>
+          <div className="debug-menu-group">
+            <label>Temperature (°C)</label>
+            <input
+              type="text"
+              placeholder="auto"
+              value={
+                o.temperature === undefined || o.temperature === "auto"
+                  ? ""
+                  : String(o.temperature)
+              }
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                set("temperature", v === "" ? "auto" : Number(v));
+              }}
+            />
+          </div>
+          <div className="debug-menu-group">
+            <label>Humidity (%)</label>
+            <input
+              type="text"
+              placeholder="auto"
+              value={
+                o.humidity === undefined || o.humidity === "auto"
+                  ? ""
+                  : String(o.humidity)
+              }
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                set("humidity", v === "" ? "auto" : Number(v));
               }}
             />
           </div>
