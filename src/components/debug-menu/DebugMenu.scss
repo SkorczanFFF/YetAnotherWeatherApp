@@ -8,7 +8,12 @@
   align-items: flex-start;
   justify-content: flex-end;
   padding: 1rem;
-  font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   overflow: hidden;
 }
 
@@ -16,8 +21,7 @@
   background: #1a1a2e;
   color: #ffffff;
   border-radius: 8px;
-  width: 280px;
-  max-width: calc(100vw - 2rem);
+  width: 385px;
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   overflow-x: hidden;
@@ -106,6 +110,47 @@
   select option {
     background: #1a1a2e;
     color: #ffffff;
+  }
+
+  .debug-menu-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .debug-menu-option-btn {
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: inherit;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    &.debug-menu-option-btn--active {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+    }
+  }
+}
+
+.debug-menu-group--debug-box {
+  .debug-menu-debug-box-coords {
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 0.25rem;
+    color: #fff;
+  }
+
+  .debug-menu-debug-box-keys {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
   }
 }
 

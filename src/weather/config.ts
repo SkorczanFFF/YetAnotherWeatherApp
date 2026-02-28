@@ -11,6 +11,7 @@ import {
   getParticleCountForIntensity,
   FOG_DENSITIES,
   CLEAR_INTENSITY_TO_CLOUD_COVER,
+  isDrizzleCode,
 } from "./codes";
 
 export type { SimulationConfig, TimeOfDay };
@@ -73,6 +74,7 @@ const DEFAULT_CONFIG: SimulationConfig = {
   sunrise: 0,
   sunset: 0,
   useRealtimeClock: false,
+  isDrizzle: false,
 };
 
 export function mapToSimulationConfig(
@@ -101,6 +103,8 @@ export function mapToSimulationConfig(
         const fogDensity =
           type === "fog" ? FOG_DENSITIES[intensity] * humidityFactor : 0;
         const cloudCover = getCloudCoverFromWeatherCode(weather.weather_code);
+        const isDrizzle =
+          type === "rain" && isDrizzleCode(weather.weather_code);
         return {
           effectType: type,
           intensity,
@@ -117,6 +121,7 @@ export function mapToSimulationConfig(
           useRealtimeClock: true,
           temperature: weather.temp,
           humidity: weather.humidity,
+          isDrizzle,
         };
       })()
     : DEFAULT_CONFIG;
@@ -156,6 +161,8 @@ export function mapToSimulationConfig(
       ? o.humidity
       : base.humidity;
 
+  const isDrizzle = base.isDrizzle ?? false;
+
   return {
     effectType,
     intensity,
@@ -189,5 +196,6 @@ export function mapToSimulationConfig(
     useRealtimeClock: timeOverridden ? false : base.useRealtimeClock,
     temperature,
     humidity,
+    isDrizzle,
   };
 }

@@ -39,4 +39,6 @@ export interface SimulationConfig {
   temperature?: number;
   /** Humidity 0–100 for fog/mist scaling. */
   humidity?: number;
+  /** True when precipitation is drizzle (WMO 51–57); use drizzle fall speed and wind factor. */
+  isDrizzle?: boolean;
 }

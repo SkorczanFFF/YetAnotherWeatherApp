@@ -6,7 +6,8 @@ import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
 import WeatherScene from "./components/weather-scene/WeatherScene";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
-import type { DebugOverrides } from "./components/weather-scene/types";
+import type { DebugOverrides } from "./weather/config";
+import type { DebugBoxPosition } from "./weather-scene";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherQuery, Units, WeatherData } from "./types/weather";
 
@@ -20,6 +21,11 @@ const App = (): React.ReactElement => {
   const [debugOverrides, setDebugOverrides] = useState<DebugOverrides | null>(
     null
   );
+  const [debugBoxPosition, setDebugBoxPosition] = useState<DebugBoxPosition>({
+    x: 0,
+    y: 0,
+    z: 0,
+  });
   const isDebugMode = isOverridesDirty(debugOverrides);
 
   useEffect(() => {
@@ -52,7 +58,12 @@ const App = (): React.ReactElement => {
 
   return (
     <div className="App" id="App">
-      <WeatherScene weather={weather} overrides={debugOverrides} />
+      <WeatherScene
+        weather={weather}
+        overrides={debugOverrides}
+        showDebugBox={debugOpen}
+        debugBoxPosition={debugBoxPosition}
+      />
       <Navbar setQuery={setQuery} isDebugMode={isDebugMode} />
       <section className={`weather xray${loading ? " is-loading" : ""}`}>
         {error && <p className="error">{error}</p>}
@@ -78,6 +89,8 @@ const App = (): React.ReactElement => {
         onClose={() => setDebugOpen(false)}
         overrides={debugOverrides}
         onOverridesChange={setDebugOverrides}
+        debugBoxPosition={debugBoxPosition}
+        onDebugBoxPositionChange={setDebugBoxPosition}
       />
       <Analytics />
     </div>

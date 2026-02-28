@@ -1,10 +1,7 @@
 /**
  * Weather Simulation Engine — types.
- * Re-exports from weather domain; adds FrustumBounds and WeatherEffect contract.
+ * Re-exports from weather domain; adds FrustumBounds.
  */
-
-import type * as THREE from "three";
-import type { SimulationConfig } from "../weather/types";
 
 export type {
   EffectType,
@@ -25,10 +22,4 @@ export interface FrustumBounds {
   recycleXMax: number;
   recycleZMin: number;
   recycleZMax: number;
-}
-
-export interface WeatherEffect {
-  init(scene: THREE.Scene, config: SimulationConfig): void;
-  update(dt: number, config: SimulationConfig, bounds: FrustumBounds): void;
-  dispose(): void;
 }

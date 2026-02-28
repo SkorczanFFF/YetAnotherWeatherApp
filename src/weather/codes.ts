@@ -102,6 +102,12 @@ export function getEffectTypeAndIntensity(code: number): {
   return { type: "clear", intensity };
 }
 
+/** True for WMO drizzle codes 51–57 (drizzle, freezing drizzle). */
+export function isDrizzleCode(code: number): boolean {
+  const c = Math.floor(code);
+  return c >= 51 && c <= 57;
+}
+
 export const PARTICLE_COUNTS: Record<Intensity, number> = {
   light: 1600,
   moderate: 2000,

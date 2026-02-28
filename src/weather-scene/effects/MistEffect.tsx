@@ -1,11 +1,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
-import type { SimulationConfig } from "../types";
-import { MIST_WIND_FACTOR } from "../physics/constants";
+import type { SimulationConfig } from "../../weather-simulation/types";
+import { MIST_WIND_FACTOR } from "../../weather-simulation/physics/weatherPhysics";
+import { MIST_BOUNDS } from "./effectBounds";
 
-const MIST_SPAWN = { x: 0, y: 2, z: -2 };
-const MIST_RECYCLE = { xMin: -18, xMax: 18, zMin: -14, zMax: 10 };
 const NUM_MIST = 6;
 
 interface MistEffectProps {
@@ -32,9 +31,9 @@ export function MistEffect({ config }: MistEffectProps) {
         }),
       );
       mist.position.set(
-        MIST_SPAWN.x + (Math.random() - 0.5) * 4,
-        MIST_SPAWN.y + (Math.random() - 0.5) * 2,
-        MIST_SPAWN.z + (Math.random() - 0.5) * 4,
+        MIST_BOUNDS.spawn.x + (Math.random() - 0.5) * 4,
+        MIST_BOUNDS.spawn.y + (Math.random() - 0.5) * 2,
+        MIST_BOUNDS.spawn.z + (Math.random() - 0.5) * 4,
       );
       mist.rotation.x = Math.random() * 0.5;
       mist.rotation.z = Math.random() * 0.3;
@@ -52,7 +51,7 @@ export function MistEffect({ config }: MistEffectProps) {
     };
   }, []);
 
-  useFrame((_state, delta) => {
+  useFrame(() => {
     const group = groupRef.current;
     if (!group) return;
 
@@ -72,15 +71,15 @@ export function MistEffect({ config }: MistEffectProps) {
       mesh.rotation.y += 0.0002;
       (mesh.material as THREE.MeshBasicMaterial).opacity = mistOpacity;
       if (
-        mesh.position.x > MIST_RECYCLE.xMax ||
-        mesh.position.x < MIST_RECYCLE.xMin ||
-        mesh.position.z > MIST_RECYCLE.zMax ||
-        mesh.position.z < MIST_RECYCLE.zMin
+        mesh.position.x > MIST_BOUNDS.recycle.xMax ||
+        mesh.position.x < MIST_BOUNDS.recycle.xMin ||
+        mesh.position.z > MIST_BOUNDS.recycle.zMax ||
+        mesh.position.z < MIST_BOUNDS.recycle.zMin
       ) {
         mesh.position.set(
-          MIST_SPAWN.x + (Math.random() - 0.5) * 4,
-          MIST_SPAWN.y + (Math.random() - 0.5) * 2,
-          MIST_SPAWN.z + (Math.random() - 0.5) * 4,
+          MIST_BOUNDS.spawn.x + (Math.random() - 0.5) * 4,
+          MIST_BOUNDS.spawn.y + (Math.random() - 0.5) * 2,
+          MIST_BOUNDS.spawn.z + (Math.random() - 0.5) * 4,
         );
       }
     });

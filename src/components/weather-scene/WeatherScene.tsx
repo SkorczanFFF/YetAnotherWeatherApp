@@ -1,47 +1,36 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { WeatherData } from "../../types/weather";
-import type { DebugOverrides } from "./types";
+import type { DebugOverrides } from "../../weather/config";
 import { mapToSimulationConfig } from "../../weather/config";
-import { WeatherSceneR3F } from "../../weather-scene/WeatherSceneR3F";
+import { WeatherScene as Scene3D } from "../../weather-scene";
+import type { DebugBoxPosition } from "../../weather-scene";
 
-interface WeatherSceneProps {
+interface WeatherSceneContainerProps {
   weather: WeatherData | null;
   overrides?: DebugOverrides | null;
+  showDebugBox?: boolean;
+  debugBoxPosition?: DebugBoxPosition;
 }
 
-const WeatherScene: React.FC<WeatherSceneProps> = ({ weather, overrides }) => {
+const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
+  weather,
+  overrides,
+  showDebugBox,
+  debugBoxPosition,
+}) => {
   const config = useMemo(
     () => mapToSimulationConfig(weather, overrides),
     [weather, overrides],
   );
-  const [flashOpacity, setFlashOpacity] = useState(0);
   const showFrostOverlay =
     typeof config.temperature === "number" && config.temperature < 0;
 
-  useEffect(() => {
-    if (!config.thunderstorm) return;
-    const scheduleNext = (): ReturnType<typeof setTimeout> => {
-      const delay = 2000 + Math.random() * 3000;
-      return setTimeout(() => {
-        setFlashOpacity(0.55);
-        setTimeout(() => setFlashOpacity(0), 150);
-        timeoutRef.current = scheduleNext();
-      }, delay);
-    };
-    const timeoutRef = { current: scheduleNext() };
-    return () => clearTimeout(timeoutRef.current);
-  }, [weather, overrides, config.thunderstorm]);
-
   return (
     <div className="weather-scene-container" aria-hidden="true">
-      <WeatherSceneR3F config={config} />
-      <div
-        className="weather-scene-flash"
-        style={{
-          opacity: flashOpacity,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
+      <Scene3D
+        config={config}
+        showDebugBox={showDebugBox}
+        debugBoxPosition={debugBoxPosition}
       />
       <div
         className="weather-scene-frost"
@@ -56,4 +45,4 @@ const WeatherScene: React.FC<WeatherSceneProps> = ({ weather, overrides }) => {
   );
 };
 
-export default WeatherScene;
+export default WeatherSceneContainer;

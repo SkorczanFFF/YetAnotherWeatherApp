@@ -1,13 +1,12 @@
-import React from "react";
-import type { DebugOverrides } from "../weather-scene/types";
-import type {
-  WeatherEffectType,
-  WeatherIntensity,
-  TimeOfDayPhase,
-} from "../weather-scene/weatherSceneLogic";
+import React, { useEffect } from "react";
+import type { DebugOverrides, TimeOfDayPhase } from "../../weather/config";
+import type { EffectType, Intensity } from "../../weather/codes";
+import type { DebugBoxPosition } from "../../weather-scene";
 import "./DebugMenu.scss";
 
-const EFFECT_OPTIONS: (WeatherEffectType | "auto")[] = [
+const DEBUG_BOX_STEP = 0.5;
+
+const EFFECT_OPTIONS: (EffectType | "auto")[] = [
   "auto",
   "clear",
   "rain",
@@ -15,7 +14,7 @@ const EFFECT_OPTIONS: (WeatherEffectType | "auto")[] = [
   "fog",
   "thunderstorm",
 ];
-const INTENSITY_OPTIONS: (WeatherIntensity | "auto")[] = [
+const INTENSITY_OPTIONS: (Intensity | "auto")[] = [
   "auto",
   "light",
   "moderate",
@@ -52,6 +51,8 @@ interface DebugMenuProps {
   onClose: () => void;
   overrides: DebugOverrides | null;
   onOverridesChange: (overrides: DebugOverrides | null) => void;
+  debugBoxPosition: DebugBoxPosition;
+  onDebugBoxPositionChange: (pos: DebugBoxPosition) => void;
 }
 
 const DebugMenu: React.FC<DebugMenuProps> = ({
@@ -59,8 +60,44 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   onClose,
   overrides,
   onOverridesChange,
+  debugBoxPosition,
+  onDebugBoxPositionChange,
 }) => {
   const o = overrides ?? {};
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const step = DEBUG_BOX_STEP;
+      const update = (delta: Partial<DebugBoxPosition>) => {
+        onDebugBoxPositionChange({
+          ...debugBoxPosition,
+          ...delta,
+        });
+      };
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        update({ x: debugBoxPosition.x - step });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        update({ x: debugBoxPosition.x + step });
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        update({ z: debugBoxPosition.z + step });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        update({ z: debugBoxPosition.z - step });
+      } else if (e.key === "Control" && !e.repeat) {
+        e.preventDefault();
+        update({ y: debugBoxPosition.y + step });
+      } else if (e.key === " ") {
+        e.preventDefault();
+        update({ y: debugBoxPosition.y - step });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, debugBoxPosition, onDebugBoxPositionChange]);
 
   const update = (next: DebugOverrides) => {
     onOverridesChange(next);
@@ -68,7 +105,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
 
   const set = <K extends keyof DebugOverrides>(
     key: K,
-    value: DebugOverrides[K]
+    value: DebugOverrides[K],
   ) => {
     update({ ...o, [key]: value });
   };
@@ -80,11 +117,13 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   if (!open) return null;
 
   return (
-    <div className="debug-menu-backdrop" onClick={onClose} role="dialog" aria-label="Debug menu">
-      <div
-        className="debug-menu-panel"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="debug-menu-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-label="Debug menu"
+    >
+      <div className="debug-menu-panel" onClick={(e) => e.stopPropagation()}>
         <div className="debug-menu-header">
           <h2>Debug — Scene overrides</h2>
           <button type="button" className="debug-menu-close" onClick={onClose}>
@@ -92,60 +131,95 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           </button>
         </div>
         <div className="debug-menu-body">
-          <div className="debug-menu-group debug-menu-summary">
-            <label>Resolved scene config (read-only)</label>
-            <pre>
-              {JSON.stringify(
-                {
-                  effectType: o.effectType ?? "auto",
-                  intensity: o.intensity ?? "auto",
-                  particleCount: o.particleCount ?? "auto",
-                  fogDensity: o.fogDensity ?? "auto",
-                  timeOfDay: o.timeOfDay ?? "auto",
-                  windSpeed: o.windSpeed ?? "auto",
-                  windDirection: o.windDirection ?? "auto",
-                  parallaxAmount: o.parallaxAmount ?? "auto",
-                  thunderstorm: o.thunderstorm ?? "auto",
-                  temperature: o.temperature ?? "auto",
-                  humidity: o.humidity ?? "auto",
-                },
-                null,
-                2
-              )}
-            </pre>
+          <div className="debug-menu-group debug-menu-group--debug-box">
+            <label>Debug box</label>
+            <div className="debug-menu-debug-box-coords">
+              x: {debugBoxPosition.x.toFixed(2)} · y:{" "}
+              {debugBoxPosition.y.toFixed(2)} · z:{" "}
+              {debugBoxPosition.z.toFixed(2)}
+            </div>
+            <div className="debug-menu-debug-box-keys">
+              ← → X · ↑ ↓ Z · Ctrl Y+ · Space Y−
+            </div>
           </div>
           <div className="debug-menu-group">
             <label>Effect type</label>
-            <select
-              value={o.effectType ?? "auto"}
-              onChange={(e) =>
-                set(
-                  "effectType",
-                  e.target.value as DebugOverrides["effectType"]
-                )
-              }
-            >
+            <div className="debug-menu-button-group">
               {EFFECT_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
+                <button
+                  key={opt}
+                  type="button"
+                  className={`debug-menu-option-btn ${(o.effectType ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  onClick={() => set("effectType", opt)}
+                >
                   {opt}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div className="debug-menu-group">
             <label>Intensity</label>
-            <select
-              value={o.intensity ?? "auto"}
-              onChange={(e) =>
-                set("intensity", e.target.value as DebugOverrides["intensity"])
-              }
-            >
+            <div className="debug-menu-button-group">
               {INTENSITY_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
+                <button
+                  key={opt}
+                  type="button"
+                  className={`debug-menu-option-btn ${(o.intensity ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  onClick={() => set("intensity", opt)}
+                >
                   {opt}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
+          </div>
+          <div className="debug-menu-group">
+            <label>Time of day</label>
+            <div className="debug-menu-button-group">
+              {TIME_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`debug-menu-option-btn ${(o.timeOfDay ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  onClick={() => set("timeOfDay", opt)}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="debug-menu-group">
+            <label>Wind speed</label>
+            <input
+              type="text"
+              placeholder="auto"
+              value={
+                o.windSpeed === undefined || o.windSpeed === "auto"
+                  ? ""
+                  : String(o.windSpeed)
+              }
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                set("windSpeed", v === "" ? "auto" : (Number(v) ?? 0));
+              }}
+            />
+          </div>
+          <div className="debug-menu-group">
+            <label>Wind direction (°)</label>
+            <input
+              type="number"
+              min={0}
+              max={360}
+              placeholder="auto"
+              value={
+                o.windDirection === undefined || o.windDirection === "auto"
+                  ? ""
+                  : String(o.windDirection)
+              }
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                set("windDirection", v === "" ? "auto" : Number(v));
+              }}
+            />
           </div>
           <div className="debug-menu-group">
             <label>Particle count</label>
@@ -176,40 +250,6 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               onChange={(e) => {
                 const v = e.target.value.trim();
                 set("fogDensity", v === "" ? "auto" : Number(v) || 0);
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
-            <label>Time of day</label>
-            <select
-              value={o.timeOfDay ?? "auto"}
-              onChange={(e) =>
-                set(
-                  "timeOfDay",
-                  e.target.value as DebugOverrides["timeOfDay"]
-                )
-              }
-            >
-              {TIME_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="debug-menu-group">
-            <label>Wind speed</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.windSpeed === undefined || o.windSpeed === "auto"
-                  ? ""
-                  : String(o.windSpeed)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("windSpeed", v === "" ? "auto" : Number(v) ?? 0);
               }}
             />
           </div>
@@ -246,27 +286,6 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             />
           </div>
           <div className="debug-menu-group">
-            <label>Wind direction (°)</label>
-            <input
-              type="number"
-              min={0}
-              max={360}
-              placeholder="auto"
-              value={
-                o.windDirection === undefined || o.windDirection === "auto"
-                  ? ""
-                  : String(o.windDirection)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set(
-                  "windDirection",
-                  v === "" ? "auto" : Number(v)
-                );
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
             <label>Parallax amount (0–1)</label>
             <input
               type="text"
@@ -278,35 +297,9 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               }
               onChange={(e) => {
                 const v = e.target.value.trim();
-                set(
-                  "parallaxAmount",
-                  v === "" ? "auto" : Number(v)
-                );
+                set("parallaxAmount", v === "" ? "auto" : Number(v));
               }}
             />
-          </div>
-          <div className="debug-menu-group">
-            <label>Thunderstorm flash</label>
-            <select
-              value={
-                o.thunderstorm === undefined || o.thunderstorm === "auto"
-                  ? "auto"
-                  : o.thunderstorm
-                  ? "on"
-                  : "off"
-              }
-              onChange={(e) => {
-                const v = e.target.value;
-                set(
-                  "thunderstorm",
-                  v === "auto" ? "auto" : v === "on"
-                );
-              }}
-            >
-              <option value="auto">auto</option>
-              <option value="on">on</option>
-              <option value="off">off</option>
-            </select>
           </div>
           <div className="debug-menu-actions">
             <button type="button" onClick={resetAll}>

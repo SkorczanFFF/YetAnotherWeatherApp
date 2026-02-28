@@ -1,5 +1,5 @@
-export type { SimulationConfig, FrustumBounds, WeatherEffect } from "./types";
-export { mapToSimulationConfig, getTimeOfDayPhase } from "./physics/configMapper";
+export type { SimulationConfig, FrustumBounds } from "./types";
+export { mapToSimulationConfig, getTimeOfDayPhase } from "../weather/config";
 export {
   computeFrustumBounds,
   getSpawnX,
