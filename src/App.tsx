@@ -7,7 +7,8 @@ import Footer from "./components/footer/Footer";
 import WeatherScene from "./components/weather-scene/WeatherScene";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
 import type { DebugOverrides } from "./weather/config";
-import type { DebugBoxPosition } from "./weather-scene";
+import type { DebugBoxPosition } from "./weather-scene/scene/DebugBox";
+import type { CloudSpawnBounds } from "./weather-scene/scene/CloudSpawnDebugBox";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherQuery, Units, WeatherData } from "./types/weather";
 
@@ -26,6 +27,8 @@ const App = (): React.ReactElement => {
     y: 0,
     z: 0,
   });
+  const [cloudSpawnBounds, setCloudSpawnBounds] =
+    useState<CloudSpawnBounds | null>(null);
   const isDebugMode = isOverridesDirty(debugOverrides);
 
   useEffect(() => {
@@ -63,6 +66,7 @@ const App = (): React.ReactElement => {
         overrides={debugOverrides}
         showDebugBox={debugOpen}
         debugBoxPosition={debugBoxPosition}
+        onCloudSpawnBoundsChange={setCloudSpawnBounds}
       />
       <Navbar setQuery={setQuery} isDebugMode={isDebugMode} />
       <section className={`weather xray${loading ? " is-loading" : ""}`}>
@@ -91,6 +95,7 @@ const App = (): React.ReactElement => {
         onOverridesChange={setDebugOverrides}
         debugBoxPosition={debugBoxPosition}
         onDebugBoxPositionChange={setDebugBoxPosition}
+        cloudSpawnBounds={cloudSpawnBounds}
       />
       <Analytics />
     </div>

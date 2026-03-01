@@ -4,6 +4,10 @@ import type { SimulationConfig } from "../weather-simulation/types";
 import { SkyBackground } from "./scene/SkyBackground";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
+import {
+  CloudSpawnDebugBox,
+  type CloudSpawnBounds,
+} from "./scene/CloudSpawnDebugBox";
 import { FogEffect } from "./effects/FogEffect";
 import { RainEffect } from "./effects/RainEffect";
 import { SnowEffect } from "./effects/SnowEffect";
@@ -12,6 +16,7 @@ import { MistEffect } from "./effects/MistEffect";
 import { LightningEffect } from "./effects/LightningEffect";
 
 export type { DebugBoxPosition } from "./scene/DebugBox";
+export type { CloudSpawnBounds } from "./scene/CloudSpawnDebugBox";
 
 interface WeatherSceneProps {
   config: SimulationConfig;
@@ -19,16 +24,19 @@ interface WeatherSceneProps {
   style?: React.CSSProperties;
   showDebugBox?: boolean;
   debugBoxPosition?: DebugBoxPosition;
+  onCloudSpawnBoundsChange?: (bounds: CloudSpawnBounds) => void;
 }
 
 function SceneContent({
   config,
   showDebugBox,
   debugBoxPosition,
+  onCloudSpawnBoundsChange,
 }: {
   config: SimulationConfig;
   showDebugBox?: boolean;
   debugBoxPosition?: DebugBoxPosition;
+  onCloudSpawnBoundsChange?: (bounds: CloudSpawnBounds) => void;
 }) {
   return (
     <>
@@ -43,6 +51,13 @@ function SceneContent({
       {showDebugBox && debugBoxPosition && (
         <DebugBox position={debugBoxPosition} />
       )}
+      {showDebugBox && (
+        <CloudSpawnDebugBox
+          visible={true}
+          config={config}
+          onBoundsChange={onCloudSpawnBoundsChange}
+        />
+      )}
     </>
   );
 }
@@ -53,6 +68,7 @@ export function WeatherScene({
   style,
   showDebugBox,
   debugBoxPosition,
+  onCloudSpawnBoundsChange,
 }: WeatherSceneProps) {
   const eventSource =
     typeof document !== "undefined" ? (document.body as HTMLElement) : undefined;
@@ -80,6 +96,7 @@ export function WeatherScene({
           config={config}
           showDebugBox={showDebugBox}
           debugBoxPosition={debugBoxPosition}
+          onCloudSpawnBoundsChange={onCloudSpawnBoundsChange}
         />
       </Canvas>
     </div>

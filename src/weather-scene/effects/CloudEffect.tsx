@@ -7,33 +7,48 @@ import type {
   FrustumBounds,
 } from "../../weather-simulation/types";
 import { CLOUD_WIND_FACTOR } from "../../weather-simulation/physics/weatherPhysics";
-import {
-  computeFrustumBounds,
-  getSpawnX,
-  getSpawnZ,
-} from "../../weather-simulation/cameraFrustum";
+import { computeAxisAlignedCloudBounds } from "../../weather-simulation/cameraFrustum";
 import { buildCloud, getCloudColor, type CloudSize } from "./clouds";
 
-const NUM_CLOUDS = 50;
+const NUM_CLOUDS = 70;
 const CLOUD_SPAWN_Y_MIN = 6;
 const CLOUD_SPAWN_Y_MAX = 11;
-const CLOUD_SPAWN_Z_MAX = -50;
+/** Visible depth band: spawn only between 10 and 80 units in front of camera. */
+const CLOUD_VISIBLE_NEAR = 10;
+const CLOUD_VISIBLE_FAR = 70;
 const MIN_DRIFT_X = 0.003;
 const UPWIND_BIAS = 0.75;
+/** Recycle when cloud leaves spawn volume; max per frame to avoid swarms. */
+const CLOUD_RECYCLE_MAX_PER_FRAME = 3;
 
 const CLOUD_SIZES: CloudSize[] = ["small", "medium", "large"];
+
+/** Base upwind margin (world units); extended by wind speed so strong wind keeps view filled. */
+const BASE_UPWIND_MARGIN = 5;
+const UPWIND_MARGIN_PER_WIND = 0.1;
 
 function randomSpawnPositionFromBounds(
   bounds: FrustumBounds,
   windDirectionDeg: number,
+  windSpeed: number,
 ): { x: number; y: number; z: number } {
-  const { center: xCenter, radius: xRadius } = getSpawnX(bounds);
-  const { center: zCenter, radius: zRadius } = getSpawnZ(bounds);
   const windRad = (windDirectionDeg * Math.PI) / 180;
   const windX = Math.sin(windRad);
   const windZ = -Math.cos(windRad);
   const upwindX = -windX;
   const upwindZ = -windZ;
+
+  const upwindMargin = BASE_UPWIND_MARGIN + windSpeed * UPWIND_MARGIN_PER_WIND;
+  const spawnXMin = bounds.spawnXMin + Math.min(0, upwindX) * upwindMargin;
+  const spawnXMax = bounds.spawnXMax + Math.max(0, upwindX) * upwindMargin;
+  const spawnZMin = bounds.spawnZMin + Math.min(0, upwindZ) * upwindMargin;
+  const spawnZMax = bounds.spawnZMax + Math.max(0, upwindZ) * upwindMargin;
+
+  const xCenter = (spawnXMin + spawnXMax) / 2;
+  const zCenter = (spawnZMin + spawnZMax) / 2;
+  const xRadius = (spawnXMax - spawnXMin) / 2;
+  const zRadius = (spawnZMax - spawnZMin) / 2;
+
   const jitter = 0.4;
   const x =
     xCenter +
@@ -45,14 +60,11 @@ function randomSpawnPositionFromBounds(
     (Math.random() - 0.5) * 2 * zRadius * jitter;
   const y =
     CLOUD_SPAWN_Y_MIN + Math.random() * (CLOUD_SPAWN_Y_MAX - CLOUD_SPAWN_Y_MIN);
-  const zClamped = Math.max(
-    bounds.spawnZMin,
-    Math.min(CLOUD_SPAWN_Z_MAX, bounds.spawnZMax, z),
-  );
+
   return {
-    x: Math.max(bounds.spawnXMin, Math.min(bounds.spawnXMax, x)),
+    x: Math.max(spawnXMin, Math.min(spawnXMax, x)),
     y,
-    z: zClamped,
+    z: Math.max(spawnZMin, Math.min(spawnZMax, z)),
   };
 }
 
@@ -81,7 +93,13 @@ export function CloudEffect({ config }: CloudEffectProps) {
     const defaultCamera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 100);
     defaultCamera.position.set(0, 0, 5);
     defaultCamera.lookAt(0, 0, 0);
-    const defaultBounds = computeFrustumBounds(defaultCamera);
+    const defaultBounds = computeAxisAlignedCloudBounds(
+      defaultCamera,
+      CLOUD_VISIBLE_NEAR,
+      CLOUD_VISIBLE_FAR,
+      CLOUD_SPAWN_Y_MIN,
+      CLOUD_SPAWN_Y_MAX,
+    );
 
     for (let i = 0; i < NUM_CLOUDS; i++) {
       const size = CLOUD_SIZES[Math.floor(Math.random() * CLOUD_SIZES.length)];
@@ -93,7 +111,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
         mesh.scale.set(box.scale[0], box.scale[1], box.scale[2]);
         cloudGroup.add(mesh);
       }
-      const pos = randomSpawnPositionFromBounds(defaultBounds, 0);
+      const pos = randomSpawnPositionFromBounds(defaultBounds, 0, 0);
       cloudGroup.position.set(pos.x, pos.y, pos.z);
       group.add(cloudGroup);
     }
@@ -123,7 +141,13 @@ export function CloudEffect({ config }: CloudEffectProps) {
     }
     group.visible = true;
 
-    const bounds = computeFrustumBounds(state.camera);
+    const bounds = computeAxisAlignedCloudBounds(
+      state.camera,
+      CLOUD_VISIBLE_NEAR,
+      CLOUD_VISIBLE_FAR,
+      CLOUD_SPAWN_Y_MIN,
+      CLOUD_SPAWN_Y_MAX,
+    );
     const windDir = (config.windDirection * Math.PI) / 180;
     let cloudWindX = Math.sin(windDir) * config.windSpeed * CLOUD_WIND_FACTOR;
     let cloudWindZ = -Math.cos(windDir) * config.windSpeed * CLOUD_WIND_FACTOR;
@@ -144,18 +168,21 @@ export function CloudEffect({ config }: CloudEffectProps) {
       sharedMat.color.setHex(getCloudColor(config));
     }
 
+    let recycledThisFrame = 0;
     group.children.forEach((child) => {
       const cloudGroup = child as THREE.Group;
       cloudGroup.position.x += cloudWindX;
       cloudGroup.position.z += cloudWindZ;
       const outside =
-        cloudGroup.position.x < bounds.recycleXMin ||
-        cloudGroup.position.x > bounds.recycleXMax ||
-        cloudGroup.position.z < bounds.recycleZMin ||
-        cloudGroup.position.z > bounds.recycleZMax ||
-        cloudGroup.position.y < bounds.recycleY;
-      if (outside) {
-        const pos = randomSpawnPositionFromBounds(bounds, config.windDirection);
+        cloudGroup.position.x < bounds.spawnXMin ||
+        cloudGroup.position.x > bounds.spawnXMax ||
+        cloudGroup.position.z < bounds.spawnZMin ||
+        cloudGroup.position.z > bounds.spawnZMax ||
+        cloudGroup.position.y < bounds.spawnYMin;
+      if (outside && recycledThisFrame < CLOUD_RECYCLE_MAX_PER_FRAME) {
+        recycledThisFrame += 1;
+        // Use same spawn volume as initial (no wind expansion) so recycle position matches initial swarm
+        const pos = randomSpawnPositionFromBounds(bounds, 0, 0);
         cloudGroup.position.set(pos.x, pos.y, pos.z);
       }
     });

@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import type { DebugOverrides, TimeOfDayPhase } from "../../weather/config";
 import type { EffectType, Intensity } from "../../weather/codes";
-import type { DebugBoxPosition } from "../../weather-scene";
+import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
+import type { CloudSpawnBounds } from "../../weather-scene/scene/CloudSpawnDebugBox";
 import "./DebugMenu.scss";
 
 const DEBUG_BOX_STEP = 0.5;
@@ -53,6 +54,7 @@ interface DebugMenuProps {
   onOverridesChange: (overrides: DebugOverrides | null) => void;
   debugBoxPosition: DebugBoxPosition;
   onDebugBoxPositionChange: (pos: DebugBoxPosition) => void;
+  cloudSpawnBounds: CloudSpawnBounds | null;
 }
 
 const DebugMenu: React.FC<DebugMenuProps> = ({
@@ -62,6 +64,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   onOverridesChange,
   debugBoxPosition,
   onDebugBoxPositionChange,
+  cloudSpawnBounds,
 }) => {
   const o = overrides ?? {};
 
@@ -140,6 +143,20 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             </div>
             <div className="debug-menu-debug-box-keys">
               ← → X · ↑ ↓ Z · Ctrl Y+ · Space Y−
+            </div>
+          </div>
+          <div className="debug-menu-group debug-menu-group--cloud-spawn">
+            <label>Cloud spawn (wireframe on scene)</label>
+            <div className="debug-menu-cloud-spawn-dims">
+              {cloudSpawnBounds ? (
+                <>
+                  width: {cloudSpawnBounds.width.toFixed(1)} · height:{" "}
+                  {cloudSpawnBounds.height.toFixed(1)} · depth:{" "}
+                  {cloudSpawnBounds.depth.toFixed(1)}
+                </>
+              ) : (
+                "—"
+              )}
             </div>
           </div>
           <div className="debug-menu-group">

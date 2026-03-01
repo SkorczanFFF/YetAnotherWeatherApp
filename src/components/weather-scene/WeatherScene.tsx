@@ -2,14 +2,15 @@ import React, { useMemo } from "react";
 import { WeatherData } from "../../types/weather";
 import type { DebugOverrides } from "../../weather/config";
 import { mapToSimulationConfig } from "../../weather/config";
-import { WeatherScene as Scene3D } from "../../weather-scene";
-import type { DebugBoxPosition } from "../../weather-scene";
+import { WeatherScene as Scene3D, type DebugBoxPosition } from "../../weather-scene/WeatherScene";
+import type { CloudSpawnBounds } from "../../weather-scene/scene/CloudSpawnDebugBox";
 
 interface WeatherSceneContainerProps {
   weather: WeatherData | null;
   overrides?: DebugOverrides | null;
   showDebugBox?: boolean;
   debugBoxPosition?: DebugBoxPosition;
+  onCloudSpawnBoundsChange?: (bounds: CloudSpawnBounds) => void;
 }
 
 const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
@@ -17,6 +18,7 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
   overrides,
   showDebugBox,
   debugBoxPosition,
+  onCloudSpawnBoundsChange,
 }) => {
   const config = useMemo(
     () => mapToSimulationConfig(weather, overrides),
@@ -31,6 +33,7 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
         config={config}
         showDebugBox={showDebugBox}
         debugBoxPosition={debugBoxPosition}
+        onCloudSpawnBoundsChange={onCloudSpawnBoundsChange}
       />
       <div
         className="weather-scene-frost"
