@@ -1,8 +1,4 @@
-/**
- * Compute spawn and recycle bounds for weather particles.
- * For PerspectiveCamera: bounds derived from frustum in world space.
- * Fallback: fixed bounds when camera is not PerspectiveCamera.
- */
+/** Spawn/recycle bounds from camera frustum (PerspectiveCamera) or fixed fallback. */
 
 import * as THREE from "three";
 import type { FrustumBounds } from "./types";
@@ -26,9 +22,6 @@ const FALLBACK_BOUNDS: FrustumBounds = {
   recycleZMax: 14,
 };
 
-/**
- * Get 8 frustum corners in world space for a PerspectiveCamera.
- */
 function getFrustumCornersWorld(camera: THREE.PerspectiveCamera): THREE.Vector3[] {
   const { fov, aspect, near, far } = camera;
   const halfFov = (fov * Math.PI) / 360;
@@ -53,10 +46,6 @@ function getFrustumCornersWorld(camera: THREE.PerspectiveCamera): THREE.Vector3[
   return corners.map((c) => c.applyMatrix4(camera.matrixWorld));
 }
 
-/**
- * Returns spawn and recycle bounds. For PerspectiveCamera, bounds are derived from
- * the camera frustum in world space with padding. Otherwise returns fixed fallback bounds.
- */
 export function computeFrustumBounds(camera: THREE.Camera): FrustumBounds {
   if (!(camera instanceof THREE.PerspectiveCamera)) {
     return { ...FALLBACK_BOUNDS };
@@ -66,11 +55,7 @@ export function computeFrustumBounds(camera: THREE.Camera): FrustumBounds {
   return boundsFromCorners(corners);
 }
 
-/**
- * Returns spawn and recycle bounds limited to a depth band in front of the camera.
- * nearDepth and farDepth are distances along the camera view axis (e.g. 10 and 80).
- * Use this for cloud spawn so clouds only appear in the visible slice of the frustum.
- */
+/** Bounds limited to depth band [nearDepth, farDepth] along view axis. */
 export function computeFrustumBoundsWithDepth(
   camera: THREE.Camera,
   nearDepth: number,
@@ -99,11 +84,7 @@ export function computeFrustumBoundsWithDepth(
   return boundsFromCorners(clampedCorners);
 }
 
-/**
- * Returns axis-aligned spawn bounds fixed in world space. Depth is along world Z.
- * Center does not follow the camera (no movement with mouse/parallax). Uses camera
- * only for fov/aspect so box size matches view on resize. Use for cloud spawn.
- */
+/** Axis-aligned spawn bounds; center fixed (no parallax). Uses camera fov/aspect for box size. */
 export function computeAxisAlignedCloudBounds(
   camera: THREE.Camera,
   nearDepth: number,
@@ -174,9 +155,6 @@ function boundsFromCorners(corners: THREE.Vector3[]): FrustumBounds {
   };
 }
 
-/**
- * Returns true if the point is inside the spawn bounds.
- */
 export function isPointInSpawnBounds(
   bounds: FrustumBounds,
   x: number,
@@ -190,14 +168,12 @@ export function isPointInSpawnBounds(
   );
 }
 
-/** Spawn X center and radius for particles. */
 export function getSpawnX(bounds: FrustumBounds): { center: number; radius: number } {
   const center = (bounds.spawnXMin + bounds.spawnXMax) / 2;
   const radius = (bounds.spawnXMax - bounds.spawnXMin) / 2;
   return { center, radius };
 }
 
-/** Spawn Z center and radius for particles. */
 export function getSpawnZ(bounds: FrustumBounds): { center: number; radius: number } {
   const center = (bounds.spawnZMin + bounds.spawnZMax) / 2;
   const radius = (bounds.spawnZMax - bounds.spawnZMin) / 2;

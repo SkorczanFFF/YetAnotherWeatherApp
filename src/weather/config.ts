@@ -1,10 +1,8 @@
-/**
- * WeatherData + overrides → SimulationConfig.
- * Time-of-day and config mapping live here (no dependency on components).
- */
+/** WeatherData + overrides → SimulationConfig; time-of-day and config mapping (no component deps). */
 
 import type { WeatherData } from "./types";
 import type { SimulationConfig, TimeOfDay } from "./types";
+import type { Intensity } from "./codes";
 import {
   getEffectTypeAndIntensity,
   getCloudCoverFromWeatherCode,
@@ -13,6 +11,15 @@ import {
   CLEAR_INTENSITY_TO_CLOUD_COVER,
   isDrizzleCode,
 } from "./codes";
+
+function computeFogDensityFromHumidity(
+  humidity: number,
+  intensity: Intensity,
+): number {
+  const clamped = Math.min(Math.max(humidity, 0), 100);
+  const factor = 0.7 + (clamped / 100) * 0.6;
+  return FOG_DENSITIES[intensity] * factor;
+}
 
 export type { SimulationConfig, TimeOfDay };
 
@@ -45,17 +52,18 @@ export function getSunProgress(
   return elapsed / dayLength;
 }
 
-/** Overrides from debug menu or tests. "auto" = use weather-driven value. */
+/** Debug overrides. "auto" = use weather-driven value. */
 export interface DebugOverrides {
   effectType?: SimulationConfig["effectType"] | "auto";
   intensity?: SimulationConfig["intensity"] | "auto";
   particleCount?: number | "auto";
   fogDensity?: number | "auto";
   timeOfDay?: TimeOfDayPhase | "auto";
+  cloudCover?: number | "auto";
+  cloudCount?: number | "auto";
   windSpeed?: number | "auto";
   windDirection?: number | "auto";
   parallaxAmount?: number | "auto";
-  thunderstorm?: boolean | "auto";
   temperature?: number | "auto";
   humidity?: number | "auto";
 }
@@ -97,11 +105,10 @@ export function mapToSimulationConfig(
         const particleCount = rainOrSnow
           ? getParticleCountForIntensity(intensity)
           : 0;
-        const humidity = weather.humidity ?? 100;
-        const humidityClamped = Math.min(Math.max(humidity, 0), 100);
-        const humidityFactor = 0.7 + (humidityClamped / 100) * 0.6;
         const fogDensity =
-          type === "fog" ? FOG_DENSITIES[intensity] * humidityFactor : 0;
+          type === "fog"
+            ? computeFogDensityFromHumidity(weather.humidity ?? 100, intensity)
+            : 0;
         const cloudCover = getCloudCoverFromWeatherCode(weather.weather_code);
         const isDrizzle =
           type === "rain" && isDrizzleCode(weather.weather_code);
@@ -146,11 +153,21 @@ export function mapToSimulationConfig(
 
   const timeOverridden = !!(o.timeOfDay && o.timeOfDay !== "auto");
 
-  // When effectType is clear and intensity is overridden, derive cloudCover from intensity (1.7)
   let cloudCover = base.cloudCover;
-  if (effectType === "clear" && o.intensity && o.intensity !== "auto") {
+  if (o.cloudCover !== undefined && o.cloudCover !== "auto") {
+    cloudCover = o.cloudCover;
+  } else if (effectType === "clear" && o.intensity && o.intensity !== "auto") {
     cloudCover = CLEAR_INTENSITY_TO_CLOUD_COVER[o.intensity];
   }
+
+  const fogDensityFromEffect =
+    effectType === "fog"
+      ? computeFogDensityFromHumidity(base.humidity ?? 100, intensity)
+      : base.fogDensity;
+  const fogDensity =
+    o.fogDensity !== undefined && o.fogDensity !== "auto"
+      ? o.fogDensity
+      : fogDensityFromEffect;
 
   const temperature =
     o.temperature !== undefined && o.temperature !== "auto"
@@ -167,15 +184,13 @@ export function mapToSimulationConfig(
     effectType,
     intensity,
     particleCount,
-    fogDensity:
-      o.fogDensity !== undefined && o.fogDensity !== "auto"
-        ? o.fogDensity
-        : base.fogDensity,
-    thunderstorm:
-      o.thunderstorm !== undefined && o.thunderstorm !== "auto"
-        ? o.thunderstorm
-        : base.thunderstorm,
+    fogDensity,
+    thunderstorm: effectType === "thunderstorm",
     cloudCover,
+    cloudCount:
+      o.cloudCount !== undefined && o.cloudCount !== "auto"
+        ? o.cloudCount
+        : undefined,
     windSpeed:
       o.windSpeed !== undefined && o.windSpeed !== "auto"
         ? o.windSpeed

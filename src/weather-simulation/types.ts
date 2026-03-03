@@ -1,7 +1,4 @@
-/**
- * Weather Simulation Engine — types.
- * Re-exports from weather domain; adds FrustumBounds.
- */
+/** Simulation types. Re-exports weather domain; adds FrustumBounds. */
 
 export type {
   EffectType,

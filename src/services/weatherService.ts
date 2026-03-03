@@ -112,8 +112,6 @@ const getWeatherData = async (
   searchParams: OpenMeteoQueryParams
 ): Promise<OpenMeteoResponse> => {
   const url = new URL(BASE_URL + "/" + endpoint);
-
-  // Add search params to URL
   Object.entries(searchParams).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.append(key, value.toString());
@@ -128,8 +126,6 @@ const getWeatherData = async (
     }
 
     const data = await response.json();
-
-    // Check if the API returned an error
     if (data.error) {
       throw new Error(`API returned error: ${data.reason || "Unknown error"}`);
     }
@@ -141,36 +137,76 @@ const getWeatherData = async (
   }
 };
 
-const geocodeCity = async (city: string): Promise<GeocodingResult | null> => {
-  try {
-    const url = new URL(GEOCODING_URL);
-    url.searchParams.append("name", city);
-    url.searchParams.append("count", "1");
-    url.searchParams.append("language", "en");
-    url.searchParams.append("format", "json");
-
-    const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      throw new Error(
-        `Geocoding API error: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.results || data.results.length === 0) {
-      return null;
-    }
-
-    return data.results[0];
-  } catch (error) {
-    console.error("Error geocoding city:", error);
-    throw error;
-  }
+/** Language for geocoding (browser language, e.g. "pl", "en"). */
+const getPreferredLanguage = (): string => {
+  if (typeof navigator === "undefined") return "en";
+  const lang = navigator.language || (navigator as { userLanguage?: string }).userLanguage;
+  return (lang || "en").split("-")[0].toLowerCase();
 };
 
-// Map weather codes from Open-Meteo to descriptive text and icon codes
+/** Geocode city name to coordinates. Ranks by PPLC/PPLA then population; language fallback (e.g. Warszawa → Warsaw PL). */
+const geocodeCity = async (city: string): Promise<GeocodingResult | null> => {
+  const trimmed = city.trim();
+  if (!trimmed || trimmed.length < 2) {
+    return null;
+  }
+
+  const trySearch = async (language: string): Promise<GeocodingResult | null> => {
+    try {
+      const url = new URL(GEOCODING_URL);
+      url.searchParams.append("name", trimmed);
+      url.searchParams.append("count", "25");
+      url.searchParams.append("language", language);
+      url.searchParams.append("format", "json");
+
+      const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        throw new Error(
+          `Geocoding API error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.results || data.results.length === 0) {
+        return null;
+      }
+
+      const results = data.results as (GeocodingResult & { population?: number; feature_code?: string })[];
+      const rank = (r: (typeof results)[0]): number => {
+        const pop = r.population ?? 0;
+        const code = (r.feature_code || "").toUpperCase();
+        if (code === "PPLC") return 1e9 + pop;
+        if (code === "PPLA") return 1e8 + pop;
+        return pop;
+      };
+      results.sort((a, b) => rank(b) - rank(a));
+
+      const best = results[0];
+      return {
+        id: best.id,
+        name: best.name,
+        latitude: best.latitude,
+        longitude: best.longitude,
+        country: best.country,
+        country_code: best.country_code,
+        timezone: best.timezone,
+      };
+    } catch (error) {
+      console.error("Error geocoding city:", error);
+      throw error;
+    }
+  };
+
+  const lang = getPreferredLanguage();
+  let result = await trySearch(lang);
+  if (!result && lang !== "en") {
+    result = await trySearch("en");
+  }
+  return result;
+};
+
 const weatherCodeMap: Record<number, { description: string; icon: string }> = {
   0: { description: "Clear sky", icon: "01d" },
   1: { description: "Mainly clear", icon: "02d" },
@@ -202,18 +238,12 @@ const weatherCodeMap: Record<number, { description: string; icon: string }> = {
   99: { description: "Thunderstorm with heavy hail", icon: "11d" },
 };
 
-// Add is_day detection to get day/night icons
 const getIconCode = (weatherCode: number, is_day: number): string => {
   const weather = weatherCodeMap[weatherCode] || {
     description: "Unknown",
     icon: "01d",
   };
-
-  // Convert day icons to night icons if is_day is 0
-  if (is_day === 0) {
-    // Replace 'd' with 'n' at the end of the icon code
-    return weather.icon.replace("d", "n");
-  }
+  if (is_day === 0) return weather.icon.replace("d", "n");
 
   return weather.icon;
 };
@@ -224,8 +254,6 @@ const formatCurrentWeather = (
   countryCode?: string
 ): FormattedCurrentWeather => {
   const { latitude: lat, longitude: lon, timezone, current, daily } = data;
-
-  // Extract current weather data
   const {
     temperature_2m: temp,
     apparent_temperature: feels_like,
@@ -237,30 +265,18 @@ const formatCurrentWeather = (
     time: dt_str,
     is_day,
   } = current;
-
-  // Extract daily data (for min/max temps and sunrise/sunset)
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
-
-  // Get weather details from the code
   const weatherInfo = weatherCodeMap[weather_code] || {
     description: "Unknown",
     icon: "01d",
   };
   const { description: details } = weatherInfo;
-
-  // Use is_day to get correct day/night icon
   const icon = getIconCode(weather_code, is_day);
-
-  // Convert ISO strings to timestamp in seconds
   const dt = DateTime.fromISO(dt_str).toSeconds();
   const sunrise_time = DateTime.fromISO(sunrise[0]).toSeconds();
   const sunset_time = DateTime.fromISO(sunset[0]).toSeconds();
-
-  // Use the first value from arrays
   const temp_max = temperature_2m_max[0];
   const temp_min = temperature_2m_min[0];
-
-  // Use provided location name and country or extract from timezone
   const name =
     locationName || timezone.split("/").pop()?.replace(/_/g, " ") || "Unknown";
   const country = countryCode || timezone.split("/")[0] || "";
@@ -292,10 +308,8 @@ const formatWeeklyWeather = (
   data: OpenMeteoResponse
 ): FormattedWeeklyWeather => {
   const { timezone, daily } = data;
-
-  // Skip first day (today)
   const weeklyData = daily.time.slice(1, 8).map((date, index) => {
-    const i = index + 1; // offset by 1 since we skip today
+    const i = index + 1;
     return {
       title: formatToLocalTime(
         DateTime.fromISO(date).toSeconds(),
@@ -337,19 +351,13 @@ const getFormattedWeatherData = async (
       locationName = geocodingResult.name;
       countryCode = geocodingResult.country_code;
     }
-
-    // After geocoding, we should have coordinates
     if (!lat || !lon) {
       throw new Error("Latitude and longitude are required");
     }
-
-    // Set default timezone if not provided
     const params = {
       ...searchParams,
       timezone: searchParams.timezone || "auto",
     };
-
-    // Convert units to Open-Meteo format
     let temperature_unit = "celsius";
     let wind_speed_unit = "kmh";
 
@@ -357,8 +365,6 @@ const getFormattedWeatherData = async (
       temperature_unit = "fahrenheit";
       wind_speed_unit = "mph";
     }
-
-    // Create query parameters for Open-Meteo API
     const openMeteoParams = {
       latitude: lat,
       longitude: lon,
@@ -370,8 +376,6 @@ const getFormattedWeatherData = async (
       daily:
         "temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,weather_code,sunrise,sunset,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max",
     };
-
-    // Fetch data from Open-Meteo API
     const data = await getWeatherData("forecast", openMeteoParams);
 
     const formattedCurrentWeather = formatCurrentWeather(
@@ -388,10 +392,8 @@ const getFormattedWeatherData = async (
   }
 };
 
-const iconUrlFromCode = (code: string): string => {
-  // Use OpenWeatherMap icons for compatibility with existing code
-  return `http://openweathermap.org/img/wn/${code}@4x.png`;
-};
+const iconUrlFromCode = (code: string): string =>
+  `http://openweathermap.org/img/wn/${code}@4x.png`;
 
 const formatToLocalTime = (
   secs: number,

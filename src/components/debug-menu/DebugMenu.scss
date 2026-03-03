@@ -15,13 +15,21 @@
     "Segoe UI",
     sans-serif;
   overflow: hidden;
+
+  &--freecam {
+    pointer-events: none;
+
+    .debug-menu-panel {
+      pointer-events: auto;
+    }
+  }
 }
 
 .debug-menu-panel {
-  background: #1a1a2e;
+  background: #1a1a2eef;
   color: #ffffff;
   border-radius: 8px;
-  width: 385px;
+  width: 400px;
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   overflow-x: hidden;
@@ -52,20 +60,38 @@
   }
 }
 
-.debug-menu-close {
+.debug-menu-header-actions {
+  display: flex;
+  gap: 0.35rem;
   flex-shrink: 0;
+}
+
+.debug-menu-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: #ffffff;
-  padding: 0.25rem 0.5rem;
+  padding: 0.3rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.875rem;
-  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
 
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
+}
+
+.debug-menu-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.debug-menu-group--half {
+  flex: 1;
+  min-width: 0;
 }
 
 .debug-menu-body {
@@ -73,6 +99,12 @@
   color: #ffffff;
   box-sizing: border-box;
   min-width: 0;
+}
+
+.debug-menu-current {
+  font-weight: 400;
+  opacity: 0.8;
+  font-size: 0.85em;
 }
 
 .debug-menu-group {
@@ -152,25 +184,18 @@
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.7);
   }
-}
 
-.debug-menu-actions {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  .debug-menu-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
 
-  button {
-    padding: 0.4rem 0.75rem;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    color: #ffffff;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-family: inherit;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.25);
+    kbd {
+      padding: 0.1em 0.35em;
+      font-size: 0.9em;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
     }
   }
 }
+

@@ -4,6 +4,8 @@ body {
   font-family: "Chakra Petch", "Noto Sans", sans-serif;
   margin: 0;
   background: #72c5e9;
+  /* Set by app from time of day */
+  --app-text-color: #000e3d9d;
 }
 
 .App {
@@ -33,28 +35,11 @@ body {
     z-index: 1;
   }
 
-  .navbar,
-  .weather,
-  .footer {
-    &.xray,
-    &.xray * {
-      text-shadow:
-        0 0 2px rgba(255, 255, 255, 0.95),
-        0 0 4px rgba(255, 255, 255, 0.75),
-        -1px -1px 1px rgba(255, 255, 255, 0.6),
-        1px -1px 1px rgba(255, 255, 255, 0.6),
-        -1px 1px 1px rgba(255, 255, 255, 0.6),
-        1px 1px 1px rgba(255, 255, 255, 0.6),
-        0 1px 2px rgba(0, 0, 0, 0.35),
-        0 0 3px rgba(0, 0, 0, 0.2);
-    }
-  }
-
   .weather {
     position: relative;
     margin: 1rem auto 0 auto;
     padding: 1rem;
-    color: #000e3d9d;
+    color: var(--app-text-color);
     min-height: 200px;
 
     &.is-loading {
@@ -93,23 +78,10 @@ body {
   66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
 }
 
-/* Ensure react-tooltip appears above other content (tooltips render in a portal) */
+/* Tooltips render in portal; keep above content */
 .react-tooltip,
 .current-weather-tooltip {
   z-index: 9999 !important;
-}
-
-/* Text readable on both light (day) and dark (night) background */
-.xray {
-  text-shadow:
-    0 0 2px rgba(255, 255, 255, 0.95),
-    0 0 4px rgba(255, 255, 255, 0.75),
-    -1px -1px 1px rgba(255, 255, 255, 0.6),
-    1px -1px 1px rgba(255, 255, 255, 0.6),
-    -1px 1px 1px rgba(255, 255, 255, 0.6),
-    1px 1px 1px rgba(255, 255, 255, 0.6),
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 0 3px rgba(0, 0, 0, 0.2);
 }
 
 .border {
@@ -117,4 +89,20 @@ body {
 }
 .border-light {
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Stats panels from @react-three/drei — stacked column, top-left */
+.debug-stats {
+  left: 4px !important;
+  right: auto !important;
+  z-index: 9998;
+}
+.debug-stats--fps {
+  top: 20px !important;
+}
+.debug-stats--ms {
+  top: 72px !important;
+}
+.debug-stats--mb {
+  top: 124px !important;
 }

@@ -6,11 +6,16 @@ import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
 import WeatherScene from "./components/weather-scene/WeatherScene";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
-import type { DebugOverrides } from "./weather/config";
+import {
+  type DebugOverrides,
+  mapToSimulationConfig,
+  type SimulationConfig,
+} from "./weather/config";
 import type { DebugBoxPosition } from "./weather-scene/scene/DebugBox";
-import type { CloudSpawnBounds } from "./weather-scene/scene/CloudSpawnDebugBox";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherQuery, Units, WeatherData } from "./types/weather";
+
+const MIN_LOADING_MS = 500;
 
 const App = (): React.ReactElement => {
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
@@ -27,9 +32,12 @@ const App = (): React.ReactElement => {
     y: 0,
     z: 0,
   });
-  const [cloudSpawnBounds, setCloudSpawnBounds] =
-    useState<CloudSpawnBounds | null>(null);
+  const [freeCamera, setFreeCamera] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
+  const currentConfig = React.useMemo<SimulationConfig | null>(
+    () => mapToSimulationConfig(weather, null),
+    [weather],
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,15 +45,24 @@ const App = (): React.ReactElement => {
         e.preventDefault();
         setDebugOpen((prev) => !prev);
       }
+      if ((e.key === "c" || e.key === "C") && !e.ctrlKey && !e.metaKey) {
+        const target = e.target as HTMLElement;
+        if (target?.closest("input, textarea, [contenteditable]")) return;
+        if (debugOpen) {
+          e.preventDefault();
+          setFreeCamera((prev) => !prev);
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [debugOpen]);
 
   useEffect(() => {
     const fetchWeather = async () => {
       setLoading(true);
       setError(null);
+      const startedAt = Date.now();
       try {
         const data = await getFormattedWeatherData({ ...query, units });
         setWeather(data);
@@ -53,7 +70,13 @@ const App = (): React.ReactElement => {
         setError("Failed to fetch weather data. Please try again.");
         console.error("Error fetching weather:", err);
       } finally {
-        setLoading(false);
+        const elapsed = Date.now() - startedAt;
+        const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+        if (remaining > 0) {
+          setTimeout(() => setLoading(false), remaining);
+        } else {
+          setLoading(false);
+        }
       }
     };
     fetchWeather();
@@ -66,10 +89,10 @@ const App = (): React.ReactElement => {
         overrides={debugOverrides}
         showDebugBox={debugOpen}
         debugBoxPosition={debugBoxPosition}
-        onCloudSpawnBoundsChange={setCloudSpawnBounds}
+        freeCamera={freeCamera}
       />
       <Navbar setQuery={setQuery} isDebugMode={isDebugMode} />
-      <section className={`weather xray${loading ? " is-loading" : ""}`}>
+      <section className={`weather${loading ? " is-loading" : ""}`}>
         {error && <p className="error">{error}</p>}
         {weather && (
           <>
@@ -90,12 +113,16 @@ const App = (): React.ReactElement => {
       <Footer />
       <DebugMenu
         open={debugOpen}
-        onClose={() => setDebugOpen(false)}
+        onClose={() => {
+          setDebugOpen(false);
+          setFreeCamera(false);
+        }}
         overrides={debugOverrides}
         onOverridesChange={setDebugOverrides}
+        currentConfig={currentConfig}
         debugBoxPosition={debugBoxPosition}
         onDebugBoxPositionChange={setDebugBoxPosition}
-        cloudSpawnBounds={cloudSpawnBounds}
+        freeCamera={freeCamera}
       />
       <Analytics />
     </div>

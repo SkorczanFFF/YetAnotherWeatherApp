@@ -1,13 +1,11 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
+import { Stars, OrbitControls, Stats } from "@react-three/drei";
 import type { SimulationConfig } from "../weather-simulation/types";
 import { SkyBackground } from "./scene/SkyBackground";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
-import {
-  CloudSpawnDebugBox,
-  type CloudSpawnBounds,
-} from "./scene/CloudSpawnDebugBox";
+import { FreeCameraWASD } from "./scene/FreeCameraWASD";
 import { FogEffect } from "./effects/FogEffect";
 import { RainEffect } from "./effects/RainEffect";
 import { SnowEffect } from "./effects/SnowEffect";
@@ -16,7 +14,6 @@ import { MistEffect } from "./effects/MistEffect";
 import { LightningEffect } from "./effects/LightningEffect";
 
 export type { DebugBoxPosition } from "./scene/DebugBox";
-export type { CloudSpawnBounds } from "./scene/CloudSpawnDebugBox";
 
 interface WeatherSceneProps {
   config: SimulationConfig;
@@ -24,24 +21,42 @@ interface WeatherSceneProps {
   style?: React.CSSProperties;
   showDebugBox?: boolean;
   debugBoxPosition?: DebugBoxPosition;
-  onCloudSpawnBoundsChange?: (bounds: CloudSpawnBounds) => void;
+  freeCamera?: boolean;
 }
 
 function SceneContent({
   config,
   showDebugBox,
   debugBoxPosition,
-  onCloudSpawnBoundsChange,
+  freeCamera,
 }: {
   config: SimulationConfig;
   showDebugBox?: boolean;
   debugBoxPosition?: DebugBoxPosition;
-  onCloudSpawnBoundsChange?: (bounds: CloudSpawnBounds) => void;
+  freeCamera?: boolean;
 }) {
   return (
     <>
       <SkyBackground config={config} />
-      <CameraRig parallaxAmount={config.parallaxAmount} />
+      {config.timeOfDay === "night" && (
+        <Stars
+          radius={80}
+          depth={50}
+          count={3000}
+          factor={3}
+          saturation={0}
+          fade
+          speed={0.5}
+        />
+      )}
+      {freeCamera ? (
+        <>
+          <OrbitControls />
+          <FreeCameraWASD />
+        </>
+      ) : (
+        <CameraRig parallaxAmount={config.parallaxAmount} />
+      )}
       <LightningEffect config={config} />
       <FogEffect config={config} />
       <RainEffect config={config} />
@@ -52,11 +67,11 @@ function SceneContent({
         <DebugBox position={debugBoxPosition} />
       )}
       {showDebugBox && (
-        <CloudSpawnDebugBox
-          visible={true}
-          config={config}
-          onBoundsChange={onCloudSpawnBoundsChange}
-        />
+        <>
+          <Stats className="debug-stats debug-stats--fps" showPanel={0} />
+          <Stats className="debug-stats debug-stats--ms" showPanel={1} />
+          <Stats className="debug-stats debug-stats--mb" showPanel={2} />
+        </>
       )}
     </>
   );
@@ -68,7 +83,7 @@ export function WeatherScene({
   style,
   showDebugBox,
   debugBoxPosition,
-  onCloudSpawnBoundsChange,
+  freeCamera = false,
 }: WeatherSceneProps) {
   const eventSource =
     typeof document !== "undefined" ? (document.body as HTMLElement) : undefined;
@@ -81,7 +96,7 @@ export function WeatherScene({
         inset: 0,
         width: "100%",
         height: "100%",
-        pointerEvents: "none",
+        pointerEvents: freeCamera ? "auto" : "none",
         ...style,
       }}
     >
@@ -96,7 +111,7 @@ export function WeatherScene({
           config={config}
           showDebugBox={showDebugBox}
           debugBoxPosition={debugBoxPosition}
-          onCloudSpawnBoundsChange={onCloudSpawnBoundsChange}
+          freeCamera={freeCamera}
         />
       </Canvas>
     </div>

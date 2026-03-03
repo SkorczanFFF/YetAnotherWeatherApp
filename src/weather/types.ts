@@ -1,7 +1,4 @@
-/**
- * Weather domain types — shared by config, codes, and simulation.
- * Re-exports app weather types; defines EffectType, Intensity, TimeOfDay, SimulationConfig.
- */
+/** Weather domain types (config, codes, simulation). Re-exports app types; defines EffectType, Intensity, TimeOfDay, SimulationConfig. */
 
 export type {
   WeatherData,
@@ -28,6 +25,7 @@ export interface SimulationConfig {
   fogDensity: number;
   thunderstorm: boolean;
   cloudCover: number;
+  cloudCount?: number;
   windSpeed: number;
   windDirection: number;
   timeOfDay: TimeOfDay;
@@ -35,10 +33,8 @@ export interface SimulationConfig {
   sunrise: number;
   sunset: number;
   useRealtimeClock: boolean;
-  /** Temperature (°C) for snow/rain blend (e.g. freezing rain). */
   temperature?: number;
-  /** Humidity 0–100 for fog/mist scaling. */
   humidity?: number;
-  /** True when precipitation is drizzle (WMO 51–57); use drizzle fall speed and wind factor. */
+  /** Drizzle (WMO 51–57): different fall speed and wind factor. */
   isDrizzle?: boolean;
 }

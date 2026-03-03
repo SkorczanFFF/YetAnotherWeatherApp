@@ -136,7 +136,14 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
               onClick={handleUnitsClick}
               role="button"
               tabIndex={0}
-              aria-label="Click to switch temperature unit between Celsius and Fahrenheit"
+              aria-label={
+                units === "metric"
+                  ? "Click to switch temperature unit to Fahrenheit"
+                  : "Click to switch temperature unit to Celsius"
+              }
+              data-tooltip-id="unit-switch"
+              data-tooltip-position-strategy="fixed"
+              data-tooltip-float={true}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -146,6 +153,14 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
             >
               {formatted.temp}
             </h1>
+            <WeatherTooltip
+              id="unit-switch"
+              content={
+                units === "metric"
+                  ? "Click to switch temperature unit to Fahrenheit"
+                  : "Click to switch temperature unit to Celsius"
+              }
+            />
           </div>
 
           <div className="right-wing wing">

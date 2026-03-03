@@ -1,8 +1,10 @@
 import React, { useEffect } from "react";
-import type { DebugOverrides, TimeOfDayPhase } from "../../weather/config";
+import { VscClose } from "react-icons/vsc";
+import { MdRestartAlt } from "react-icons/md";
+import type { DebugOverrides, TimeOfDayPhase, SimulationConfig } from "../../weather/config";
 import type { EffectType, Intensity } from "../../weather/codes";
 import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
-import type { CloudSpawnBounds } from "../../weather-scene/scene/CloudSpawnDebugBox";
+import { getTierForCover } from "../../weather-scene/effects/CloudEffect";
 import "./DebugMenu.scss";
 
 const DEBUG_BOX_STEP = 0.5;
@@ -38,10 +40,10 @@ export function isOverridesDirty(overrides: DebugOverrides | null): boolean {
     (o.particleCount !== undefined && o.particleCount !== "auto") ||
     (o.fogDensity !== undefined && o.fogDensity !== "auto") ||
     (o.timeOfDay !== undefined && o.timeOfDay !== "auto") ||
+    (o.cloudCover !== undefined && o.cloudCover !== "auto") ||
     (o.windSpeed !== undefined && o.windSpeed !== "auto") ||
     (o.windDirection !== undefined && o.windDirection !== "auto") ||
     (o.parallaxAmount !== undefined && o.parallaxAmount !== "auto") ||
-    (o.thunderstorm !== undefined && o.thunderstorm !== "auto") ||
     (o.temperature !== undefined && o.temperature !== "auto") ||
     (o.humidity !== undefined && o.humidity !== "auto")
   );
@@ -52,9 +54,21 @@ interface DebugMenuProps {
   onClose: () => void;
   overrides: DebugOverrides | null;
   onOverridesChange: (overrides: DebugOverrides | null) => void;
+  currentConfig: SimulationConfig | null;
   debugBoxPosition: DebugBoxPosition;
   onDebugBoxPositionChange: (pos: DebugBoxPosition) => void;
-  cloudSpawnBounds: CloudSpawnBounds | null;
+  freeCamera?: boolean;
+}
+
+function effective<T>(override: T | "auto" | undefined, current: T | undefined): T | undefined {
+  if (override !== undefined && override !== "auto") return override as T;
+  return current;
+}
+
+function numericOrAuto(v: string): number | "auto" {
+  if (v === "") return "auto";
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : "auto";
 }
 
 const DebugMenu: React.FC<DebugMenuProps> = ({
@@ -62,11 +76,13 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   onClose,
   overrides,
   onOverridesChange,
+  currentConfig,
   debugBoxPosition,
   onDebugBoxPositionChange,
-  cloudSpawnBounds,
+  freeCamera = false,
 }) => {
   const o = overrides ?? {};
+  const c = currentConfig;
 
   useEffect(() => {
     if (!open) return;
@@ -121,17 +137,22 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
 
   return (
     <div
-      className="debug-menu-backdrop"
-      onClick={onClose}
+      className={`debug-menu-backdrop${freeCamera ? " debug-menu-backdrop--freecam" : ""}`}
+      onClick={freeCamera ? undefined : onClose}
       role="dialog"
       aria-label="Debug menu"
     >
       <div className="debug-menu-panel" onClick={(e) => e.stopPropagation()}>
         <div className="debug-menu-header">
-          <h2>Debug — Scene overrides</h2>
-          <button type="button" className="debug-menu-close" onClick={onClose}>
-            Close
-          </button>
+          <h2>Debug panel</h2>
+          <div className="debug-menu-header-actions">
+            <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto">
+              <MdRestartAlt />
+            </button>
+            <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close">
+              <VscClose />
+            </button>
+          </div>
         </div>
         <div className="debug-menu-body">
           <div className="debug-menu-group debug-menu-group--debug-box">
@@ -144,29 +165,16 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             <div className="debug-menu-debug-box-keys">
               ← → X · ↑ ↓ Z · Ctrl Y+ · Space Y−
             </div>
-          </div>
-          <div className="debug-menu-group debug-menu-group--cloud-spawn">
-            <label>Cloud spawn (wireframe on scene)</label>
-            <div className="debug-menu-cloud-spawn-dims">
-              {cloudSpawnBounds ? (
-                <>
-                  width: {cloudSpawnBounds.width.toFixed(1)} · height:{" "}
-                  {cloudSpawnBounds.height.toFixed(1)} · depth:{" "}
-                  {cloudSpawnBounds.depth.toFixed(1)}
-                </>
-              ) : (
-                "—"
-              )}
-            </div>
+            <p className="debug-menu-hint">Press <kbd>C</kbd> for free camera — WASD move, mouse orbit</p>
           </div>
           <div className="debug-menu-group">
-            <label>Effect type</label>
+            <label>Effect type {c && <span className="debug-menu-current">(current: {effective(o.effectType, c.effectType) ?? "—"})</span>}</label>
             <div className="debug-menu-button-group">
               {EFFECT_OPTIONS.map((opt) => (
                 <button
                   key={opt}
                   type="button"
-                  className={`debug-menu-option-btn ${(o.effectType ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  className={`debug-menu-option-btn ${(effective(o.effectType, c?.effectType) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
                   onClick={() => set("effectType", opt)}
                 >
                   {opt}
@@ -175,13 +183,13 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             </div>
           </div>
           <div className="debug-menu-group">
-            <label>Intensity</label>
+            <label>Intensity {c && <span className="debug-menu-current">(current: {effective(o.intensity, c.intensity) ?? "—"})</span>}</label>
             <div className="debug-menu-button-group">
               {INTENSITY_OPTIONS.map((opt) => (
                 <button
                   key={opt}
                   type="button"
-                  className={`debug-menu-option-btn ${(o.intensity ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  className={`debug-menu-option-btn ${(effective(o.intensity, c?.intensity) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
                   onClick={() => set("intensity", opt)}
                 >
                   {opt}
@@ -190,13 +198,13 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             </div>
           </div>
           <div className="debug-menu-group">
-            <label>Time of day</label>
+            <label>Time of day {c && <span className="debug-menu-current">(current: {effective(o.timeOfDay, c.timeOfDay) ?? "—"})</span>}</label>
             <div className="debug-menu-button-group">
               {TIME_OPTIONS.map((opt) => (
                 <button
                   key={opt}
                   type="button"
-                  className={`debug-menu-option-btn ${(o.timeOfDay ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
+                  className={`debug-menu-option-btn ${(effective(o.timeOfDay, c?.timeOfDay) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
                   onClick={() => set("timeOfDay", opt)}
                 >
                   {opt}
@@ -204,124 +212,116 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               ))}
             </div>
           </div>
-          <div className="debug-menu-group">
-            <label>Wind speed</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.windSpeed === undefined || o.windSpeed === "auto"
-                  ? ""
-                  : String(o.windSpeed)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("windSpeed", v === "" ? "auto" : (Number(v) ?? 0));
-              }}
-            />
+          <div className="debug-menu-row">
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Wind speed {c != null && <span className="debug-menu-current">({c.windSpeed})</span>}</label>
+              <input
+                type="number"
+                step={2}
+                min={0}
+                placeholder={c != null ? `auto (${c.windSpeed})` : "auto"}
+                value={o.windSpeed === undefined || o.windSpeed === "auto" ? "" : String(o.windSpeed)}
+                onChange={(e) => set("windSpeed", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Wind dir (°) {c != null && <span className="debug-menu-current">({c.windDirection})</span>}</label>
+              <input
+                type="number"
+                step={5}
+                min={0}
+                max={360}
+                placeholder={c != null ? `auto (${c.windDirection})` : "auto"}
+                value={o.windDirection === undefined || o.windDirection === "auto" ? "" : String(o.windDirection)}
+                onChange={(e) => set("windDirection", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+          </div>
+          <div className="debug-menu-row">
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Cloud count {c != null && <span className="debug-menu-current">({getTierForCover(c.cloudCover).name}: {getTierForCover(c.cloudCover).count})</span>}</label>
+              <input
+                type="number"
+                step={10}
+                min={0}
+                max={300}
+                placeholder={c != null ? `auto (${getTierForCover(c.cloudCover).count})` : "auto"}
+                value={o.cloudCount === undefined || o.cloudCount === "auto" ? "" : String(o.cloudCount)}
+                onChange={(e) => set("cloudCount", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Cloud cover {c != null && <span className="debug-menu-current">({c.cloudCover})</span>}</label>
+              <input
+                type="number"
+                step={0.1}
+                min={0}
+                max={1}
+                placeholder={c != null ? `auto (${c.cloudCover})` : "auto"}
+                value={o.cloudCover === undefined || o.cloudCover === "auto" ? "" : String(o.cloudCover)}
+                onChange={(e) => set("cloudCover", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+          </div>
+          <div className="debug-menu-row">
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Particles {c != null && <span className="debug-menu-current">({c.particleCount})</span>}</label>
+              <input
+                type="number"
+                step={10}
+                min={0}
+                placeholder={c != null ? `auto (${c.particleCount})` : "auto"}
+                value={o.particleCount === undefined || o.particleCount === "auto" ? "" : String(o.particleCount)}
+                onChange={(e) => set("particleCount", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Fog density {c != null && <span className="debug-menu-current">({c.fogDensity.toFixed(3)})</span>}</label>
+              <input
+                type="number"
+                step={0.1}
+                min={0}
+                placeholder={c != null ? `auto (${c.fogDensity.toFixed(3)})` : "auto"}
+                value={o.fogDensity === undefined || o.fogDensity === "auto" ? "" : String(o.fogDensity)}
+                onChange={(e) => set("fogDensity", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+          </div>
+          <div className="debug-menu-row">
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Temp (°C) {c != null && c.temperature != null && <span className="debug-menu-current">({c.temperature})</span>}</label>
+              <input
+                type="number"
+                step={5}
+                placeholder={c != null && c.temperature != null ? `auto (${c.temperature})` : "auto"}
+                value={o.temperature === undefined || o.temperature === "auto" ? "" : String(o.temperature)}
+                onChange={(e) => set("temperature", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Humidity (%) {c != null && c.humidity != null && <span className="debug-menu-current">({c.humidity})</span>}</label>
+              <input
+                type="number"
+                step={5}
+                min={0}
+                max={100}
+                placeholder={c != null && c.humidity != null ? `auto (${c.humidity})` : "auto"}
+                value={o.humidity === undefined || o.humidity === "auto" ? "" : String(o.humidity)}
+                onChange={(e) => set("humidity", numericOrAuto(e.target.value.trim()))}
+              />
+            </div>
           </div>
           <div className="debug-menu-group">
-            <label>Wind direction (°)</label>
+            <label>Parallax (0–1) {c != null && <span className="debug-menu-current">({c.parallaxAmount})</span>}</label>
             <input
               type="number"
+              step={0.05}
               min={0}
-              max={360}
-              placeholder="auto"
-              value={
-                o.windDirection === undefined || o.windDirection === "auto"
-                  ? ""
-                  : String(o.windDirection)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("windDirection", v === "" ? "auto" : Number(v));
-              }}
+              max={1}
+              placeholder={c != null ? `auto (${c.parallaxAmount})` : "auto"}
+              value={o.parallaxAmount === undefined || o.parallaxAmount === "auto" ? "" : String(o.parallaxAmount)}
+              onChange={(e) => set("parallaxAmount", numericOrAuto(e.target.value.trim()))}
             />
-          </div>
-          <div className="debug-menu-group">
-            <label>Particle count</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.particleCount === undefined || o.particleCount === "auto"
-                  ? ""
-                  : String(o.particleCount)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("particleCount", v === "" ? "auto" : Number(v) || 0);
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
-            <label>Fog density</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.fogDensity === undefined || o.fogDensity === "auto"
-                  ? ""
-                  : String(o.fogDensity)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("fogDensity", v === "" ? "auto" : Number(v) || 0);
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
-            <label>Temperature (°C)</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.temperature === undefined || o.temperature === "auto"
-                  ? ""
-                  : String(o.temperature)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("temperature", v === "" ? "auto" : Number(v));
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
-            <label>Humidity (%)</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.humidity === undefined || o.humidity === "auto"
-                  ? ""
-                  : String(o.humidity)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("humidity", v === "" ? "auto" : Number(v));
-              }}
-            />
-          </div>
-          <div className="debug-menu-group">
-            <label>Parallax amount (0–1)</label>
-            <input
-              type="text"
-              placeholder="auto"
-              value={
-                o.parallaxAmount === undefined || o.parallaxAmount === "auto"
-                  ? ""
-                  : String(o.parallaxAmount)
-              }
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                set("parallaxAmount", v === "" ? "auto" : Number(v));
-              }}
-            />
-          </div>
-          <div className="debug-menu-actions">
-            <button type="button" onClick={resetAll}>
-              Reset all to auto
-            </button>
           </div>
         </div>
       </div>

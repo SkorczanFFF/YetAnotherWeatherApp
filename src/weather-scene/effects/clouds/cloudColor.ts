@@ -1,15 +1,8 @@
-/**
- * Cloud color from simulation config: clear → white, rain/storm/fog → gray.
- */
-
+/** Cloud color from config: clear → white, rain/storm/fog → gray. */
 import type { SimulationConfig } from "../../../weather-simulation/types";
 
 const WHITE = 0xffffff;
 
-/**
- * Returns hex color for cloud material based on weather.
- * Clear → white; rain/thunderstorm/fog → grayer; intensity and thunderstorm darken further.
- */
 export function getCloudColor(config: SimulationConfig): number {
   if (config.effectType === "clear") {
     return WHITE;

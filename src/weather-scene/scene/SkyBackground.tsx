@@ -3,21 +3,29 @@ import * as THREE from "three";
 import type { SimulationConfig } from "../../weather-simulation/types";
 import {
   getSkyTexture,
-  SKY_COLORS,
-  STORM_SKY_COLOR,
+  getStormSkyTexture,
 } from "./skyTextures";
-
-const stormColor = new THREE.Color(STORM_SKY_COLOR);
 
 interface SkyBackgroundProps {
   config: SimulationConfig;
+}
+
+const stormBackgrounds = new Map<string, THREE.Texture | THREE.Color>();
+
+function getStormBackground(phase: string): THREE.Texture | THREE.Color {
+  let bg = stormBackgrounds.get(phase);
+  if (!bg) {
+    bg = getStormSkyTexture(phase);
+    stormBackgrounds.set(phase, bg);
+  }
+  return bg;
 }
 
 export function SkyBackground({ config }: SkyBackgroundProps) {
   useFrame((state) => {
     const scn = state.scene;
     if (config.thunderstorm) {
-      scn.background = stormColor;
+      scn.background = getStormBackground(config.timeOfDay);
     } else {
       scn.background = getSkyTexture(config.timeOfDay);
     }

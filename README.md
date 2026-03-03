@@ -10,15 +10,18 @@ Don't get wet — check the weather first!
 
 ## Features
 
-- **City search** — look up weather by city name
+- **City search** — look up weather by city name; worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback so names like "Warszawa" or "Waszyngton" resolve correctly
 - **Geolocation** — fetch weather for your current location via the browser Geolocation API
 - **Current conditions** — temperature, feels like, min/max, wind speed, pressure, humidity, sunrise/sunset, and weather description with icon
+- **Live date & time** — day name, date, full month, year, and time in the forecast location's timezone, synced every second with a blinking colon
 - **7-day forecast** — weekly outlook displayed as interactive cards with 3D hover effects
-- **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature
-- **Weather-driven background** — custom Three.js scene (sky, rain, snow, fog, thunderstorm) driven by live weather data; camera parallax on mouse move
+- **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature; tooltip and ARIA label indicate the switch
+- **Weather-driven background** — custom Three.js scene (sky, clouds, rain, snow, fog, stars at night, thunderstorm) driven by live weather data; camera parallax on mouse move
+- **Tooltips** — follow cursor on hover, hide after 500 ms on leave, high z-index; dynamic text for unit toggle (e.g. "Click to switch to Fahrenheit")
+- **Loading state** — animated loader (centered, accent color), minimum 500 ms display time (or longer if needed), content blur animation while loading
 - **Glassmorphism UI** — frosted-glass panels with backdrop blur
-- **Tooltips** — contextual info on hover for weather metrics
-- **Debug menu (F7)** — override scene parameters; app title shows "DEBUG" when any override is active
+- **Dynamic text color** — all key text colors come from a CSS variable (`--app-text-color`) that switches between day/night palettes based on the simulated time of day
+- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover (0–1), fog density, wind, particles, thunderstorm flag, and more; fog is visible when "fog" is selected; app title shows "DEBUG" when any override is active; free camera mode (C) lets you fly the camera with WASD and mouse orbit to inspect cloud spawn/delete regions
 - **Accessibility** — ARIA attributes, keyboard-navigable unit toggle
 
 ## How the weather scene behaves
@@ -40,7 +43,7 @@ Don't get wet — check the weather first!
 | Styling | Sass (SCSS) |
 | Weather API | [Open-Meteo](https://open-meteo.com/) (free, no API key required) |
 | Geocoding | [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) |
-| 3D Background | Three.js (custom weather scene) |
+| 3D Background | Three.js, React Three Fiber, @react-three/drei (e.g. Stars) |
 | Date/Time | Luxon |
 | Icons | react-icons (Weather Icons set) |
 | Tooltips | react-tooltip |
@@ -49,7 +52,7 @@ Don't get wet — check the weather first!
 
 ## Prerequisites
 
-- **Node.js** 22.19.0 (see `.nvmrc`; use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
+- **Node.js** 24.x (matches the Vercel deployment target; use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
 - A WebGL-capable browser and GPU (GTX 550 Ti equivalent or better recommended)
 
 ## Getting Started
@@ -85,9 +88,11 @@ src/
 │   ├── weather/
 │   │   ├── current/     # Current weather display
 │   │   └── weekly/      # 7-day forecast cards
-│   ├── weather-scene/   # Three.js weather-driven background (sky, particles, fog)
-│   ├── debug-menu/      # F7 overlay to override scene parameters
+│   ├── weather-scene/   # Three.js scene container (sky, particles, fog, stars, debug)
+│   ├── debug-menu/      # F7 overlay: effect type, intensity, cloud cover, fog, wind, etc.
 │   └── footer/          # Footer with attribution
+├── weather-scene/       # 3D scene: SkyBackground, FogEffect, CloudEffect, Rain/Snow/Mist, Stars, CameraRig
+├── weather-simulation/  # Bounds, camera frustum, physics helpers
 ├── services/
 │   └── weatherService.ts  # API calls, data formatting, geocoding
 ├── types/

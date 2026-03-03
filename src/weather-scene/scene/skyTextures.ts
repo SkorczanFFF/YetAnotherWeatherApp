@@ -1,7 +1,4 @@
-/**
- * Cached sky gradient textures for R3F SkyBackground.
- */
-
+/** Cached sky gradient textures for SkyBackground. */
 import * as THREE from "three";
 
 interface GradientStop {
@@ -51,15 +48,15 @@ const SKY_GRADIENTS: Record<string, { stops: GradientStop[]; flipY?: boolean }> 
   },
   dawn: {
     stops: [
-      { offset: 0, color: "#FFB47A" },
-      { offset: 0.5, color: "#FF8A5C" },
-      { offset: 1, color: "#5A4A7A" },
+      { offset: 0, color: "#d67809" },
+      { offset: 1, color: "#f5843d" },
     ],
   },
   dusk: {
     stops: [
-      { offset: 0, color: "#FDAF53" },
-      { offset: 1, color: "#FE964C" },
+      { offset: 0, color: "#FFB47A" },
+      { offset: 0.5, color: "#FF8A5C" },
+      { offset: 1, color: "#5A4A7A" },
     ],
   },
 };
@@ -77,9 +74,53 @@ export function getSkyTexture(phase: string): THREE.CanvasTexture {
 
 export const SKY_COLORS: Record<string, number> = {
   night: 0x0a0a1a,
-  dawn: 0xff7b4a,
+  dawn: 0xfe964c,
   day: 0x0c427d,
-  dusk: 0xfe964c,
+  dusk: 0xff7b4a,
 };
 
 export const STORM_SKY_COLOR = 0x2a3542;
+
+/** Thunderstorm sky: night uses solid color; day/dawn/dusk use gradients. */
+const STORM_SKY_GRADIENTS: Record<string, { stops: GradientStop[]; flipY?: boolean }> = {
+  day: {
+    stops: [
+      { offset: 0, color: "#9fa6ad" },
+      { offset: 1, color: "#b7c1cc" },
+    ],
+  },
+  dawn: {
+    stops: [
+      { offset: 0, color: "#3d4045" },
+      { offset: 0.5, color: "#2a2d32" },
+      { offset: 1, color: "#1e2126" },
+    ],
+  },
+  dusk: {
+    stops: [
+      { offset: 0, color: "#2a2d32" },
+      { offset: 0.5, color: "#1e2126" },
+      { offset: 1, color: "#25282e" },
+    ],
+  },
+  night: {
+    stops: [
+      { offset: 0, color: "#2a3542" },
+      { offset: 1, color: "#2a3542" },
+    ],
+  },
+};
+
+const stormTextureCache = new Map<string, THREE.CanvasTexture>();
+
+export function getStormSkyTexture(phase: string): THREE.Texture | THREE.Color {
+  if (phase === "night") {
+    return new THREE.Color(STORM_SKY_COLOR);
+  }
+  const cached = stormTextureCache.get(phase);
+  if (cached) return cached;
+  const config = STORM_SKY_GRADIENTS[phase] ?? STORM_SKY_GRADIENTS.day;
+  const tex = createGradientTexture(config.stops, config.flipY);
+  stormTextureCache.set(phase, tex);
+  return tex;
+}

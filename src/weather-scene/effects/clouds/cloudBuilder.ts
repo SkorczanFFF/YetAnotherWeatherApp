@@ -1,8 +1,4 @@
-/**
- * Pure cloud builder: returns descriptors for cloud boxes (no Three.js).
- * Small 1–3, medium 4–8, large 9–14 boxes.
- * Boxes are stacked/stuck together (no rotation); each piece has random size.
- */
+/** Cloud box descriptors (no Three.js). Small 1–3, medium 4–8, large 9–14 boxes; axis-aligned stack. */
 
 export type CloudSize = "small" | "medium" | "large";
 
@@ -22,7 +18,6 @@ const BOX_COUNTS: Record<CloudSize, [number, number]> = {
   large: [9, 14],
 };
 
-/** Axis-aligned directions for stick/stack: +Y, -Y, +X, -X, +Z, -Z. +Y biased for stacking. */
 const DIRECTIONS: ReadonlyArray<[number, number, number]> = [
   [0, 1, 0],
   [0, 1, 0],
@@ -33,11 +28,8 @@ const DIRECTIONS: ReadonlyArray<[number, number, number]> = [
   [0, 0, -1],
 ];
 const OVERLAP = 0.25;
-
-/** Scale multiplier so clouds appear larger in the scene. */
 const CLOUD_SCALE = 2.5;
 
-/** Seeded LCG for deterministic builds when seed is provided. */
 function createRng(seed: number) {
   let s = seed;
   return function next(): number {
@@ -50,10 +42,11 @@ export function getBoxCountForSize(size: CloudSize): [number, number] {
   return BOX_COUNTS[size];
 }
 
-/** Random half-extents (half of scale) for one box; flatter in Y. Scaled by CLOUD_SCALE. */
+/** Random half-extents (half of scale) for one box; flatter in Y. Scaled by CLOUD_SCALE * extraScale. */
 function randomHalfExtents(
   size: CloudSize,
-  rng: () => number
+  rng: () => number,
+  extraScale: number = 1,
 ): [number, number, number] {
   const base =
     size === "small"
@@ -61,22 +54,23 @@ function randomHalfExtents(
       : size === "medium"
         ? 0.2 + rng() * 0.3
         : 0.2 + rng() * 0.35;
-  const hx = CLOUD_SCALE * base * (0.8 + rng() * 0.4);
-  const hz = CLOUD_SCALE * base * (0.8 + rng() * 0.4);
-  const hy = CLOUD_SCALE * base * 0.3 * (0.6 + rng() * 0.8);
+  const s = CLOUD_SCALE * extraScale;
+  const hx = s * base * (0.8 + rng() * 0.4);
+  const hz = s * base * (0.8 + rng() * 0.4);
+  const hy = s * base * 0.3 * (0.6 + rng() * 0.8);
   return [hx, hy, hz];
 }
 
-/**
- * Build one cloud by sticking/stacking boxes. First box at origin; each next
- * attaches to a random existing box along an axis-aligned direction (no rotation).
- * When seed is provided, output is deterministic.
- */
-export function buildCloud(size: CloudSize, seed?: number): CloudDescriptor {
+export function buildCloud(
+  size: CloudSize,
+  seed?: number,
+  scale: number = 1,
+  boxCountOverride?: [number, number],
+): CloudDescriptor {
   const rng = createRng(
     seed ?? Math.floor(Math.random() * 0xffffffff)
   );
-  const [minBoxes, maxBoxes] = BOX_COUNTS[size];
+  const [minBoxes, maxBoxes] = boxCountOverride ?? BOX_COUNTS[size];
   const numBoxes =
     minBoxes + Math.floor(rng() * (maxBoxes - minBoxes + 1));
 
@@ -87,7 +81,7 @@ export function buildCloud(size: CloudSize, seed?: number): CloudDescriptor {
   const placed: Placed[] = [];
 
   for (let i = 0; i < numBoxes; i++) {
-    const half = randomHalfExtents(size, rng);
+    const half = randomHalfExtents(size, rng, scale);
     if (i === 0) {
       placed.push({ center: [0, 0, 0], halfExtents: half });
       continue;

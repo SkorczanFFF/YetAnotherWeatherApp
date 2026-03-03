@@ -1,8 +1,4 @@
-/**
- * WMO/Open-Meteo weather code 0–99 → effect type and intensity.
- * Clear (0–3) has distinct intensity: light (0,1), moderate (2), heavy (3).
- * Every code 0–99 returns a valid result; unknown codes default to clear/light.
- */
+/** WMO/Open-Meteo code 0–99 → effect type and intensity. Unknown codes default to clear/light. */
 
 import type { EffectType, Intensity } from "./types";
 
@@ -124,9 +120,6 @@ export const FOG_DENSITIES: Record<Intensity, number> = {
   heavy: 0.1,
 };
 
-/**
- * Cloud cover 0–1 from weather code. Handles all codes 0–99.
- */
 export function getCloudCoverFromWeatherCode(weatherCode: number): number {
   const c = Math.floor(weatherCode);
   if (c >= 0 && c <= 3) return [0, 0.2, 0.55, 0.95][c];

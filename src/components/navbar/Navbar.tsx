@@ -57,7 +57,7 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false }) => {
   };
 
   return (
-    <nav className="navbar xray">
+    <nav className="navbar">
       <a href="https://mskorus.pl/" className="logo">
         {isDebugMode ? (
           "DEBUG"
