@@ -106,6 +106,63 @@ interface OpenMeteoQueryParams {
 
 const BASE_URL = "https://api.open-meteo.com/v1";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
+
+/** Nominatim reverse geocode: (lat, lon) → place name and country. Respects 1 req/s; use a descriptive User-Agent. */
+interface ReverseGeocodeResult {
+  name: string;
+  countryCode: string;
+}
+
+const reverseGeocode = async (
+  lat: number,
+  lon: number
+): Promise<ReverseGeocodeResult | null> => {
+  try {
+    const url = new URL(NOMINATIM_REVERSE_URL);
+    url.searchParams.set("lat", lat.toString());
+    url.searchParams.set("lon", lon.toString());
+    url.searchParams.set("format", "json");
+    url.searchParams.set("addressdetails", "1");
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        "User-Agent": "YetAnotherWeatherApp/1.0 (weather app; reverse geocode for display name)",
+      },
+    });
+
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      address?: {
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+        state?: string;
+        country?: string;
+        country_code?: string;
+      };
+    };
+    const addr = data?.address;
+    if (!addr) return null;
+
+    const name =
+      addr.city ??
+      addr.town ??
+      addr.village ??
+      addr.municipality ??
+      addr.state ??
+      addr.country ??
+      null;
+    const countryCode = (addr.country_code ?? "").toUpperCase();
+    if (!name) return null;
+
+    return { name, countryCode };
+  } catch (error) {
+    console.warn("Reverse geocode failed:", error);
+    return null;
+  }
+};
 
 const getWeatherData = async (
   endpoint: string,
@@ -353,6 +410,14 @@ const getFormattedWeatherData = async (
     }
     if (!lat || !lon) {
       throw new Error("Latitude and longitude are required");
+    }
+    // When we have coordinates but no name (e.g. map pick or geolocation), reverse geocode for display name
+    if (!locationName) {
+      const reverse = await reverseGeocode(lat, lon);
+      if (reverse) {
+        locationName = reverse.name;
+        countryCode = reverse.countryCode;
+      }
     }
     const params = {
       ...searchParams,

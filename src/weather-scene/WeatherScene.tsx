@@ -12,6 +12,7 @@ import { SnowEffect } from "./effects/SnowEffect";
 import { CloudEffect } from "./effects/CloudEffect";
 import { MistEffect } from "./effects/MistEffect";
 import { LightningEffect } from "./effects/LightningEffect";
+import { SunMoonEffect } from "./effects/SunMoonEffect";
 
 export type { DebugBoxPosition } from "./scene/DebugBox";
 
@@ -38,6 +39,7 @@ function SceneContent({
   return (
     <>
       <SkyBackground config={config} />
+      <SunMoonEffect config={config} />
       {config.timeOfDay === "night" && (
         <Stars
           radius={80}

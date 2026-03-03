@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { IoLocationSharp } from "react-icons/io5";
-import { BsGithub, BsSearch } from "react-icons/bs";
+import { BsGithub, BsSearch, BsMap } from "react-icons/bs";
 import { WeatherQuery } from "../../types/weather";
 import "./Navbar.scss";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery) => void;
   isDebugMode?: boolean;
+  onOpenMapPicker?: () => void;
 }
 
 const isValidCityName = (name: string): boolean => {
@@ -15,7 +16,11 @@ const isValidCityName = (name: string): boolean => {
   return /^[\p{L}\s\-'.]+$/u.test(trimmed);
 };
 
-const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false }) => {
+const Navbar: React.FC<NavbarProps> = ({
+  setQuery,
+  isDebugMode = false,
+  onOpenMapPicker,
+}) => {
   const [city, setCity] = useState<string>("");
 
   const handleSearch = (): void => {
@@ -83,6 +88,23 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false }) => {
         <div className="search-button" onClick={handleSearch}>
           <BsSearch />
         </div>
+        {onOpenMapPicker && (
+          <div
+            className="map-icon-container"
+            onClick={onOpenMapPicker}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenMapPicker();
+              }
+            }}
+            aria-label="Pick location on map"
+          >
+            <BsMap className="map-icon" />
+          </div>
+        )}
       </form>
       <div className="git">
         <a

@@ -18,6 +18,8 @@ export interface WeatherData {
   timezone: string;
   name: string;
   country: string;
+  lat?: number;
+  lon?: number;
   temp: number;
   temp_max: number;
   temp_min: number;

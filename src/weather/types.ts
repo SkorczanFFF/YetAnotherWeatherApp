@@ -32,6 +32,8 @@ export interface SimulationConfig {
   parallaxAmount: number;
   sunrise: number;
   sunset: number;
+  /** Current time (Unix seconds) for sun/moon position when not using real-time clock. */
+  dt?: number;
   useRealtimeClock: boolean;
   temperature?: number;
   humidity?: number;

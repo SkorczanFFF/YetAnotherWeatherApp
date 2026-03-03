@@ -6,6 +6,7 @@ import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
 import WeatherScene from "./components/weather-scene/WeatherScene";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
+import { MapPicker } from "./components/map-picker/MapPicker";
 import {
   type DebugOverrides,
   mapToSimulationConfig,
@@ -33,6 +34,7 @@ const App = (): React.ReactElement => {
     z: 0,
   });
   const [freeCamera, setFreeCamera] = useState(false);
+  const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
   const currentConfig = React.useMemo<SimulationConfig | null>(
     () => mapToSimulationConfig(weather, null),
@@ -91,7 +93,11 @@ const App = (): React.ReactElement => {
         debugBoxPosition={debugBoxPosition}
         freeCamera={freeCamera}
       />
-      <Navbar setQuery={setQuery} isDebugMode={isDebugMode} />
+      <Navbar
+        setQuery={setQuery}
+        isDebugMode={isDebugMode}
+        onOpenMapPicker={() => setMapPanelOpen(true)}
+      />
       <section className={`weather${loading ? " is-loading" : ""}`}>
         {error && <p className="error">{error}</p>}
         {weather && (
@@ -111,6 +117,19 @@ const App = (): React.ReactElement => {
         )}
       </section>
       <Footer />
+      <MapPicker
+        open={mapPanelOpen}
+        onClose={() => setMapPanelOpen(false)}
+        onPickLocation={(lat, lon) => {
+          setQuery({ lat, lon });
+          setMapPanelOpen(false);
+        }}
+        initialCenter={
+          weather?.lat != null && weather?.lon != null
+            ? [weather.lat, weather.lon]
+            : undefined
+        }
+      />
       <DebugMenu
         open={debugOpen}
         onClose={() => {
