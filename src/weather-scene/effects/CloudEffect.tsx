@@ -233,7 +233,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
       activeTierRef.current = null;
       activeCountRef.current = 0;
     };
-  }, []);
+  }, [config.cloudCount, config.cloudCover]);
 
   useFrame((state) => {
     const group = groupRef.current;

@@ -103,7 +103,6 @@ export function computeAxisAlignedCloudBounds(
   const fovRad = (camera.fov * Math.PI) / 180;
   const halfWidth =
     Math.tan(fovRad / 2) * midDepth * camera.aspect + SPAWN_PADDING;
-  const halfHeight = Math.tan(fovRad / 2) * midDepth + SPAWN_PADDING;
 
   const spawnXMin = -halfWidth;
   const spawnXMax = halfWidth;

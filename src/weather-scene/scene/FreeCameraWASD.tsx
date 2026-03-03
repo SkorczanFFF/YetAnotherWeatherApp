@@ -16,6 +16,7 @@ export function FreeCameraWASD() {
   const keysRef = useRef<Keys>({ w: false, a: false, s: false, d: false });
 
   useEffect(() => {
+    const keys = keysRef.current;
     const onKeyDown = (e: KeyboardEvent) => {
       const k = keyMap[e.code];
       if (k) {
@@ -34,10 +35,10 @@ export function FreeCameraWASD() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      keysRef.current.w = false;
-      keysRef.current.a = false;
-      keysRef.current.s = false;
-      keysRef.current.d = false;
+      keys.w = false;
+      keys.a = false;
+      keys.s = false;
+      keys.d = false;
     };
   }, []);
 
