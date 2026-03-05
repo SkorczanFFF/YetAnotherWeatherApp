@@ -12,7 +12,7 @@ import { SnowEffect } from "./effects/SnowEffect";
 import { CloudEffect } from "./effects/CloudEffect";
 import { MistEffect } from "./effects/MistEffect";
 import { LightningEffect } from "./effects/LightningEffect";
-import { SunMoonEffect } from "./effects/SunMoonEffect";
+import { CelestialBodies } from "./effects/CelestialBodies";
 
 export type { DebugBoxPosition } from "./scene/DebugBox";
 
@@ -39,16 +39,16 @@ function SceneContent({
   return (
     <>
       <SkyBackground config={config} />
-      <SunMoonEffect config={config} />
+      <CelestialBodies config={config} />
       {config.timeOfDay === "night" && (
         <Stars
           radius={80}
           depth={50}
           count={3000}
           factor={3}
-          saturation={0}
+          saturation={2}
           fade
-          speed={0.5}
+          speed={0.65}
         />
       )}
       {freeCamera ? (
