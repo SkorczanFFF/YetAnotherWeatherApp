@@ -8,6 +8,7 @@ import {
 } from "three/examples/jsm/objects/Lensflare.js";
 import type { SimulationConfig } from "../../weather-simulation/types";
 import { getSunProgress } from "../../weather/config";
+import { useSceneRefs } from "../SceneRefsContext";
 
 function createRadialGradientTexture(
   size: number,
@@ -201,13 +202,20 @@ interface CelestialBodiesProps {
   config: SimulationConfig;
 }
 
+const OCCLUSION_EPSILON = 0.5;
+
 export function CelestialBodies({ config }: CelestialBodiesProps) {
   const moonMap = useLoader(THREE.TextureLoader, MOON.textureUrl);
   const groupRef = useRef<THREE.Group>(null);
   const sunGlowRef = useRef<THREE.Mesh>(null);
   const moonMeshRef = useRef<THREE.Mesh>(null);
+  const sceneRefs = useSceneRefs();
   const { sunLightRef, moonLightRef, lensflareRef } =
     useCelestialLights(groupRef);
+  const raycasterRef = useRef<THREE.Raycaster | null>(null);
+  const sunWorldRef = useRef<THREE.Vector3 | null>(null);
+  if (!raycasterRef.current) raycasterRef.current = new THREE.Raycaster();
+  if (!sunWorldRef.current) sunWorldRef.current = new THREE.Vector3();
 
   useFrame((state) => {
     const group = groupRef.current;
@@ -233,9 +241,38 @@ export function CelestialBodies({ config }: CelestialBodiesProps) {
     moonMesh.visible = celestial.showMoon;
     if (sunLight) sunLight.visible = celestial.showSun;
     if (moonLight) moonLight.visible = celestial.showMoon;
+
+    let sunOccludedByClouds = false;
+    const cloudGroup = sceneRefs?.cloudGroupRef.current;
+    const cover = config.cloudCover ?? 0;
+    if (
+      celestial.showSun &&
+      cloudGroup &&
+      cloudGroup.visible &&
+      cover > 0.02 &&
+      raycasterRef.current &&
+      sunWorldRef.current
+    ) {
+      sunWorldRef.current.set(celestial.sunX, SUN.y, SUN.z);
+      const distanceToSun = camera.position.distanceTo(sunWorldRef.current);
+      const direction = sunWorldRef.current
+        .clone()
+        .sub(camera.position)
+        .normalize();
+      cloudGroup.updateMatrixWorld(true);
+      raycasterRef.current.set(camera.position, direction);
+      const intersects = raycasterRef.current.intersectObject(
+        cloudGroup,
+        true,
+      );
+      sunOccludedByClouds =
+        intersects.length > 0 &&
+        intersects[0].distance < distanceToSun - OCCLUSION_EPSILON;
+    }
+
     const lensflare = lensflareRef.current;
     if (lensflare)
-      lensflare.visible = celestial.showSun && !celestial.sunAboveClouds;
+      lensflare.visible = celestial.showSun && !sunOccludedByClouds;
   });
 
   return (

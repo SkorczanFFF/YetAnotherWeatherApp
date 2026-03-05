@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useCallback } from "react";
 import * as THREE from "three";
+import { useSceneRefs } from "../SceneRefsContext";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type {
   SimulationConfig,
@@ -20,10 +21,6 @@ const CLOUD_FADE_IN_DURATION = 3;
 
 const BASE_UPWIND_MARGIN = 5;
 const UPWIND_MARGIN_PER_WIND = 0.1;
-
-// ---------------------------------------------------------------------------
-// Tier config
-// ---------------------------------------------------------------------------
 
 interface CloudTierConfig {
   name: "light" | "medium" | "overcast";
@@ -69,10 +66,6 @@ export function getTierForCover(cloudCover: number): CloudTierConfig {
   return OVERCAST_TIER;
 }
 
-// ---------------------------------------------------------------------------
-// Weighted random size picker
-// ---------------------------------------------------------------------------
-
 function pickWeightedSize(weights: Record<CloudSize, number>): CloudSize {
   const r = Math.random();
   const { small, medium } = weights;
@@ -80,10 +73,6 @@ function pickWeightedSize(weights: Record<CloudSize, number>): CloudSize {
   if (r < small + medium) return "medium";
   return "large";
 }
-
-// ---------------------------------------------------------------------------
-// Spawn helpers
-// ---------------------------------------------------------------------------
 
 function randomYFromFloors(yRanges: [number, number][]): number {
   const floor = yRanges[Math.floor(Math.random() * yRanges.length)];
@@ -139,16 +128,20 @@ function randomSpawnPositionFromBounds(
   return { x, y, z };
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 interface CloudEffectProps {
   config: SimulationConfig;
 }
 
 export function CloudEffect({ config }: CloudEffectProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const sceneRefs = useSceneRefs();
+  const setGroupRef = useCallback(
+    (el: THREE.Group | null) => {
+      (groupRef as React.MutableRefObject<THREE.Group | null>).current = el;
+      if (sceneRefs) sceneRefs.cloudGroupRef.current = el;
+    },
+    [sceneRefs],
+  );
   const sharedGeomRef = useRef<THREE.BufferGeometry | null>(null);
   const materialsRef = useRef<THREE.MeshBasicMaterial[]>([]);
   const boundsRef = useRef<FrustumBounds | null>(null);
@@ -350,5 +343,5 @@ export function CloudEffect({ config }: CloudEffectProps) {
     });
   });
 
-  return <group ref={groupRef} />;
+  return <group ref={setGroupRef} />;
 }

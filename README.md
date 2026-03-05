@@ -12,11 +12,12 @@ Don't get wet — check the weather first!
 
 - **City search** — look up weather by city name; worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback so names like "Warszawa" or "Waszyngton" resolve correctly
 - **Geolocation** — fetch weather for your current location via the browser Geolocation API
+- **Map picker** — open a resizable drawer with an interactive map (Leaflet/OpenStreetMap) to pick a location by clicking; confirm to load weather for that point
 - **Current conditions** — temperature, feels like, min/max, wind speed, pressure, humidity, sunrise/sunset, and weather description with icon
 - **Live date & time** — day name, date, full month, year, and time in the forecast location's timezone, synced every second with a blinking colon
 - **7-day forecast** — weekly outlook displayed as interactive cards with 3D hover effects
 - **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature; tooltip and ARIA label indicate the switch
-- **Weather-driven background** — custom Three.js scene (sky, clouds, rain, snow, fog, stars at night, thunderstorm) driven by live weather data; camera parallax on mouse move
+- **Weather-driven background** — custom Three.js scene (sky, sun/moon with lens flare, clouds, rain, snow, fog, stars at night, thunderstorm) driven by live weather data; camera parallax on mouse move
 - **Tooltips** — follow cursor on hover, hide after 500 ms on leave, high z-index; dynamic text for unit toggle (e.g. "Click to switch to Fahrenheit")
 - **Loading state** — animated loader (centered, accent color), minimum 500 ms display time (or longer if needed), content blur animation while loading
 - **Glassmorphism UI** — frosted-glass panels with backdrop blur
@@ -52,8 +53,8 @@ Don't get wet — check the weather first!
 
 ## Prerequisites
 
-- **Node.js** 24.x (matches the Vercel deployment target; use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
-- A WebGL-capable browser and GPU (GTX 550 Ti equivalent or better recommended)
+- **Node.js** 24.x (see `engines` in package.json; use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
+- A WebGL-capable browser
 
 ## Getting Started
 
@@ -84,15 +85,17 @@ The app opens at [http://localhost:3000](http://localhost:3000).
 ```
 src/
 ├── components/
-│   ├── navbar/          # Search bar and geolocation button
+│   ├── navbar/          # Search bar, geolocation, map picker trigger
 │   ├── weather/
 │   │   ├── current/     # Current weather display
 │   │   └── weekly/      # 7-day forecast cards
-│   ├── weather-scene/   # Three.js scene container (sky, particles, fog, stars, debug)
+│   ├── map-picker/      # Resizable drawer with Leaflet map to pick location
+│   ├── weather-scene/   # Thin wrapper that mounts the 3D scene
 │   ├── debug-menu/      # F7 overlay: effect type, intensity, cloud cover, fog, wind, etc.
 │   └── footer/          # Footer with attribution
-├── weather-scene/       # 3D scene: SkyBackground, FogEffect, CloudEffect, Rain/Snow/Mist, Stars, CameraRig
+├── weather-scene/       # 3D scene: SkyBackground, CelestialBodies, CloudEffect, Rain/Snow/Mist/Fog, Stars, Lightning, CameraRig
 ├── weather-simulation/  # Bounds, camera frustum, physics helpers
+├── weather/             # Config, sun progress, weather codes
 ├── services/
 │   └── weatherService.ts  # API calls, data formatting, geocoding
 ├── types/

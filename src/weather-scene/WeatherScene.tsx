@@ -2,6 +2,7 @@ import React from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls, Stats } from "@react-three/drei";
 import type { SimulationConfig } from "../weather-simulation/types";
+import { SceneRefsProvider } from "./SceneRefsContext";
 import { SkyBackground } from "./scene/SkyBackground";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
@@ -109,12 +110,14 @@ export function WeatherScene({
         eventPrefix="client"
         style={{ display: "block" }}
       >
-        <SceneContent
-          config={config}
-          showDebugBox={showDebugBox}
-          debugBoxPosition={debugBoxPosition}
-          freeCamera={freeCamera}
-        />
+        <SceneRefsProvider>
+          <SceneContent
+            config={config}
+            showDebugBox={showDebugBox}
+            debugBoxPosition={debugBoxPosition}
+            freeCamera={freeCamera}
+          />
+        </SceneRefsProvider>
       </Canvas>
     </div>
   );
