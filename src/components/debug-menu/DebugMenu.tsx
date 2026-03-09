@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { VscClose } from "react-icons/vsc";
 import { MdRestartAlt } from "react-icons/md";
-import type { DebugOverrides, TimeOfDayPhase, SimulationConfig } from "../../weather/config";
-import type { EffectType, Intensity } from "../../weather/codes";
+import type { DebugOverrides } from "../../weather/config";
+import type { EffectType, Intensity, TimeOfDay, SimulationConfig } from "../../weather/types";
 import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
 import { getTierForCover } from "../../weather-scene/effects/CloudEffect";
 import "./DebugMenu.scss";
@@ -23,7 +23,7 @@ const INTENSITY_OPTIONS: (Intensity | "auto")[] = [
   "moderate",
   "heavy",
 ];
-const TIME_OPTIONS: (TimeOfDayPhase | "auto")[] = [
+const TIME_OPTIONS: (TimeOfDay | "auto")[] = [
   "auto",
   "night",
   "dawn",
@@ -45,7 +45,9 @@ export function isOverridesDirty(overrides: DebugOverrides | null): boolean {
     (o.windDirection !== undefined && o.windDirection !== "auto") ||
     (o.parallaxAmount !== undefined && o.parallaxAmount !== "auto") ||
     (o.temperature !== undefined && o.temperature !== "auto") ||
-    (o.humidity !== undefined && o.humidity !== "auto")
+    (o.humidity !== undefined && o.humidity !== "auto") ||
+    (o.cloudOpacity !== undefined && o.cloudOpacity !== "auto") ||
+    (o.cloudColor !== undefined && o.cloudColor !== "auto")
   );
 }
 
@@ -69,6 +71,41 @@ function numericOrAuto(v: string): number | "auto" {
   if (v === "") return "auto";
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : "auto";
+}
+
+interface DebugNumericFieldProps {
+  label: string;
+  field: keyof DebugOverrides;
+  step: number;
+  min?: number;
+  max?: number;
+  currentDisplay?: string | null;
+  placeholder?: string;
+  half?: boolean;
+  overrides: DebugOverrides;
+  onSet: <K extends keyof DebugOverrides>(key: K, value: DebugOverrides[K]) => void;
+}
+
+function DebugNumericField({ label, field, step, min, max, currentDisplay, placeholder, half = true, overrides, onSet }: DebugNumericFieldProps) {
+  const raw = overrides[field];
+  const display = raw === undefined || raw === "auto" ? "" : String(raw);
+  const ph = placeholder ?? (currentDisplay != null ? `auto (${currentDisplay})` : "auto");
+  return (
+    <div className={`debug-menu-group${half ? " debug-menu-group--half" : ""}`}>
+      <label>
+        {label} {currentDisplay != null && <span className="debug-menu-current">({currentDisplay})</span>}
+        <input
+          type="number"
+          step={step}
+          min={min}
+          max={max}
+          placeholder={ph}
+          value={display}
+          onChange={(e) => onSet(field, numericOrAuto(e.target.value.trim()))}
+        />
+      </label>
+    </div>
+  );
 }
 
 const DebugMenu: React.FC<DebugMenuProps> = ({
@@ -213,116 +250,26 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             </div>
           </div>
           <div className="debug-menu-row">
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Wind speed {c != null && <span className="debug-menu-current">({c.windSpeed})</span>}</label>
-              <input
-                type="number"
-                step={2}
-                min={0}
-                placeholder={c != null ? `auto (${c.windSpeed})` : "auto"}
-                value={o.windSpeed === undefined || o.windSpeed === "auto" ? "" : String(o.windSpeed)}
-                onChange={(e) => set("windSpeed", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Wind dir (°) {c != null && <span className="debug-menu-current">({c.windDirection})</span>}</label>
-              <input
-                type="number"
-                step={5}
-                min={0}
-                max={360}
-                placeholder={c != null ? `auto (${c.windDirection})` : "auto"}
-                value={o.windDirection === undefined || o.windDirection === "auto" ? "" : String(o.windDirection)}
-                onChange={(e) => set("windDirection", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
+            <DebugNumericField label="Wind speed" field="windSpeed" step={2} min={0} currentDisplay={c != null ? String(c.windSpeed) : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Wind dir (°)" field="windDirection" step={5} min={0} max={360} currentDisplay={c != null ? String(c.windDirection) : null} overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Cloud count {c != null && <span className="debug-menu-current">({getTierForCover(c.cloudCover).name}: {getTierForCover(c.cloudCover).count})</span>}</label>
-              <input
-                type="number"
-                step={10}
-                min={0}
-                max={300}
-                placeholder={c != null ? `auto (${getTierForCover(c.cloudCover).count})` : "auto"}
-                value={o.cloudCount === undefined || o.cloudCount === "auto" ? "" : String(o.cloudCount)}
-                onChange={(e) => set("cloudCount", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Cloud cover {c != null && <span className="debug-menu-current">({c.cloudCover})</span>}</label>
-              <input
-                type="number"
-                step={0.1}
-                min={0}
-                max={1}
-                placeholder={c != null ? `auto (${c.cloudCover})` : "auto"}
-                value={o.cloudCover === undefined || o.cloudCover === "auto" ? "" : String(o.cloudCover)}
-                onChange={(e) => set("cloudCover", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
+            <DebugNumericField label="Cloud count" field="cloudCount" step={10} min={0} max={400} currentDisplay={c != null ? `${getTierForCover(c.cloudCover).name}: ${getTierForCover(c.cloudCover).count}` : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Cloud cover" field="cloudCover" step={0.05} min={0} max={1} currentDisplay={c != null ? String(c.cloudCover) : null} overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Particles {c != null && <span className="debug-menu-current">({c.particleCount})</span>}</label>
-              <input
-                type="number"
-                step={10}
-                min={0}
-                placeholder={c != null ? `auto (${c.particleCount})` : "auto"}
-                value={o.particleCount === undefined || o.particleCount === "auto" ? "" : String(o.particleCount)}
-                onChange={(e) => set("particleCount", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Fog density {c != null && <span className="debug-menu-current">({c.fogDensity.toFixed(3)})</span>}</label>
-              <input
-                type="number"
-                step={0.1}
-                min={0}
-                placeholder={c != null ? `auto (${c.fogDensity.toFixed(3)})` : "auto"}
-                value={o.fogDensity === undefined || o.fogDensity === "auto" ? "" : String(o.fogDensity)}
-                onChange={(e) => set("fogDensity", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
+            <DebugNumericField label="Cloud opacity" field="cloudOpacity" step={0.05} min={0} max={1} currentDisplay={c != null ? "auto" : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Cloud color" field="cloudColor" step={0.05} min={0} max={1} currentDisplay={c != null ? "auto" : null} placeholder="auto (0=white, 1=gray)" overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Temp (°C) {c != null && c.temperature != null && <span className="debug-menu-current">({c.temperature})</span>}</label>
-              <input
-                type="number"
-                step={5}
-                placeholder={c != null && c.temperature != null ? `auto (${c.temperature})` : "auto"}
-                value={o.temperature === undefined || o.temperature === "auto" ? "" : String(o.temperature)}
-                onChange={(e) => set("temperature", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Humidity (%) {c != null && c.humidity != null && <span className="debug-menu-current">({c.humidity})</span>}</label>
-              <input
-                type="number"
-                step={5}
-                min={0}
-                max={100}
-                placeholder={c != null && c.humidity != null ? `auto (${c.humidity})` : "auto"}
-                value={o.humidity === undefined || o.humidity === "auto" ? "" : String(o.humidity)}
-                onChange={(e) => set("humidity", numericOrAuto(e.target.value.trim()))}
-              />
-            </div>
+            <DebugNumericField label="Particles" field="particleCount" step={10} min={0} currentDisplay={c != null ? String(c.particleCount) : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Fog density" field="fogDensity" step={0.1} min={0} currentDisplay={c != null ? c.fogDensity.toFixed(3) : null} overrides={o} onSet={set} />
           </div>
-          <div className="debug-menu-group">
-            <label>Parallax (0–1) {c != null && <span className="debug-menu-current">({c.parallaxAmount})</span>}</label>
-            <input
-              type="number"
-              step={0.05}
-              min={0}
-              max={1}
-              placeholder={c != null ? `auto (${c.parallaxAmount})` : "auto"}
-              value={o.parallaxAmount === undefined || o.parallaxAmount === "auto" ? "" : String(o.parallaxAmount)}
-              onChange={(e) => set("parallaxAmount", numericOrAuto(e.target.value.trim()))}
-            />
+          <div className="debug-menu-row">
+            <DebugNumericField label="Temp (°C)" field="temperature" step={5} currentDisplay={c?.temperature != null ? String(c.temperature) : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Humidity (%)" field="humidity" step={5} min={0} max={100} currentDisplay={c?.humidity != null ? String(c.humidity) : null} overrides={o} onSet={set} />
           </div>
+          <DebugNumericField label="Parallax (0–1)" field="parallaxAmount" step={0.05} min={0} max={1} half={false} currentDisplay={c != null ? String(c.parallaxAmount) : null} overrides={o} onSet={set} />
         </div>
       </div>
     </div>

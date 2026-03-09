@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import type { FrustumBounds } from "../../weather-simulation/types";
-import { getSpawnX, getSpawnZ } from "../../weather-simulation/cameraFrustum";
-import { WIND_GUST_VARIANCE } from "../../weather-simulation/physics/weatherPhysics";
+import type { FrustumBounds } from "../types";
+import { getSpawnX, getSpawnZ } from "../cameraFrustum";
+import { WIND_GUST_VARIANCE, windToXZ } from "../physics/weatherPhysics";
 
 export interface SpawnParams {
   xCenter: number;
@@ -71,14 +71,9 @@ export function computeWind(
   windSpeed: number,
   windFactor: number,
 ): WindResult {
-  const windDir = (windDirectionDeg * Math.PI) / 180;
   const gust = 1 + (Math.random() - 0.5) * 2 * WIND_GUST_VARIANCE;
-  const force = windFactor * gust;
-  return {
-    windX: Math.sin(windDir) * windSpeed * force,
-    windZ: -Math.cos(windDir) * windSpeed * force,
-    gust,
-  };
+  const { x: windX, z: windZ } = windToXZ(windDirectionDeg, windSpeed, windFactor * gust);
+  return { windX, windZ, gust };
 }
 
 export function cleanupParticles(

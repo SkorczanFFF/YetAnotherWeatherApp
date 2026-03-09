@@ -1,8 +1,23 @@
-import React, { useMemo, useEffect } from "react";
-import { WeatherData } from "../../types/weather";
+import React, { Component, useMemo, useEffect } from "react";
+import type { ReactNode } from "react";
+import { WeatherData } from "../../weather/types";
 import type { DebugOverrides } from "../../weather/config";
 import { mapToSimulationConfig } from "../../weather/config";
 import { WeatherScene as Scene3D, type DebugBoxPosition } from "../../weather-scene/WeatherScene";
+
+class SceneErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
 
 interface WeatherSceneContainerProps {
   weather: WeatherData | null;
@@ -39,12 +54,14 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
 
   return (
     <div className="weather-scene-container" aria-hidden="true">
-      <Scene3D
-        config={config}
-        showDebugBox={showDebugBox}
-        debugBoxPosition={debugBoxPosition}
-        freeCamera={freeCamera}
-      />
+      <SceneErrorBoundary>
+        <Scene3D
+          config={config}
+          showDebugBox={showDebugBox}
+          debugBoxPosition={debugBoxPosition}
+          freeCamera={freeCamera}
+        />
+      </SceneErrorBoundary>
       <div
         className="weather-scene-frost"
         style={{

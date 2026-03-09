@@ -1,132 +1,32 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useRef, useCallback } from "react";
 import * as THREE from "three";
-import { useSceneRefs } from "../SceneRefsContext";
+import { useSceneRefsRequired } from "../SceneRefsContext";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type {
   SimulationConfig,
   FrustumBounds,
-} from "../../weather-simulation/types";
-import { CLOUD_WIND_FACTOR } from "../../weather-simulation/physics/weatherPhysics";
-import { computeAxisAlignedCloudBounds } from "../../weather-simulation/cameraFrustum";
-import { buildCloud, type CloudSize } from "./clouds/cloudBuilder";
-import { getCloudColor } from "./clouds/cloudColor";
+} from "../types";
+import { CLOUD_WIND_FACTOR, windToXZ } from "../physics/weatherPhysics";
+import { computeAxisAlignedCloudBounds } from "../cameraFrustum";
+import { buildCloud } from "./clouds/cloudBuilder";
+import { getCloudColor, shiftGray } from "./clouds/cloudColor";
+import { randomSpawnPositionFromBounds } from "./clouds/cloudSpawning";
+import {
+  getTierForCover,
+  pickWeightedSize,
+  getGlobalYRange,
+  type CloudTierConfig,
+} from "./clouds/cloudTiers";
+import {
+  CLOUD_VISIBLE_NEAR,
+  CLOUD_VISIBLE_FAR,
+  MIN_DRIFT_X,
+  CLOUD_RECYCLE_MAX_PER_FRAME,
+  CLOUD_FADE_IN_DURATION,
+} from "./clouds/cloudConstants";
 
-const CLOUD_VISIBLE_NEAR = 10;
-const CLOUD_VISIBLE_FAR = 120;
-const MIN_DRIFT_X = 0.003;
-const UPWIND_BIAS = 0.75;
-const CLOUD_RECYCLE_MAX_PER_FRAME = 3;
-const CLOUD_FADE_IN_DURATION = 3;
-
-const BASE_UPWIND_MARGIN = 5;
-const UPWIND_MARGIN_PER_WIND = 0.1;
-
-interface CloudTierConfig {
-  name: "light" | "medium" | "overcast";
-  count: number;
-  yRanges: [number, number][];
-  sizeWeights: Record<CloudSize, number>;
-  cloudScale: number;
-  largeBoxCountOverride?: [number, number];
-  opacityRange: [number, number];
-}
-
-const LIGHT_TIER: CloudTierConfig = {
-  name: "light",
-  count: 50,
-  yRanges: [[7, 11]],
-  sizeWeights: { small: 0.5, medium: 0.35, large: 0.15 },
-  cloudScale: 1,
-  opacityRange: [0.15, 0.5],
-};
-
-const MEDIUM_TIER: CloudTierConfig = {
-  name: "medium",
-  count: 80,
-  yRanges: [[6, 9], [9.5, 12]],
-  sizeWeights: { small: 0.2, medium: 0.5, large: 0.3 },
-  cloudScale: 1.3,
-  opacityRange: [0.35, 0.7],
-};
-
-const OVERCAST_TIER: CloudTierConfig = {
-  name: "overcast",
-  count: 120,
-  yRanges: [[5, 7.5], [7.5, 10], [10, 12.5], [12, 14]],
-  sizeWeights: { small: 0, medium: 0.3, large: 0.7 },
-  cloudScale: 1.8,
-  largeBoxCountOverride: [14, 20],
-  opacityRange: [0.6, 0.95],
-};
-
-export function getTierForCover(cloudCover: number): CloudTierConfig {
-  if (cloudCover <= 0.35) return LIGHT_TIER;
-  if (cloudCover <= 0.7) return MEDIUM_TIER;
-  return OVERCAST_TIER;
-}
-
-function pickWeightedSize(weights: Record<CloudSize, number>): CloudSize {
-  const r = Math.random();
-  const { small, medium } = weights;
-  if (r < small) return "small";
-  if (r < small + medium) return "medium";
-  return "large";
-}
-
-function randomYFromFloors(yRanges: [number, number][]): number {
-  const floor = yRanges[Math.floor(Math.random() * yRanges.length)];
-  return floor[0] + Math.random() * (floor[1] - floor[0]);
-}
-
-function getGlobalYRange(yRanges: [number, number][]): [number, number] {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const [lo, hi] of yRanges) {
-    if (lo < min) min = lo;
-    if (hi > max) max = hi;
-  }
-  return [min, max];
-}
-
-function randomSpawnPositionFromBounds(
-  bounds: FrustumBounds,
-  windDirectionDeg: number,
-  windSpeed: number,
-  yRanges: [number, number][],
-): { x: number; y: number; z: number } {
-  const windRad = (windDirectionDeg * Math.PI) / 180;
-  const windX = Math.sin(windRad);
-  const windZ = -Math.cos(windRad);
-  const upwindX = -windX;
-  const upwindZ = -windZ;
-
-  const upwindMargin = BASE_UPWIND_MARGIN + windSpeed * UPWIND_MARGIN_PER_WIND;
-  const spawnXMin = bounds.spawnXMin + Math.min(0, upwindX) * upwindMargin;
-  const spawnXMax = bounds.spawnXMax + Math.max(0, upwindX) * upwindMargin;
-  const spawnZMin = bounds.spawnZMin + Math.min(0, upwindZ) * upwindMargin;
-  const spawnZMax = bounds.spawnZMax + Math.max(0, upwindZ) * upwindMargin;
-
-  const xCenter = (spawnXMin + spawnXMax) / 2;
-  const zCenter = (spawnZMin + spawnZMax) / 2;
-  const xRadius = (spawnXMax - spawnXMin) / 2;
-  const zRadius = (spawnZMax - spawnZMin) / 2;
-
-  let x =
-    xCenter +
-    upwindX * xRadius * UPWIND_BIAS +
-    (Math.random() - 0.5) * 2 * xRadius * 0.9;
-  let z =
-    zCenter +
-    upwindZ * zRadius * UPWIND_BIAS +
-    (Math.random() - 0.5) * 2 * zRadius * 0.9;
-  x = Math.max(spawnXMin, Math.min(spawnXMax, x));
-  z = Math.max(spawnZMin, Math.min(spawnZMax, z));
-
-  const y = randomYFromFloors(yRanges);
-
-  return { x, y, z };
-}
+export { getTierForCover } from "./clouds/cloudTiers";
 
 interface CloudEffectProps {
   config: SimulationConfig;
@@ -134,20 +34,19 @@ interface CloudEffectProps {
 
 export function CloudEffect({ config }: CloudEffectProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const sceneRefs = useSceneRefs();
+  const sceneRefs = useSceneRefsRequired();
   const setGroupRef = useCallback(
     (el: THREE.Group | null) => {
       (groupRef as React.MutableRefObject<THREE.Group | null>).current = el;
-      if (sceneRefs) sceneRefs.cloudGroupRef.current = el;
+      sceneRefs.cloudGroupRef.current = el;
     },
     [sceneRefs],
   );
   const sharedGeomRef = useRef<THREE.BufferGeometry | null>(null);
   const materialsRef = useRef<THREE.MeshBasicMaterial[]>([]);
+  const cloudPositionsRef = useRef<Float32Array | null>(null);
   const boundsRef = useRef<FrustumBounds | null>(null);
   const boundsTimeRef = useRef<number>(0);
-  const activeTierRef = useRef<CloudTierConfig["name"] | null>(null);
-  const activeCountRef = useRef<number>(0);
 
   function buildClouds(
     group: THREE.Group,
@@ -158,28 +57,38 @@ export function CloudEffect({ config }: CloudEffectProps) {
   ): THREE.MeshBasicMaterial[] {
     const materials: THREE.MeshBasicMaterial[] = [];
     const count = countOverride ?? tier.count;
+    const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const size = pickWeightedSize(tier.sizeWeights);
-      const boxOverride = size === "large" ? tier.largeBoxCountOverride : undefined;
+      const boxOverride = (size === "large" || size === "extreme") ? tier.largeBoxCountOverride : undefined;
       const descriptor = buildCloud(size, undefined, tier.cloudScale, boxOverride);
       const cloudGroup = new THREE.Group();
-      const material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-      });
-      materials.push(material);
       for (const box of descriptor.boxes) {
+        const brightnessOffset = size === "blanket"
+          ? Math.round((Math.random() - 0.5) * 10)
+          : Math.round((Math.random() - 0.5) * 30);
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        });
+        material.userData.brightnessOffset = brightnessOffset;
+        materials.push(material);
         const mesh = new THREE.Mesh(sharedGeom, material);
         mesh.position.set(box.position[0], box.position[1], box.position[2]);
         mesh.scale.set(box.scale[0], box.scale[1], box.scale[2]);
         cloudGroup.add(mesh);
       }
       const pos = randomSpawnPositionFromBounds(defaultBounds, 0, 0, tier.yRanges);
+      const i3 = i * 3;
+      positions[i3] = pos.x;
+      positions[i3 + 1] = pos.y;
+      positions[i3 + 2] = pos.z;
       cloudGroup.position.set(pos.x, pos.y, pos.z);
       group.add(cloudGroup);
     }
+    cloudPositionsRef.current = positions;
     return materials;
   }
 
@@ -190,6 +99,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
     group.clear();
     materialsRef.current.forEach((m) => m.dispose());
     materialsRef.current = [];
+    cloudPositionsRef.current = null;
   }
 
   useLayoutEffect(() => {
@@ -214,8 +124,6 @@ export function CloudEffect({ config }: CloudEffectProps) {
 
     const countOverride = config.cloudCount;
     materialsRef.current = buildClouds(group, sharedGeom, tier, defaultBounds, countOverride);
-    activeTierRef.current = tier.name;
-    activeCountRef.current = countOverride ?? tier.count;
 
     return () => {
       disposeClouds(group);
@@ -223,8 +131,6 @@ export function CloudEffect({ config }: CloudEffectProps) {
         sharedGeomRef.current.dispose();
         sharedGeomRef.current = null;
       }
-      activeTierRef.current = null;
-      activeCountRef.current = 0;
     };
   }, [config.cloudCount, config.cloudCover]);
 
@@ -241,33 +147,6 @@ export function CloudEffect({ config }: CloudEffectProps) {
 
     const tier = getTierForCover(cover);
 
-    const desiredCount = config.cloudCount ?? tier.count;
-    const needsRebuild =
-      activeTierRef.current !== tier.name || activeCountRef.current !== desiredCount;
-
-    if (needsRebuild && sharedGeomRef.current) {
-      disposeClouds(group);
-      const [yMin, yMax] = getGlobalYRange(tier.yRanges);
-      const fallbackBounds = computeAxisAlignedCloudBounds(
-        state.camera,
-        CLOUD_VISIBLE_NEAR,
-        CLOUD_VISIBLE_FAR,
-        yMin,
-        yMax,
-      );
-      materialsRef.current = buildClouds(
-        group,
-        sharedGeomRef.current,
-        tier,
-        fallbackBounds,
-        config.cloudCount,
-      );
-      activeTierRef.current = tier.name;
-      activeCountRef.current = desiredCount;
-      boundsRef.current = fallbackBounds;
-      boundsTimeRef.current = state.clock.getElapsedTime();
-    }
-
     const [yMin, yMax] = getGlobalYRange(tier.yRanges);
     const elapsed = state.clock.getElapsedTime();
     if (!boundsRef.current || elapsed - boundsTimeRef.current >= 1) {
@@ -283,9 +162,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
     const bounds = boundsRef.current;
     if (!bounds) return;
 
-    const windDir = (config.windDirection * Math.PI) / 180;
-    let cloudWindX = Math.sin(windDir) * config.windSpeed * CLOUD_WIND_FACTOR;
-    let cloudWindZ = -Math.cos(windDir) * config.windSpeed * CLOUD_WIND_FACTOR;
+    let { x: cloudWindX, z: cloudWindZ } = windToXZ(config.windDirection, config.windSpeed, CLOUD_WIND_FACTOR);
     if (
       Math.abs(cloudWindX) < MIN_DRIFT_X &&
       Math.abs(cloudWindZ) < MIN_DRIFT_X
@@ -299,48 +176,72 @@ export function CloudEffect({ config }: CloudEffectProps) {
         ? cover / 0.35
         : tier.name === "medium"
           ? (cover - 0.36) / 0.34
-          : (cover - 0.71) / 0.29;
+          : tier.name === "overcast"
+            ? (cover - 0.71) / 0.14
+            : tier.name === "extreme"
+              ? (cover - 0.86) / 0.09
+              : (cover - 0.96) / 0.04;
     const t = Math.max(0, Math.min(1, coverWithinTier));
-    const cloudOpacity =
+    const autoOpacity =
       (opMin + t * (opMax - opMin)) * (config.thunderstorm ? 1.2 : 1);
+    const cloudOpacity = config.cloudOpacity ?? autoOpacity;
     const colorHex = getCloudColor(config);
 
-    let recycledThisFrame = 0;
-    group.children.forEach((child) => {
-      const cloudGroup = child as THREE.Group;
+    const positions = cloudPositionsRef.current;
+    if (!positions) return;
+    const count = group.children.length;
+
+    // Fast pass: apply wind drift to flat array
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] += cloudWindX;
+      positions[i * 3 + 2] += cloudWindZ;
+    }
+
+    // Bounds check on flat array, then sync to THREE.Group + update materials
+    let recycled = 0;
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      const cloudGroup = group.children[i] as THREE.Group;
       const userData = cloudGroup.userData as { spawnTime?: number };
-      if (userData.spawnTime === undefined) {
-        userData.spawnTime = elapsed;
-      }
-      const age = elapsed - userData.spawnTime;
-      const fade = Math.min(1, age / CLOUD_FADE_IN_DURATION);
-      const mesh = cloudGroup.children[0] as THREE.Mesh;
-      const mat = mesh?.material as THREE.MeshBasicMaterial;
-      if (mat) {
-        mat.opacity = fade * cloudOpacity;
-        mat.color.setHex(colorHex);
+      if (userData.spawnTime === undefined) userData.spawnTime = elapsed;
+
+      // Recycle check (from flat array — no Object3D property reads)
+      if (recycled < CLOUD_RECYCLE_MAX_PER_FRAME) {
+        const outside =
+          positions[i3] < bounds.recycleXMin ||
+          positions[i3] > bounds.recycleXMax ||
+          positions[i3 + 2] < bounds.recycleZMin ||
+          positions[i3 + 2] > bounds.recycleZMax ||
+          positions[i3 + 1] < bounds.spawnYMin;
+        if (outside) {
+          recycled++;
+          userData.spawnTime = elapsed;
+          const pos = randomSpawnPositionFromBounds(
+            bounds,
+            config.windDirection,
+            config.windSpeed,
+            tier.yRanges,
+          );
+          positions[i3] = pos.x;
+          positions[i3 + 1] = pos.y;
+          positions[i3 + 2] = pos.z;
+        }
       }
 
-      cloudGroup.position.x += cloudWindX;
-      cloudGroup.position.z += cloudWindZ;
-      const outside =
-        cloudGroup.position.x < bounds.recycleXMin ||
-        cloudGroup.position.x > bounds.recycleXMax ||
-        cloudGroup.position.z < bounds.recycleZMin ||
-        cloudGroup.position.z > bounds.recycleZMax ||
-        cloudGroup.position.y < bounds.spawnYMin;
-      if (outside && recycledThisFrame < CLOUD_RECYCLE_MAX_PER_FRAME) {
-        recycledThisFrame += 1;
-        userData.spawnTime = elapsed;
-        const pos = randomSpawnPositionFromBounds(
-          bounds,
-          config.windDirection,
-          config.windSpeed,
-          tier.yRanges,
-        );
-        cloudGroup.position.set(pos.x, pos.y, pos.z);
+      // Sync position from flat array to THREE.Group
+      cloudGroup.position.set(positions[i3], positions[i3 + 1], positions[i3 + 2]);
+
+      // Update materials
+      const age = elapsed - userData.spawnTime;
+      const fade = Math.min(1, age / CLOUD_FADE_IN_DURATION);
+      for (const child of cloudGroup.children) {
+        const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        if (!mat) continue;
+        mat.opacity = fade * cloudOpacity;
+        const offset = (mat.userData.brightnessOffset as number) ?? 0;
+        mat.color.setHex(shiftGray(colorHex, offset));
       }
-    });
+    }
   });
 
   return <group ref={setGroupRef} />;

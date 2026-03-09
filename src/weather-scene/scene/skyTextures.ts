@@ -72,21 +72,14 @@ export function getSkyTexture(phase: string): THREE.CanvasTexture {
   return tex;
 }
 
-export const SKY_COLORS: Record<string, number> = {
-  night: 0x0a0a1a,
-  dawn: 0xfe964c,
-  day: 0x0c427d,
-  dusk: 0xff7b4a,
-};
-
-export const STORM_SKY_COLOR = 0x2a3542;
+const STORM_SKY_COLOR = 0x2a3542;
 
 /** Thunderstorm sky: night uses solid color; day/dawn/dusk use gradients. */
 const STORM_SKY_GRADIENTS: Record<string, { stops: GradientStop[]; flipY?: boolean }> = {
   day: {
     stops: [
-      { offset: 0, color: "#9fa6ad" },
-      { offset: 1, color: "#b7c1cc" },
+      { offset: 0, color: "#69849eff" },
+      { offset: 1, color: "#81959dff" },
     ],
   },
   dawn: {

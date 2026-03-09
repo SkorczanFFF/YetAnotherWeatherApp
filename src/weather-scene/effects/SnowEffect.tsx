@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
-import type { SimulationConfig } from "../../weather-simulation/types";
+import type { SimulationConfig } from "../types";
 import {
   initParticlePositions,
   computeSpawnParams,
@@ -13,7 +13,7 @@ import { PRECIPITATION_BOUNDS } from "./effectBounds";
 import {
   SNOW_WIND_FACTOR,
   SNOW_FALL_SPEED_BASE,
-} from "../../weather-simulation/physics/weatherPhysics";
+} from "../physics/weatherPhysics";
 
 const SNOW_COLOR = 0xe8eef4;
 const SNOW_SWAY_AMPLITUDE = 1.2;

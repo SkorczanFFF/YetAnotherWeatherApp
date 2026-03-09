@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { IoLocationSharp } from "react-icons/io5";
 import { BsGithub, BsSearch, BsMap } from "react-icons/bs";
-import { WeatherQuery } from "../../types/weather";
+import { WeatherQuery } from "../../weather/types";
 import "./Navbar.scss";
 
 interface NavbarProps {

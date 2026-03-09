@@ -1,7 +1,7 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls, Stats } from "@react-three/drei";
-import type { SimulationConfig } from "../weather-simulation/types";
+import type { SimulationConfig } from "./types";
 import { SceneRefsProvider } from "./SceneRefsContext";
 import { SkyBackground } from "./scene/SkyBackground";
 import { CameraRig } from "./scene/CameraRig";
@@ -37,8 +37,11 @@ function SceneContent({
   debugBoxPosition?: DebugBoxPosition;
   freeCamera?: boolean;
 }) {
+  const ambientIntensity = 1;
+
   return (
     <>
+      <ambientLight intensity={ambientIntensity} />
       <SkyBackground config={config} />
       <CelestialBodies config={config} />
       {config.timeOfDay === "night" && (
