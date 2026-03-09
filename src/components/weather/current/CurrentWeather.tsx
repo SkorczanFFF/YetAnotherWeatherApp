@@ -14,8 +14,8 @@ import {
 import {
   formatToLocalTime,
   iconUrlFromCode,
-} from "../../../services/weatherService";
-import { WeatherData, Units } from "../../../types/weather";
+} from "../../../services/weatherFormatter";
+import { WeatherData, Units } from "../../../weather/types";
 import "./CurrentWeather.scss";
 
 interface CurrentWeatherProps {
@@ -61,13 +61,9 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
   setUnits,
 }) => {
   const [liveTime, setLiveTime] = useState(() => getLiveTimeParts(weather.timezone));
-  const [colonVisible, setColonVisible] = useState(true);
 
   useEffect(() => {
-    const tick = () => {
-      setLiveTime(getLiveTimeParts(weather.timezone));
-      setColonVisible((v) => !v);
-    };
+    const tick = () => setLiveTime(getLiveTimeParts(weather.timezone));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -94,7 +90,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
     <div className="main-info border">
         <p className="date-time" aria-live="polite">
           {liveTime.datePart}, {liveTime.hours}
-          <span className={`date-time-colon ${colonVisible ? "date-time-colon--visible" : "date-time-colon--hidden"}`} aria-hidden="true">:</span>
+          <span className="date-time-colon" aria-hidden="true">:</span>
           {liveTime.minutes}
         </p>
         <div className="wrapper">

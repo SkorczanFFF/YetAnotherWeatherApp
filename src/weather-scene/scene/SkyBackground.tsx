@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { SimulationConfig } from "../../weather-simulation/types";
+import type { SimulationConfig } from "../types";
 import {
   getSkyTexture,
   getStormSkyTexture,

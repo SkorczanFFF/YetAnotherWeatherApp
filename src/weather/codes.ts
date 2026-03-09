@@ -2,8 +2,6 @@
 
 import type { EffectType, Intensity } from "./types";
 
-export type { EffectType, Intensity };
-
 export function getEffectTypeAndIntensity(code: number): {
   type: EffectType;
   intensity: Intensity;

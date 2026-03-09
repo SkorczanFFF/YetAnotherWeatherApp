@@ -16,15 +16,11 @@
       display: inline-block;
       width: 0.35em;
       text-align: center;
-      transition: opacity 0.05s ease-out;
+      animation: colon-blink 1s step-end infinite;
+    }
 
-      &--visible {
-        opacity: 1;
-      }
-
-      &--hidden {
-        opacity: 0;
-      }
+    @keyframes colon-blink {
+      50% { opacity: 0; }
     }
   }
   .wrapper {

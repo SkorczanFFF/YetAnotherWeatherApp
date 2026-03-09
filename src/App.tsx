@@ -4,17 +4,13 @@ import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import Footer from "./components/footer/Footer";
-import WeatherScene from "./components/weather-scene/WeatherScene";
+import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
-import {
-  type DebugOverrides,
-  mapToSimulationConfig,
-  type SimulationConfig,
-} from "./weather/config";
+import { type DebugOverrides, mapToSimulationConfig } from "./weather/config";
 import type { DebugBoxPosition } from "./weather-scene/scene/DebugBox";
 import getFormattedWeatherData from "./services/weatherService";
-import { WeatherQuery, Units, WeatherData } from "./types/weather";
+import { type SimulationConfig, type WeatherQuery, type Units, type WeatherData } from "./weather/types";
 
 const MIN_LOADING_MS = 500;
 

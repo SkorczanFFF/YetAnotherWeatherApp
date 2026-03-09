@@ -6,9 +6,8 @@ import {
   Lensflare,
   LensflareElement,
 } from "three/examples/jsm/objects/Lensflare.js";
-import type { SimulationConfig } from "../../weather-simulation/types";
+import type { SimulationConfig } from "../types";
 import { getSunProgress } from "../../weather/config";
-import { useSceneRefs } from "../SceneRefsContext";
 
 function createRadialGradientTexture(
   size: number,
@@ -39,13 +38,15 @@ function createRadialGradientTexture(
 
 const CELESTIAL = {
   xRange: 0.55,
-  aboveCloudsMin: 0.35,
-  aboveCloudsMax: 0.65,
+  aboveCloudsMin: 0.65,
+  aboveCloudsMax: 0.85,
   cameraDistance: 5,
 } as const;
 
+const SUN_Y_MIN = 18;
+const SUN_Y_MAX = 28;
+
 const SUN = {
-  y: 24,
   z: -50,
   glowSize: 9,
   glowOpacity: 0.45,
@@ -95,6 +96,7 @@ function getXEdge(camera: THREE.PerspectiveCamera): number {
 
 export interface CelestialState {
   sunX: number;
+  sunY: number;
   moonX: number;
   showSun: boolean;
   showMoon: boolean;
@@ -123,14 +125,13 @@ export function computeCelestialState(
     config.timeOfDay === "day" ||
     config.timeOfDay === "dawn" ||
     config.timeOfDay === "dusk";
-  const showMoon =
-    config.timeOfDay === "night" ||
-    config.timeOfDay === "dawn" ||
-    config.timeOfDay === "dusk";
+  const showMoon = config.timeOfDay === "night";
   const sunAboveClouds =
     sunProgress >= CELESTIAL.aboveCloudsMin &&
     sunProgress <= CELESTIAL.aboveCloudsMax;
-  return { sunX, moonX, showSun, showMoon, sunAboveClouds };
+  const normalizedArc = 1 - (2 * sunProgress - 1) ** 2;
+  const sunY = SUN_Y_MIN + normalizedArc * (SUN_Y_MAX - SUN_Y_MIN);
+  return { sunX, sunY, moonX, showSun, showMoon, sunAboveClouds };
 }
 
 interface CelestialLightsRefs {
@@ -202,20 +203,13 @@ interface CelestialBodiesProps {
   config: SimulationConfig;
 }
 
-const OCCLUSION_EPSILON = 0.5;
-
 export function CelestialBodies({ config }: CelestialBodiesProps) {
   const moonMap = useLoader(THREE.TextureLoader, MOON.textureUrl);
   const groupRef = useRef<THREE.Group>(null);
   const sunGlowRef = useRef<THREE.Mesh>(null);
   const moonMeshRef = useRef<THREE.Mesh>(null);
-  const sceneRefs = useSceneRefs();
   const { sunLightRef, moonLightRef, lensflareRef } =
     useCelestialLights(groupRef);
-  const raycasterRef = useRef<THREE.Raycaster | null>(null);
-  const sunWorldRef = useRef<THREE.Vector3 | null>(null);
-  if (!raycasterRef.current) raycasterRef.current = new THREE.Raycaster();
-  if (!sunWorldRef.current) sunWorldRef.current = new THREE.Vector3();
 
   useFrame((state) => {
     const group = groupRef.current;
@@ -227,52 +221,28 @@ export function CelestialBodies({ config }: CelestialBodiesProps) {
     const celestial = computeCelestialState(config, camera);
 
     if (sunGlow)
-      sunGlow.position.set(celestial.sunX, SUN.y, SUN.z);
+      sunGlow.position.set(celestial.sunX, celestial.sunY, SUN.z);
     moonMesh.position.set(celestial.moonX, MOON.y, MOON.z);
 
     const sunLight = sunLightRef.current;
     const moonLight = moonLightRef.current;
     if (sunLight)
-      sunLight.position.set(celestial.sunX, SUN.y, SUN.z);
+      sunLight.position.set(celestial.sunX, celestial.sunY, SUN.z);
     if (moonLight)
       moonLight.position.set(celestial.moonX, MOON.y, MOON.z);
 
-    if (sunGlow) sunGlow.visible = celestial.showSun;
-    moonMesh.visible = celestial.showMoon;
-    if (sunLight) sunLight.visible = celestial.showSun;
-    if (moonLight) moonLight.visible = celestial.showMoon;
+    const hiddenByStorm = config.thunderstorm;
+    if (sunGlow) sunGlow.visible = celestial.showSun && !hiddenByStorm;
+    moonMesh.visible = celestial.showMoon && !hiddenByStorm;
+    if (sunLight) sunLight.visible = celestial.showSun && !hiddenByStorm;
+    if (moonLight) moonLight.visible = celestial.showMoon && !hiddenByStorm;
 
-    let sunOccludedByClouds = false;
-    const cloudGroup = sceneRefs?.cloudGroupRef.current;
     const cover = config.cloudCover ?? 0;
-    if (
-      celestial.showSun &&
-      cloudGroup &&
-      cloudGroup.visible &&
-      cover > 0.02 &&
-      raycasterRef.current &&
-      sunWorldRef.current
-    ) {
-      sunWorldRef.current.set(celestial.sunX, SUN.y, SUN.z);
-      const distanceToSun = camera.position.distanceTo(sunWorldRef.current);
-      const direction = sunWorldRef.current
-        .clone()
-        .sub(camera.position)
-        .normalize();
-      cloudGroup.updateMatrixWorld(true);
-      raycasterRef.current.set(camera.position, direction);
-      const intersects = raycasterRef.current.intersectObject(
-        cloudGroup,
-        true,
-      );
-      sunOccludedByClouds =
-        intersects.length > 0 &&
-        intersects[0].distance < distanceToSun - OCCLUSION_EPSILON;
-    }
+    const sunOccluded = cover > 0.8 && celestial.sunAboveClouds;
 
     const lensflare = lensflareRef.current;
     if (lensflare)
-      lensflare.visible = celestial.showSun && !sunOccludedByClouds;
+      lensflare.visible = celestial.showSun && !sunOccluded && !hiddenByStorm;
   });
 
   return (

@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
-import type { SimulationConfig } from "../../weather-simulation/types";
+import type { SimulationConfig } from "../types";
 import {
   initParticlePositions,
   computeSpawnParams,
@@ -17,7 +17,7 @@ import {
   DRIZZLE_FALL_SPEED_BASE,
   THUNDERSTORM_WIND_MULTIPLIER,
   THUNDERSTORM_RAIN_MULTIPLIER,
-} from "../../weather-simulation/physics/weatherPhysics";
+} from "../physics/weatherPhysics";
 
 const RAIN_COLOR = 0x1e3a5f;
 const RAIN_SIZE = 2.5;
@@ -61,6 +61,8 @@ export function RainEffect({ config }: RainEffectProps) {
       cleanupParticles(group, points, geom, material, pointsRef, geometryRef);
   }, []);
 
+  const pixelRatioRef = useRef(Math.min(window.devicePixelRatio, 2));
+
   useFrame((_state, delta) => {
     const points = pointsRef.current;
     const geometry = geometryRef.current;
@@ -72,7 +74,7 @@ export function RainEffect({ config }: RainEffectProps) {
     if (!showRain) return;
 
     const isDrizzle = config.isDrizzle && !config.thunderstorm;
-    const pixelRatio = Math.min(window.devicePixelRatio, 2);
+    const pixelRatio = pixelRatioRef.current;
     const mat = points.material as THREE.PointsMaterial;
     mat.size = (isDrizzle ? DRIZZLE_SIZE : RAIN_SIZE) * pixelRatio;
     mat.opacity = isDrizzle ? DRIZZLE_OPACITY : RAIN_OPACITY;
@@ -90,10 +92,11 @@ export function RainEffect({ config }: RainEffectProps) {
       config.windSpeed,
       windFactor,
     );
-    const fallSpeed = isDrizzle
+    const baseFallSpeed = isDrizzle
       ? DRIZZLE_FALL_SPEED_BASE
       : RAIN_FALL_SPEED_BASE *
         (config.thunderstorm ? THUNDERSTORM_RAIN_MULTIPLIER : 1);
+    const fallSpeed = baseFallSpeed * delta * 60;
 
     const pos = geometry.attributes.position.array as Float32Array;
     const spawn = computeSpawnParams(bounds);

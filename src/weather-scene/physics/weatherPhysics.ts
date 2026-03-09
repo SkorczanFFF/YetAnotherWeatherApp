@@ -12,3 +12,9 @@ export const SNOW_FALL_SPEED_BASE = 0.075;
 
 export const THUNDERSTORM_WIND_MULTIPLIER = 1.8;
 export const THUNDERSTORM_RAIN_MULTIPLIER = 1.2;
+
+/** Convert wind direction (degrees) + speed into X/Z components. */
+export function windToXZ(dirDeg: number, speed: number, factor: number) {
+  const rad = (dirDeg * Math.PI) / 180;
+  return { x: Math.sin(rad) * speed * factor, z: -Math.cos(rad) * speed * factor };
+}

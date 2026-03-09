@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef, useLayoutEffect } from "react";
 import * as THREE from "three";
-import type { SimulationConfig } from "../../weather-simulation/types";
+import type { SimulationConfig } from "../types";
 
 const FLASH_DURATION = 0.12;
 const FLASH_OPACITY_MIN = 0.5;
