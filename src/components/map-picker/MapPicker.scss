@@ -1,0 +1,184 @@
+.map-picker-backdrop {
+  position: fixed;
+  inset: 1;
+  z-index: 8000;
+  pointer-events: none;
+
+  &--open {
+    pointer-events: auto;
+  }
+}
+
+.map-picker-backdrop__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+
+  .map-picker-backdrop--open & {
+    opacity: 1;
+  }
+}
+
+.map-picker-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  min-width: 385px;
+  max-width: 800px;
+  height: 100vh;
+  z-index: 8001;
+  background: rgba(31, 31, 31, 0.02);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease-out;
+  transform: translateX(100%);
+  font-family: "Chakra Petch", "Noto Sans", sans-serif;
+
+  &--open {
+    transform: translateX(0);
+  }
+}
+
+.map-picker-drawer__resize-handle {
+  position: absolute;
+  left: -8px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  isolation: isolate;
+  visibility: hidden;
+  pointer-events: none;
+
+  .map-picker-drawer--open & {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  &:hover,
+  &:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.map-picker-drawer__resize-handle-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  flex-shrink: 0;
+
+  .map-picker-drawer__resize-handle:hover &,
+  .map-picker-drawer__resize-handle:active & {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.map-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+  }
+}
+
+.map-picker-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease-out;
+  margin-right:-10px; 
+
+  &:hover {
+    color: #ff5521;
+  }
+}
+
+.map-picker-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-picker-map-container {
+  flex: 1;
+  min-height: 200px;
+  width: 100%;
+}
+
+.map-picker-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.map-picker-confirm {
+  padding: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border: none;
+  background: #EB6E4B;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.25s ease-out;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: "Chakra Petch", "Noto Sans", sans-serif;
+
+  &:hover:not(:disabled) {
+    background: #e75931;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Ensure Leaflet doesn’t collapse our custom marker (pin uses inline styles in TSX)
+:global(.map-picker-marker) {
+  background: none !important;
+  border: none !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+}

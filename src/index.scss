@@ -4,15 +4,42 @@ body {
   font-family: "Chakra Petch", "Noto Sans", sans-serif;
   margin: 0;
   background: #72c5e9;
+  /* Set by app from time of day */
+  --app-text-color: #000e3d9d;
 }
 
 .App {
+  position: relative;
   height: 100vh;
+
+  .weather-scene-container {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    .weather-scene-frost {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+      z-index: 1;
+      transition: opacity 0.15s ease-out;
+    }
+  }
+
+  .navbar,
+  .weather,
+  .footer {
+    position: relative;
+    z-index: 1;
+  }
+
   .weather {
     position: relative;
     margin: 1rem auto 0 auto;
     padding: 1rem;
-    color: #000e3d9d;
+    color: var(--app-text-color);
     min-height: 200px;
 
     &.is-loading {
@@ -51,7 +78,7 @@ body {
   66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
 }
 
-/* Ensure react-tooltip appears above other content (tooltips render in a portal) */
+/* Tooltips render in portal; keep above content */
 .react-tooltip,
 .current-weather-tooltip {
   z-index: 9999 !important;
@@ -62,4 +89,20 @@ body {
 }
 .border-light {
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Stats panels from @react-three/drei — stacked column, top-left */
+.debug-stats {
+  left: 4px !important;
+  right: auto !important;
+  z-index: 9998;
+}
+.debug-stats--fps {
+  top: 30px !important;
+}
+.debug-stats--ms {
+  top: 82px !important;
+}
+.debug-stats--mb {
+  top: 134px !important;
 }

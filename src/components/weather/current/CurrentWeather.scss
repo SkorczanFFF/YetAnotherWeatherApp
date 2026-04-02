@@ -5,12 +5,23 @@
   text-align: center;
   padding: 1em;
   box-shadow: 0 4px 30px #9c9c9c1a;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
   .date-time {
     font-size: 1.25rem;
     padding: 0;
     margin: .75rem 0 -1.25rem 0;
     font-weight: 300;
+
+    .date-time-colon {
+      display: inline-block;
+      width: 0.35em;
+      text-align: center;
+      animation: colon-blink 1s step-end infinite;
+    }
+
+    @keyframes colon-blink {
+      50% { opacity: 0; }
+    }
   }
   .wrapper {
     display: flex;

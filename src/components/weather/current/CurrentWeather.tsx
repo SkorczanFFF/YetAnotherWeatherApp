@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Tooltip } from "react-tooltip";
+import { DateTime } from "luxon";
 import {
   WiHumidity,
   WiStrongWind,
@@ -13,8 +14,8 @@ import {
 import {
   formatToLocalTime,
   iconUrlFromCode,
-} from "../../../services/weatherService";
-import { WeatherData, Units } from "../../../types/weather";
+} from "../../../services/weatherFormatter";
+import { WeatherData, Units } from "../../../weather/types";
 import "./CurrentWeather.scss";
 
 interface CurrentWeatherProps {
@@ -45,11 +46,29 @@ const WeatherTooltip: React.FC<WeatherTooltipProps> = ({ id, content }) => (
   />
 );
 
+const getLiveTimeParts = (timezone: string) => {
+  const now = DateTime.now().setZone(timezone);
+  return {
+    datePart: now.toFormat("cccc, dd LLLL yyyy"),
+    hours: now.toFormat("HH"),
+    minutes: now.toFormat("mm"),
+  };
+};
+
 const CurrentWeather: React.FC<CurrentWeatherProps> = ({
   weather,
   units,
   setUnits,
 }) => {
+  const [liveTime, setLiveTime] = useState(() => getLiveTimeParts(weather.timezone));
+
+  useEffect(() => {
+    const tick = () => setLiveTime(getLiveTimeParts(weather.timezone));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [weather.timezone]);
+
   const formatted = useMemo(() => ({
     speed: formatSpeed(weather.speed, units),
     feelsLike: formatTemperature(weather.feels_like, units),
@@ -58,7 +77,6 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
     tempMin: formatTemperature(weather.temp_min, units),
     pressure: `${weather.pressure.toFixed()}hPa`,
     humidity: `${weather.humidity.toFixed()}%`,
-    dateTime: formatToLocalTime(weather.dt, weather.timezone),
     sunrise: formatToLocalTime(weather.sunrise, weather.timezone, "HH:mm"),
     sunset: formatToLocalTime(weather.sunset, weather.timezone, "HH:mm"),
     location: `${weather.name}, ${weather.country}`,
@@ -70,8 +88,10 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
 
   return (
     <div className="main-info border">
-        <p className="date-time">
-          {formatted.dateTime}
+        <p className="date-time" aria-live="polite">
+          {liveTime.datePart}, {liveTime.hours}
+          <span className="date-time-colon" aria-hidden="true">:</span>
+          {liveTime.minutes}
         </p>
         <div className="wrapper">
           <div className="left-wing wing">
@@ -112,7 +132,14 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
               onClick={handleUnitsClick}
               role="button"
               tabIndex={0}
-              aria-label="Click to switch temperature unit between Celsius and Fahrenheit"
+              aria-label={
+                units === "metric"
+                  ? "Click to switch temperature unit to Fahrenheit"
+                  : "Click to switch temperature unit to Celsius"
+              }
+              data-tooltip-id="unit-switch"
+              data-tooltip-position-strategy="fixed"
+              data-tooltip-float={true}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -122,6 +149,14 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
             >
               {formatted.temp}
             </h1>
+            <WeatherTooltip
+              id="unit-switch"
+              content={
+                units === "metric"
+                  ? "Click to switch temperature unit to Fahrenheit"
+                  : "Click to switch temperature unit to Celsius"
+              }
+            />
           </div>
 
           <div className="right-wing wing">

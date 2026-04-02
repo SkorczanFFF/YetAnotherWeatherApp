@@ -12,7 +12,9 @@
 /build
 
 # misc
+.cursor
 .DS_Store
+nul
 *.css.map
 src/*.css
 .env

@@ -1,6 +1,6 @@
 import React from "react";
-import { iconUrlFromCode } from "../../../services/weatherService";
-import { DailyWeather, Units } from "../../../types/weather";
+import { iconUrlFromCode } from "../../../services/weatherFormatter";
+import { DailyWeather, Units } from "../../../weather/types";
 import "./WeeklyForecast.scss";
 
 interface WeeklyForecastProps {
@@ -16,7 +16,7 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
         </p>
         <div className="weekly-items">
           {items.map((item, index) => (
-            <div key={index} className="atom atom-left border-light">
+            <article key={index} className="atom atom-left border-light">
               <p className="weekday">{item.title}</p>
               <img
                 src={iconUrlFromCode(item.icon)}
@@ -27,7 +27,7 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
                 <h5 className="weekly-temp">{`${item.temp.toFixed()}°`}</h5>
                 <h5 className="feels-like-temp">{`${item.temp_min.toFixed()}°`}</h5>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>

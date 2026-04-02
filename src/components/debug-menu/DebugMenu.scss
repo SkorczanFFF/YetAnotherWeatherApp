@@ -1,0 +1,201 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+.debug-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1rem;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  overflow: hidden;
+
+  &--freecam {
+    pointer-events: none;
+
+    .debug-menu-panel {
+      pointer-events: auto;
+    }
+  }
+}
+
+.debug-menu-panel {
+  background: #1a1a2eef;
+  color: #ffffff;
+  border-radius: 8px;
+  width: 385px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: inherit;
+}
+
+.debug-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.debug-menu-header-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.debug-menu-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  padding: 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.debug-menu-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.debug-menu-group--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.debug-menu-body {
+  padding: 1rem;
+  color: #ffffff;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.debug-menu-current {
+  font-weight: 400;
+  opacity: 0.8;
+  font-size: 0.85em;
+}
+
+.debug-menu-group {
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: #e0e0e0;
+    margin-bottom: 0.25rem;
+    font-family: inherit;
+  }
+
+  select,
+  input[type="text"],
+  input[type="number"] {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.35rem 0.5rem;
+    background: #0f0f1a;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-family: inherit;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  select option {
+    background: #1a1a2e;
+    color: #ffffff;
+  }
+
+  .debug-menu-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .debug-menu-option-btn {
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: inherit;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    &.debug-menu-option-btn--active {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
+      color: #ffffff;
+    }
+  }
+}
+
+.debug-menu-group--debug-box {
+  .debug-menu-debug-box-coords {
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 0.25rem;
+    color: #fff;
+  }
+
+  .debug-menu-debug-box-keys {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .debug-menu-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+
+    kbd {
+      padding: 0.1em 0.35em;
+      font-size: 0.9em;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+  }
+}
+
