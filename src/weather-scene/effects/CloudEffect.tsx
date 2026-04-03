@@ -129,6 +129,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
         sharedGeomRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- camera ref is stable, re-init only on cloud config change
   }, [config.cloudCount, config.cloudCover]);
 
   useFrame((state) => {
