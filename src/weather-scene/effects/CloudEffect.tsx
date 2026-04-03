@@ -1,4 +1,4 @@
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useRef, useCallback } from "react";
 import * as THREE from "three";
 import { useSceneRefsRequired } from "../SceneRefsContext";
@@ -26,7 +26,6 @@ import {
   CLOUD_FADE_IN_DURATION,
 } from "./clouds/cloudConstants";
 
-export { getTierForCover } from "./clouds/cloudTiers";
 
 interface CloudEffectProps {
   config: SimulationConfig;
@@ -34,6 +33,7 @@ interface CloudEffectProps {
 
 export function CloudEffect({ config }: CloudEffectProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const camera = useThree((s) => s.camera);
   const sceneRefs = useSceneRefsRequired();
   const setGroupRef = useCallback(
     (el: THREE.Group | null) => {
@@ -111,11 +111,8 @@ export function CloudEffect({ config }: CloudEffectProps) {
 
     const tier = getTierForCover(config.cloudCover ?? 0.4);
     const [yMin, yMax] = getGlobalYRange(tier.yRanges);
-    const defaultCamera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 100);
-    defaultCamera.position.set(0, 0, 5);
-    defaultCamera.lookAt(0, 0, 0);
     const defaultBounds = computeAxisAlignedCloudBounds(
-      defaultCamera,
+      camera,
       CLOUD_VISIBLE_NEAR,
       CLOUD_VISIBLE_FAR,
       yMin,
@@ -132,6 +129,7 @@ export function CloudEffect({ config }: CloudEffectProps) {
         sharedGeomRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- camera ref is stable, re-init only on cloud config change
   }, [config.cloudCount, config.cloudCover]);
 
   useFrame((state) => {

@@ -4,7 +4,7 @@ import { MdRestartAlt } from "react-icons/md";
 import type { DebugOverrides } from "../../weather/config";
 import type { EffectType, Intensity, TimeOfDay, SimulationConfig } from "../../weather/types";
 import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
-import { getTierForCover } from "../../weather-scene/effects/CloudEffect";
+import { getTierForCover } from "../../weather-scene/effects/clouds/cloudTiers";
 import "./DebugMenu.scss";
 
 const DEBUG_BOX_STEP = 0.5;

@@ -1,8 +1,8 @@
 /** Wind (km/h) drives drift; intensity affects particle count only. */
-export const RAIN_WIND_FACTOR = 0.018;
-export const DRIZZLE_WIND_FACTOR = 0.028;
-export const SNOW_WIND_FACTOR = 0.0025;
-export const CLOUD_WIND_FACTOR = 0.0008;
+export const RAIN_WIND_FACTOR = 0.0008;
+export const DRIZZLE_WIND_FACTOR = 0.0008;
+export const SNOW_WIND_FACTOR = 0.00025;
+export const CLOUD_WIND_FACTOR = 0.0002;
 export const MIST_WIND_FACTOR = 0.00032;
 export const WIND_GUST_VARIANCE = 0.15;
 

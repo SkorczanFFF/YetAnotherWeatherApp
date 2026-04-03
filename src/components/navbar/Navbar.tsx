@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { IoLocationSharp } from "react-icons/io5";
-import { BsGithub, BsSearch, BsMap } from "react-icons/bs";
+import { BsSearch, BsMap } from "react-icons/bs";
 import { WeatherQuery } from "../../weather/types";
 import "./Navbar.scss";
 
@@ -26,10 +26,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const handleSearch = (): void => {
     const trimmedCity = city.trim();
     if (!trimmedCity) return;
-    if (!isValidCityName(trimmedCity)) {
-      alert("Please enter a valid city name.");
-      return;
-    }
+    if (!isValidCityName(trimmedCity)) return;
     setQuery({ q: trimmedCity });
   };
 
@@ -46,18 +43,9 @@ const Navbar: React.FC<NavbarProps> = ({
           const lon = pos.coords.longitude;
           setQuery({ lat, lon });
         },
-        (err) => {
-          const messages: Record<number, string> = {
-            1: "Location permission denied. Please enable it in browser settings.",
-            2: "Location unavailable. Please try again.",
-            3: "Location request timed out. Please try again.",
-          };
-          alert(messages[err.code] || "Unable to get location.");
-        },
+        () => {},
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
       );
-    } else {
-      alert("Geolocation is not supported by your browser.");
     }
   };
 
@@ -89,32 +77,16 @@ const Navbar: React.FC<NavbarProps> = ({
           <BsSearch />
         </div>
         {onOpenMapPicker && (
-          <div
+          <button
+            type="button"
             className="map-icon-container"
             onClick={onOpenMapPicker}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpenMapPicker();
-              }
-            }}
             aria-label="Pick location on map"
           >
             <BsMap className="map-icon" />
-          </div>
+          </button>
         )}
       </form>
-      <div className="git">
-        <a
-          href="https://github.com/SkorczanFFF/YetAnotherWeatherApp"
-          className="git-a"
-        >
-          GitHub
-        </a>
-        <BsGithub className="git-icon" />
-      </div>
     </nav>
   );
 };

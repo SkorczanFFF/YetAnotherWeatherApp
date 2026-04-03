@@ -64,6 +64,8 @@
   }
 
   .map-icon-container {
+    border: none;
+    font: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -111,29 +113,16 @@
   }
 }
 
-.git {
-  color: var(--app-text-color);
-  position: fixed;
-  right: 5px;
-  top: 5px;
-  font-size: 15px;
-  transition: 0.25s ease-in-out;
-  cursor: pointer;
-  display: flex;
-  flex-direction: row;
-  &:hover {
-    color: white;
+@media (max-width: 700px) {
+  .search-container {
+    width: 100%;
+    padding: 2rem 0.5rem 1rem 0.5rem;
+    box-sizing: border-box;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
-  .git-a {
-    margin: 0;
-    text-decoration: none;
-    color: var(--app-text-color);
-    transition: 0.15s ease-in-out;
-    &:hover {
-      color: white;
-    }
-  }
-  .git-icon {
-    margin: 2px 0 0 3px;
+
+  .logo {
+    z-index: 3;
   }
 }

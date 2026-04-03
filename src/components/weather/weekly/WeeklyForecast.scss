@@ -70,3 +70,34 @@
     }
   }
 }
+
+@media (max-width: 1023px) {
+  .weekly-container {
+    width: auto;
+    padding: 2rem 1rem;
+    .forecast-info {
+      text-align: center;
+    }
+    .weekly-items {
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      justify-content: center;
+      gap: 1rem;
+      .atom {
+        margin: 0;
+      }
+      .atom-left {
+        transform: none;
+        &:hover {
+          transform: none;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 639px) {
+  .weekly-container .weekly-items {
+    grid-template-columns: repeat(2, auto);
+  }
+}

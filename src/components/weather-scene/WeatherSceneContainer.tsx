@@ -53,25 +53,28 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
     typeof config.temperature === "number" && config.temperature < 0;
 
   return (
-    <div className="weather-scene-container" aria-hidden="true">
-      <SceneErrorBoundary>
-        <Scene3D
-          config={config}
-          showDebugBox={showDebugBox}
-          debugBoxPosition={debugBoxPosition}
-          freeCamera={freeCamera}
-        />
-      </SceneErrorBoundary>
+    <>
+      <div className="weather-scene-container" aria-hidden="true">
+        <SceneErrorBoundary>
+          <Scene3D
+            config={config}
+            showDebugBox={showDebugBox}
+            debugBoxPosition={debugBoxPosition}
+            freeCamera={freeCamera}
+          />
+        </SceneErrorBoundary>
+      </div>
       <div
         className="weather-scene-frost"
-        style={{
-          opacity: showFrostOverlay ? 0.5 : 0,
-          pointerEvents: "none",
-          backgroundImage: `url(${process.env.PUBLIC_URL || ""}/effects/frost.png)`,
-        }}
+        style={{ opacity: showFrostOverlay ? 1 : 0 }}
         aria-hidden="true"
-      />
-    </div>
+      >
+        <img className="frost-edge frost-left" src="/effects/frost-left.png" alt="" />
+        <img className="frost-edge frost-right" src="/effects/frost-right.png" alt="" />
+        <img className="frost-edge frost-top" src="/effects/frost-top.png" alt="" />
+        <img className="frost-edge frost-bottom" src="/effects/frost-bottom.png" alt="" />
+      </div>
+    </>
   );
 };
 
