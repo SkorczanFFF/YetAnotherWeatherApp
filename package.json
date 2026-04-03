@@ -8,10 +8,6 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest": "^30.0.0",
     "@types/luxon": "^3.7.1",
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
@@ -38,8 +34,7 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app"
     ]
   },
   "browserslist": {
@@ -55,8 +50,6 @@
     ]
   },
   "devDependencies": {
-    "@testing-library/dom": "^10.4.0",
-    "@types/leaflet": "^1.9.8",
-    "gh-pages": "^6.3.0"
+    "@types/leaflet": "^1.9.8"
   }
 }

@@ -16,15 +16,40 @@ body {
     position: absolute;
     inset: 0;
     z-index: 0;
+  }
 
-    .weather-scene-frost {
+  .weather-scene-frost {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease-out;
+    overflow: hidden;
+
+    .frost-edge {
       position: absolute;
-      inset: 0;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: cover;
-      z-index: 1;
-      transition: opacity 0.15s ease-out;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .frost-left {
+      top: 0;
+      left: 0;
+    }
+
+    .frost-right {
+      top: 0;
+      right: 0;
+    }
+
+    .frost-top {
+      top: 0;
+      left: 0;
+    }
+
+    .frost-bottom {
+      bottom: 0;
+      left: 0;
     }
   }
 
@@ -69,6 +94,33 @@ body {
         var(--c) 100% 50%;
       background-size: 20% 60%;
       animation: l9 1s infinite;
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .App {
+    display: flex;
+    flex-direction: column;
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+    }
+
+    .weather {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      margin-top: 0;
+      padding-top: calc(5rem + 32px);
+      scrollbar-width: none;
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
   }
 }

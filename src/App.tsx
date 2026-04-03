@@ -10,6 +10,7 @@ import { MapPicker } from "./components/map-picker/MapPicker";
 import { type DebugOverrides, mapToSimulationConfig } from "./weather/config";
 import type { DebugBoxPosition } from "./weather-scene/scene/DebugBox";
 import getFormattedWeatherData from "./services/weatherService";
+import { WeatherError } from "./services/errors";
 import { type SimulationConfig, type WeatherQuery, type Units, type WeatherData } from "./weather/types";
 
 const MIN_LOADING_MS = 500;
@@ -64,9 +65,15 @@ const App = (): React.ReactElement => {
       try {
         const data = await getFormattedWeatherData({ ...query, units });
         setWeather(data);
-      } catch (err) {
-        setError("Failed to fetch weather data. Please try again.");
-        console.error("Error fetching weather:", err);
+      } catch (err: unknown) {
+        const code = err instanceof WeatherError ? err.code : null;
+        const message =
+          code === "GEOCODE_FAILED"
+            ? "City not found. Please check the name and try again."
+            : code === "API_ERROR"
+              ? "Weather service is temporarily unavailable."
+              : "Network error. Please check your connection.";
+        setError(message);
       } finally {
         const elapsed = Date.now() - startedAt;
         const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
@@ -103,7 +110,7 @@ const App = (): React.ReactElement => {
               units={units}
               setUnits={setUnits}
             />
-            <WeeklyForecast items={weather.daily} units={units} />
+            <WeeklyForecast items={weather.daily} />
           </>
         )}
         {loading && (

@@ -123,7 +123,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
           <div className="main-middle-info">
             <img
               src={iconUrlFromCode(weather.icon)}
-              alt=""
+              alt={weather.details}
               className="weather-icon"
             />
             <p className="main-condition">{weather.details}</p>
@@ -160,25 +160,25 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
           </div>
 
           <div className="right-wing wing">
-            <div data-tooltip-id="pressure" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
+            <div data-tooltip-id="pressure" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
               <WiBarometer className="wing-icon" />{" "}
               {formatted.pressure}
             </div>
             <WeatherTooltip id="pressure" content="Pressure" />
 
-            <div data-tooltip-id="humidity" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
+            <div data-tooltip-id="humidity" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
               <WiHumidity className="wing-icon" />{" "}
               {formatted.humidity}
             </div>
             <WeatherTooltip id="humidity" content="Humidity" />
 
-            <div data-tooltip-id="min-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
+            <div data-tooltip-id="min-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
               <WiThermometerExterior className="wing-icon" />{" "}
               {formatted.tempMin}
             </div>
             <WeatherTooltip id="min-temp" content="Minimum temperature" />
 
-            <div data-tooltip-id="sunset" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item">
+            <div data-tooltip-id="sunset" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
               <WiSunset className="wing-icon" />{" "}
               {formatted.sunset}
             </div>

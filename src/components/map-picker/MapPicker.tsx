@@ -110,8 +110,12 @@ export function MapPicker({
   }, [picked, onPickLocation, onClose]);
 
   useEffect(() => {
-    if (!open) setPicked(null);
-  }, [open]);
+    if (!open) {
+      setPicked(null);
+    } else if (initialCenter) {
+      setPicked({ lat: initialCenter[0], lon: initialCenter[1] });
+    }
+  }, [open, initialCenter]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

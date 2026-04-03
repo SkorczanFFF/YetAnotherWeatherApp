@@ -1,14 +1,13 @@
 import React from "react";
 import { iconUrlFromCode } from "../../../services/weatherFormatter";
-import { DailyWeather, Units } from "../../../weather/types";
+import { DailyWeather } from "../../../weather/types";
 import "./WeeklyForecast.scss";
 
 interface WeeklyForecastProps {
   items: DailyWeather[];
-  units: Units;
 }
 
-const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
+const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items }) => {
   return (
     <div className="weekly-container">
         <p className="forecast-info">
@@ -20,7 +19,7 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
               <p className="weekday">{item.title}</p>
               <img
                 src={iconUrlFromCode(item.icon)}
-                alt=""
+                alt={item.title}
                 className="weekly-weather-icon"
               />
               <div className="weekly-temp-container">
