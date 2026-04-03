@@ -128,9 +128,22 @@ function computeCelestialState(
   config: SimulationConfig,
   camera: THREE.PerspectiveCamera,
 ): CelestialState {
-  const currentDt = config.useRealtimeClock
-    ? Date.now() / 1000
-    : (config.dt ?? (config.sunrise + config.sunset) / 2);
+  let currentDt: number;
+  if (config.useRealtimeClock) {
+    const now = Date.now() / 1000;
+    const showsSun =
+      config.timeOfDay === "day" ||
+      config.timeOfDay === "dawn" ||
+      config.timeOfDay === "dusk";
+    // When the scene shows daytime but real time has drifted past the
+    // sunrise–sunset window (stale weather data), fall back to the
+    // observation timestamp so the sun stays consistent with the sky.
+    currentDt = showsSun && (now >= config.sunset || now <= config.sunrise)
+      ? (config.dt ?? (config.sunrise + config.sunset) / 2)
+      : now;
+  } else {
+    currentDt = config.dt ?? (config.sunrise + config.sunset) / 2;
+  }
   const sunProgress = getSunProgress(
     currentDt,
     config.sunrise,
