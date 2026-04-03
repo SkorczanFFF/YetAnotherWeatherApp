@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Tooltip } from "react-tooltip";
 import { DateTime } from "luxon";
+import { IconType } from "react-icons";
 import {
   WiHumidity,
   WiStrongWind,
@@ -14,6 +15,8 @@ import {
 import {
   formatToLocalTime,
   iconUrlFromCode,
+  formatTemperature,
+  formatSpeed,
 } from "../../../services/weatherFormatter";
 import { WeatherData, Units } from "../../../weather/types";
 import "./CurrentWeather.scss";
@@ -24,27 +27,31 @@ interface CurrentWeatherProps {
   setUnits: (units: Units) => void;
 }
 
-const formatTemperature = (value: number, units: Units): string =>
-  `${value.toFixed()}°${units === "metric" ? "C" : "F"}`;
-
-const formatSpeed = (value: number, units: Units): string =>
-  `${value.toFixed()} ${units === "metric" ? "km/h" : "mph"}`;
-
-interface WeatherTooltipProps {
+interface WingItem {
   id: string;
-  content: string;
+  tooltip: string;
+  icon: IconType;
+  valueKey: string;
 }
 
-const WeatherTooltip: React.FC<WeatherTooltipProps> = ({ id, content }) => (
-  <Tooltip
-    id={id}
-    place="bottom"
-    variant="light"
-    className="current-weather-tooltip"
-    delayHide={50}
-    content={content}
-  />
-);
+const LEFT_WING_ITEMS: WingItem[] = [
+  { id: "wind", tooltip: "Wind strength", icon: WiStrongWind, valueKey: "speed" },
+  { id: "feels-like", tooltip: "Perceived temperature", icon: WiThermometerInternal, valueKey: "feelsLike" },
+  { id: "max-temp", tooltip: "Maximum temperature", icon: WiThermometer, valueKey: "tempMax" },
+  { id: "sunrise", tooltip: "Sunrise", icon: WiSunrise, valueKey: "sunrise" },
+];
+
+const RIGHT_WING_ITEMS: WingItem[] = [
+  { id: "pressure", tooltip: "Pressure", icon: WiBarometer, valueKey: "pressure" },
+  { id: "humidity", tooltip: "Humidity", icon: WiHumidity, valueKey: "humidity" },
+  { id: "min-temp", tooltip: "Minimum temperature", icon: WiThermometerExterior, valueKey: "tempMin" },
+  { id: "sunset", tooltip: "Sunset", icon: WiSunset, valueKey: "sunset" },
+];
+
+const TOOLTIP_PROPS = {
+  "data-tooltip-position-strategy": "fixed" as const,
+  "data-tooltip-float": true,
+};
 
 const getLiveTimeParts = (timezone: string) => {
   const now = DateTime.now().setZone(timezone);
@@ -69,7 +76,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
     return () => clearInterval(id);
   }, [weather.timezone]);
 
-  const formatted = useMemo(() => ({
+  const formatted: Record<string, string> = useMemo(() => ({
     speed: formatSpeed(weather.speed, units),
     feelsLike: formatTemperature(weather.feels_like, units),
     tempMax: formatTemperature(weather.temp_max, units),
@@ -86,6 +93,26 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
     setUnits(units === "metric" ? "imperial" : "metric");
   };
 
+  const unitSwitchLabel = units === "metric"
+    ? "Click to switch temperature unit to Fahrenheit"
+    : "Click to switch temperature unit to Celsius";
+
+  const renderWingItem = (item: WingItem, side: "left" | "right") => {
+    const Icon = item.icon;
+    return (
+      <React.Fragment key={item.id}>
+        <div data-tooltip-id={item.id} {...TOOLTIP_PROPS} className={`wing-item ${side}`}>
+          {side === "left" ? (
+            <>{formatted[item.valueKey]} <Icon className="wing-icon" /></>
+          ) : (
+            <><Icon className="wing-icon" /> {formatted[item.valueKey]}</>
+          )}
+        </div>
+        <Tooltip id={item.id} place="bottom" variant="light" className="current-weather-tooltip" delayHide={50} content={item.tooltip} />
+      </React.Fragment>
+    );
+  };
+
   return (
     <div className="main-info border">
         <p className="date-time" aria-live="polite">
@@ -95,29 +122,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
         </p>
         <div className="wrapper">
           <div className="left-wing wing">
-            <div data-tooltip-id="wind" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
-              {formatted.speed}{" "}
-              <WiStrongWind className="wing-icon" />
-            </div>
-            <WeatherTooltip id="wind" content="Wind strength" />
-
-            <div data-tooltip-id="feels-like" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
-              {formatted.feelsLike}{" "}
-              <WiThermometerInternal className="wing-icon" />
-            </div>
-            <WeatherTooltip id="feels-like" content="Perceived temperature" />
-
-            <div data-tooltip-id="max-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
-              {formatted.tempMax}{" "}
-              <WiThermometer className="wing-icon" />
-            </div>
-            <WeatherTooltip id="max-temp" content="Maximum temperature" />
-
-            <div data-tooltip-id="sunrise" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item left">
-              {formatted.sunrise}{" "}
-              <WiSunrise className="wing-icon" />
-            </div>
-            <WeatherTooltip id="sunrise" content="Sunrise" />
+            {LEFT_WING_ITEMS.map((item) => renderWingItem(item, "left"))}
           </div>
 
           <div className="main-middle-info">
@@ -127,62 +132,28 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({
               className="weather-icon"
             />
             <p className="main-condition">{weather.details}</p>
-            <h1
+            <button
+              type="button"
               className="main-degrees"
               onClick={handleUnitsClick}
-              role="button"
-              tabIndex={0}
-              aria-label={
-                units === "metric"
-                  ? "Click to switch temperature unit to Fahrenheit"
-                  : "Click to switch temperature unit to Celsius"
-              }
+              aria-label={unitSwitchLabel}
               data-tooltip-id="unit-switch"
-              data-tooltip-position-strategy="fixed"
-              data-tooltip-float={true}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleUnitsClick();
-                }
-              }}
+              {...TOOLTIP_PROPS}
             >
               {formatted.temp}
-            </h1>
-            <WeatherTooltip
+            </button>
+            <Tooltip
               id="unit-switch"
-              content={
-                units === "metric"
-                  ? "Click to switch temperature unit to Fahrenheit"
-                  : "Click to switch temperature unit to Celsius"
-              }
+              place="bottom"
+              variant="light"
+              className="current-weather-tooltip"
+              delayHide={50}
+              content={unitSwitchLabel}
             />
           </div>
 
           <div className="right-wing wing">
-            <div data-tooltip-id="pressure" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
-              <WiBarometer className="wing-icon" />{" "}
-              {formatted.pressure}
-            </div>
-            <WeatherTooltip id="pressure" content="Pressure" />
-
-            <div data-tooltip-id="humidity" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
-              <WiHumidity className="wing-icon" />{" "}
-              {formatted.humidity}
-            </div>
-            <WeatherTooltip id="humidity" content="Humidity" />
-
-            <div data-tooltip-id="min-temp" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
-              <WiThermometerExterior className="wing-icon" />{" "}
-              {formatted.tempMin}
-            </div>
-            <WeatherTooltip id="min-temp" content="Minimum temperature" />
-
-            <div data-tooltip-id="sunset" data-tooltip-position-strategy="fixed" data-tooltip-float={true} className="wing-item right">
-              <WiSunset className="wing-icon" />{" "}
-              {formatted.sunset}
-            </div>
-            <WeatherTooltip id="sunset" content="Sunset" />
+            {RIGHT_WING_ITEMS.map((item) => renderWingItem(item, "right"))}
           </div>
         </div>
         <p className="main-location">{formatted.location}</p>

@@ -6,6 +6,7 @@ body {
   background: #72c5e9;
   /* Set by app from time of day */
   --app-text-color: #000e3d9d;
+  --app-accent-color: #ad5841;
 }
 
 .App {
@@ -54,8 +55,7 @@ body {
   }
 
   .navbar,
-  .weather,
-  .footer {
+  .weather {
     position: relative;
     z-index: 1;
   }
@@ -87,7 +87,7 @@ body {
     .loader {
       width: 45px;
       aspect-ratio: 0.75;
-      --c: no-repeat linear-gradient(#ad5841 0 0);
+      --c: no-repeat linear-gradient(var(--app-accent-color, #ad5841) 0 0);
       background:
         var(--c) 0% 50%,
         var(--c) 50% 50%,
@@ -116,11 +116,15 @@ body {
       min-height: 0;
       overflow-y: auto;
       margin-top: 0;
-      padding-top: calc(5rem + 32px);
+      padding-top: calc(5rem + 16px);
       scrollbar-width: none;
       &::-webkit-scrollbar {
         display: none;
       }
+    }
+
+    .weather-scene-frost .frost-edge {
+      opacity: 0.4;
     }
   }
 }
@@ -128,6 +132,21 @@ body {
 @keyframes l9 {
   33% { background-position: 0% 0%, 50% 100%, 100% 0%; }
   66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .App {
+    .weather .loader {
+      animation: none;
+    }
+    .weather-scene-frost {
+      transition: none;
+    }
+    .weather.is-loading .main-info,
+    .weather.is-loading .atom {
+      filter: none;
+    }
+  }
 }
 
 /* Tooltips render in portal; keep above content */

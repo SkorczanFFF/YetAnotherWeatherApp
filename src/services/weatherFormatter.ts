@@ -126,3 +126,9 @@ export const formatToLocalTime = (
 
 export const iconUrlFromCode = (code: string): string =>
   `https://openweathermap.org/img/wn/${code}@4x.png`;
+
+export const formatTemperature = (value: number, units: string): string =>
+  `${value.toFixed()}°${units === "metric" ? "C" : "F"}`;
+
+export const formatSpeed = (value: number, units: string): string =>
+  `${value.toFixed()} ${units === "metric" ? "km/h" : "mph"}`;

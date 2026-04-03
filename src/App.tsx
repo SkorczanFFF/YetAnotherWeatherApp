@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
-import Footer from "./components/footer/Footer";
 import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
 import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
@@ -119,7 +120,6 @@ const App = (): React.ReactElement => {
           </div>
         )}
       </section>
-      <Footer />
       <MapPicker
         open={mapPanelOpen}
         onClose={() => setMapPanelOpen(false)}
@@ -147,6 +147,14 @@ const App = (): React.ReactElement => {
         freeCamera={freeCamera}
       />
       <Analytics />
+      <ToastContainer
+        position="bottom-right"
+        autoClose={4000}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        theme="dark"
+      />
     </div>
   );
 };

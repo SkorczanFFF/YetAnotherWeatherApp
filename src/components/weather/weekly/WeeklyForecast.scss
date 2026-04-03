@@ -5,7 +5,7 @@
   .forecast-info {
     font-size: 1.25rem;
     padding-left: .25rem;
-    color: #ad5841;
+    color: var(--app-accent-color, #ad5841);
     font-weight: 400;
     u {
       font-weight: 100;
@@ -99,5 +99,20 @@
 @media (max-width: 639px) {
   .weekly-container .weekly-items {
     grid-template-columns: repeat(2, auto);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weekly-container .weekly-items {
+    .atom {
+      transition: none;
+    }
+    .atom-left,
+    .atom-right {
+      transform: none;
+      &:hover {
+        transform: none;
+      }
+    }
   }
 }

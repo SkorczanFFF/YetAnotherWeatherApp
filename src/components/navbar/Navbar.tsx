@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { IoLocationSharp } from "react-icons/io5";
-import { BsSearch, BsMap } from "react-icons/bs";
+import { BsGithub, BsSearch, BsMap } from "react-icons/bs";
+import { toast } from "react-toastify";
 import { WeatherQuery } from "../../weather/types";
 import "./Navbar.scss";
 
@@ -16,17 +17,16 @@ const isValidCityName = (name: string): boolean => {
   return /^[\p{L}\s\-'.]+$/u.test(trimmed);
 };
 
-const Navbar: React.FC<NavbarProps> = ({
-  setQuery,
-  isDebugMode = false,
-  onOpenMapPicker,
-}) => {
+const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false, onOpenMapPicker }) => {
   const [city, setCity] = useState<string>("");
 
   const handleSearch = (): void => {
     const trimmedCity = city.trim();
     if (!trimmedCity) return;
-    if (!isValidCityName(trimmedCity)) return;
+    if (!isValidCityName(trimmedCity)) {
+      toast.error("Please enter a valid city name.");
+      return;
+    }
     setQuery({ q: trimmedCity });
   };
 
@@ -43,9 +43,18 @@ const Navbar: React.FC<NavbarProps> = ({
           const lon = pos.coords.longitude;
           setQuery({ lat, lon });
         },
-        () => {},
+        (err) => {
+          const messages: Record<number, string> = {
+            1: "Location permission denied. Please enable it in browser settings.",
+            2: "Location unavailable. Please try again.",
+            3: "Location request timed out. Please try again.",
+          };
+          toast.error(messages[err.code] || "Unable to get location.");
+        },
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
       );
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
     }
   };
 
@@ -63,19 +72,20 @@ const Navbar: React.FC<NavbarProps> = ({
         )}
       </a>
       <form className="search-container" onSubmit={handleSubmit}>
-        <div className="location-icon-container" onClick={handleLocation}>
+        <button type="button" className="location-icon-container" onClick={handleLocation} aria-label="Use my location">
           <IoLocationSharp className="location-icon" />
-        </div>
+        </button>
         <input
           value={city}
           onChange={(e) => setCity(e.currentTarget.value)}
           type="text"
           placeholder="Enter city"
+          aria-label="Search city"
           className="search-input"
         />
-        <div className="search-button" onClick={handleSearch}>
+        <button type="submit" className="search-button" aria-label="Search">
           <BsSearch />
-        </div>
+        </button>
         {onOpenMapPicker && (
           <button
             type="button"
@@ -87,6 +97,15 @@ const Navbar: React.FC<NavbarProps> = ({
           </button>
         )}
       </form>
+      <div className="git">
+        <a
+          href="https://github.com/SkorczanFFF/YetAnotherWeatherApp"
+          className="git-a"
+        >
+          SkorczanFFF
+        </a>
+        <BsGithub className="git-icon" />
+      </div>
     </nav>
   );
 };

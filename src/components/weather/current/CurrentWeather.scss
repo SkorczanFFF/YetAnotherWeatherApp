@@ -1,5 +1,5 @@
 .main-info {
-  border-radius: .5px;
+  border-radius: 5px;
   width: 600px;
   margin: 0 auto;
   text-align: center;
@@ -82,8 +82,13 @@
         font-weight: 500;
       }
       .main-degrees {
+        border: none;
+        background: none;
+        font-family: inherit;
+        color: inherit;
         font-size: 4rem;
         margin: 0;
+        padding: 0;
         font-weight: 300;
         cursor: pointer;
       }
@@ -179,6 +184,25 @@
     .right-wing {
       grid-column: 2;
       align-items: flex-start !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-info {
+    .date-time .date-time-colon {
+      animation: none;
+    }
+    .wrapper {
+      .wing-item,
+      .left-wing .wing-item,
+      .right-wing .wing-item {
+        transform: none;
+        transition: none;
+        &:hover {
+          transform: none;
+        }
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 .map-picker-backdrop {
   position: fixed;
-  inset: 1;
+  inset: 0;
   z-index: 8000;
   pointer-events: none;
 
@@ -118,7 +118,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.25s ease-out;
-  margin-right:-10px; 
+  margin-right: -10px;
 
   &:hover {
     color: #ff5521;
@@ -166,6 +166,15 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-picker-backdrop__overlay {
+    transition: none;
+  }
+  .map-picker-drawer {
+    transition: none;
   }
 }
 

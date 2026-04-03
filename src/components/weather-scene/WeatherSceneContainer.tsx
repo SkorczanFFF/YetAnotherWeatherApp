@@ -45,8 +45,13 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
       "--app-text-color",
       isNight ? "#eaf2f7" : "#000e3d9d",
     );
+    document.body.style.setProperty(
+      "--app-accent-color",
+      isNight ? "#e8846b" : "#ad5841",
+    );
     return () => {
       document.body.style.removeProperty("--app-text-color");
+      document.body.style.removeProperty("--app-accent-color");
     };
   }, [config?.timeOfDay]);
   const showFrostOverlay =

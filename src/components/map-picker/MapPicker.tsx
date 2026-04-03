@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -61,6 +61,8 @@ export function MapPicker({
 }: MapPickerProps) {
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(DRAWER_WIDTH_MIN);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const center = initialCenter ?? DEFAULT_CENTER;
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
@@ -112,10 +114,42 @@ export function MapPicker({
   useEffect(() => {
     if (!open) {
       setPicked(null);
-    } else if (initialCenter) {
-      setPicked({ lat: initialCenter[0], lon: initialCenter[1] });
+      if (triggerRef.current) {
+        triggerRef.current.focus();
+        triggerRef.current = null;
+      }
+    } else {
+      triggerRef.current = document.activeElement as HTMLElement;
+      if (initialCenter) {
+        setPicked({ lat: initialCenter[0], lon: initialCenter[1] });
+      }
+      requestAnimationFrame(() => closeButtonRef.current?.focus());
     }
   }, [open, initialCenter]);
+
+  useEffect(() => {
+    if (!open) return;
+    const drawer = document.querySelector(".map-picker-drawer") as HTMLElement;
+    if (!drawer) return;
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const focusable = drawer.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleTab);
+    return () => window.removeEventListener("keydown", handleTab);
+  }, [open]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -157,6 +191,7 @@ export function MapPicker({
         <header className="map-picker-header">
           <h2>Pick location</h2>
           <button
+            ref={closeButtonRef}
             type="button"
             className="map-picker-close"
             onClick={onClose}

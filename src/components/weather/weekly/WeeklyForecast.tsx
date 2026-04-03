@@ -10,9 +10,9 @@ interface WeeklyForecastProps {
 const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items }) => {
   return (
     <div className="weekly-container">
-        <p className="forecast-info">
+        <h2 className="forecast-info">
           Weekly <u>forecast</u>
-        </p>
+        </h2>
         <div className="weekly-items">
           {items.map((item, index) => (
             <article key={index} className="atom atom-left border-light">

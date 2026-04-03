@@ -5,6 +5,11 @@
   display: flex;
   flex-direction: row;
   .location-icon-container {
+    border: none;
+    font: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background-color: #000e3d9d;
     box-shadow: 0 4px 30px #0000001a;
     height: 32px;
@@ -38,6 +43,11 @@
     font-family: "Chakra Petch", sans-serif;
     text-transform: capitalize;
     backdrop-filter: blur(4px);
+    color: var(--app-text-color);
+    &::placeholder {
+      color: var(--app-text-color);
+      opacity: 0.6;
+    }
     &:focus {
       outline: none;
       background: #00406b2c;
@@ -47,6 +57,7 @@
 
   .search-button {
     border: none;
+    font: inherit;
     padding: 0.25em 0.35em 0 0.35em;
     border-radius: 0 5px 5px 0;
     background: #000e3d9d;
@@ -83,14 +94,10 @@
     }
     &:hover {
       background: rgba(255, 255, 255, 0.705);
-      .map-icon {
-        color: var(--app-text-color);
-      }
-    }
-    &:focus {
-      outline: none;
+      color: var(--app-text-color);
     }
   }
+
 }
 
 .logo {
@@ -113,13 +120,51 @@
   }
 }
 
+.git {
+  color: var(--app-text-color);
+  position: fixed;
+  right: 5px;
+  top: 5px;
+  font-size: 15px;
+  transition: 0.25s ease-in-out;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  &:hover {
+    color: white;
+  }
+  .git-a {
+    margin: 0;
+    text-decoration: none;
+    color: var(--app-text-color);
+    transition: 0.15s ease-in-out;
+    &:hover {
+      color: white;
+    }
+  }
+  .git-icon {
+    margin: 2px 0 0 3px;
+  }
+}
+
 @media (max-width: 700px) {
   .search-container {
     width: 100%;
-    padding: 2rem 0.5rem 1rem 0.5rem;
+    padding: 2rem 0.5rem 0.5rem 0.5rem;
     box-sizing: border-box;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+
+    .location-icon-container,
+    .search-button,
+    .map-icon-container {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    .search-input {
+      height: 44px;
+    }
   }
 
   .logo {

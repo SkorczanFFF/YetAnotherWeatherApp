@@ -1,39 +1,43 @@
 # Yet Another Weather App
 
-Yet another weather app — but with a fresh-looking UI, animated WebGL cloud background, and interactive weather data. Desktop-focused for now. Hover over items to discover tooltips, click the temperature to toggle units, and enjoy the vibes.
+Yet another weather app — but with a custom 3D WebGL weather scene, gyroscope parallax on mobile, frost overlays, and interactive weather data. Hover over items to discover tooltips, click the temperature to toggle units, and enjoy the vibes.
 
 Don't get wet — check the weather first!
 
 ## Live Demo
 
-[https://skorczanfff.github.io/YetAnotherWeatherApp/](https://skorczanfff.github.io/YetAnotherWeatherApp/)
+[https://yet-another-weather-app-two.vercel.app](https://yet-another-weather-app-two.vercel.app)
 
 ## Features
 
-- **City search** — look up weather by city name; worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback so names like "Warszawa" or "Waszyngton" resolve correctly
+- **City search** — worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback so names like "Warszawa" or "Waszyngton" resolve correctly
 - **Geolocation** — fetch weather for your current location via the browser Geolocation API
-- **Map picker** — open a resizable drawer with an interactive map (Leaflet/OpenStreetMap) to pick a location by clicking; confirm to load weather for that point
+- **Map picker** — resizable drawer with an interactive Leaflet/OpenStreetMap map; click to pick a location, confirm to load weather for that point
 - **Current conditions** — temperature, feels like, min/max, wind speed, pressure, humidity, sunrise/sunset, and weather description with icon
-- **Live date & time** — day name, date, full month, year, and time in the forecast location's timezone, synced every second with a blinking colon
-- **7-day forecast** — weekly outlook displayed as interactive cards with 3D hover effects
-- **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature; tooltip and ARIA label indicate the switch
-- **Weather-driven background** — custom Three.js scene (sky, sun/moon with lens flare, clouds, rain, snow, fog, stars at night, thunderstorm) driven by live weather data; camera parallax on mouse move
-- **Tooltips** — follow cursor on hover, hide after 500 ms on leave, high z-index; dynamic text for unit toggle (e.g. "Click to switch to Fahrenheit")
-- **Loading state** — animated loader (centered, accent color), minimum 500 ms display time (or longer if needed), content blur animation while loading
+- **Live date & time** — day, date, full month, year, and time in the forecast location's timezone, synced every second with a blinking colon
+- **7-day forecast** — weekly outlook displayed as interactive cards
+- **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature
+- **Weather-driven 3D scene** — custom Three.js scene (sky gradients, sun/moon with lens flare, clouds, rain, snow, fog, mist, stars at night, thunderstorm with lightning) driven by live weather data
+- **Gyroscope parallax** — on mobile devices, the camera responds to device tilt via the gyroscope; on desktop, camera follows mouse movement; iOS permission is requested automatically on first tap
+- **Frost overlay** — when temperature drops below 0 °C, frost PNG textures appear on all four screen edges with a smooth fade-in transition
+- **Responsive mobile layout** — sticky search bar with backdrop blur, scrollable weather content, single-column layout
+- **Toast notifications** — error and info messages via react-toastify instead of browser alerts
+- **Tooltips** — follow cursor on hover with dynamic text (e.g. "Click to switch to Fahrenheit")
+- **Loading state** — animated loader with minimum 500 ms display time, content blur animation while loading
 - **Glassmorphism UI** — frosted-glass panels with backdrop blur
-- **Dynamic text color** — all key text colors come from a CSS variable (`--app-text-color`) that switches between day/night palettes based on the simulated time of day
-- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover (0–1), fog density, wind, particles, thunderstorm flag, and more; fog is visible when "fog" is selected; app title shows "DEBUG" when any override is active; free camera mode (C) lets you fly the camera with WASD and mouse orbit to inspect cloud spawn/delete regions
-- **Accessibility** — ARIA attributes, keyboard-navigable unit toggle
+- **Dynamic text color** — CSS variable (`--app-text-color`) switches between day/night palettes based on time of day
+- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover, fog density, wind, particles, thunderstorm flag, and more; free camera mode (**C**) with WASD + mouse orbit
 
-## How the weather scene behaves
+## How the Weather Scene Works
 
-- **Rain vs drizzle**: Rain falls quickly in straight or slightly slanted streaks. Drizzle looks finer and softer, so the scene feels “misty” rather than stormy.
-- **Snow**: Snowflakes fall more slowly than rain and gently sway from side to side, so they drift and float instead of shooting straight down.
-- **Wind**: Stronger wind tilts rain and pushes snow and mist sideways, but snow still feels lighter and less “pushed” than rain.
-- **Fog and mist**: Fog makes distant parts of the scene fade into a soft gray, and high humidity makes fog appear thicker. Mist is lighter and lets more of the background show through.
-- **Clouds**: Clouds move slowly across the sky and respond to wind, but they appear to glide more gently than rain or snow because they are “higher up”.
-- **Thunderstorms**: Heavy rain, darker sky, and occasional bright flashes simulate lightning during stormy conditions.
-- **Cold vibe**: On cold days, a subtle frost texture appears over the scene, giving the glass panels and background a chilly feeling.
+- **Rain vs drizzle** — Rain falls quickly in straight or slightly slanted streaks. Drizzle is finer and softer, creating a misty feeling.
+- **Snow** — Snowflakes fall slowly and gently sway side to side, drifting and floating.
+- **Wind** — Stronger wind tilts rain and pushes snow and mist sideways. Clouds drift with the wind, biased toward the upwind direction for natural spawning.
+- **Fog and mist** — Fog fades distant parts of the scene into soft gray, thickening with humidity. Mist is lighter and more transparent.
+- **Clouds** — Multi-tiered (low/mid/high) clouds move across the sky responding to wind direction and speed. Spawn bounds dynamically scale with camera aspect ratio for correct coverage on any screen size.
+- **Thunderstorms** — Heavy rain, darker sky, and bright lightning flashes with double-flash timing.
+- **Frost** — Below 0 °C, frost textures appear on all four screen edges — left, right, top, and bottom.
+- **Sun and moon** — Position driven by actual sunrise/sunset times. Sun includes a multi-sample lens flare that hides behind clouds via raycasting.
 
 ## Tech Stack
 
@@ -44,23 +48,25 @@ Don't get wet — check the weather first!
 | Styling | Sass (SCSS) |
 | Weather API | [Open-Meteo](https://open-meteo.com/) (free, no API key required) |
 | Geocoding | [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) |
-| 3D Background | Three.js, React Three Fiber, @react-three/drei (e.g. Stars) |
+| 3D Scene | Three.js, React Three Fiber, @react-three/drei |
+| Maps | React Leaflet + OpenStreetMap |
 | Date/Time | Luxon |
-| Icons | react-icons (Weather Icons set) |
+| Icons | react-icons |
 | Tooltips | react-tooltip |
+| Notifications | react-toastify |
 | Analytics | Vercel Analytics |
-| Deployment | GitHub Pages (gh-pages) |
+| Deployment | Vercel |
 
 ## Prerequisites
 
-- **Node.js** 24.x (see `engines` in package.json; use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
+- **Node.js** 24 (use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
 - A WebGL-capable browser
 
 ## Getting Started
 
 ```bash
 # Clone the repository
-git clone https://github.com/skorczanfff/YetAnotherWeatherApp.git
+git clone https://github.com/SkorczanFFF/YetAnotherWeatherApp.git
 cd YetAnotherWeatherApp
 
 # Install dependencies
@@ -78,33 +84,33 @@ The app opens at [http://localhost:3000](http://localhost:3000).
 |---|---|
 | `npm start` | Run the development server |
 | `npm run build` | Create a production build |
-| `npm test` | Run tests with Jest and React Testing Library |
 
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── navbar/          # Search bar, geolocation, map picker trigger
+│   ├── navbar/              # Search bar, geolocation, map picker trigger
 │   ├── weather/
-│   │   ├── current/     # Current weather display
-│   │   └── weekly/      # 7-day forecast cards
-│   ├── map-picker/      # Resizable drawer with Leaflet map to pick location
-│   ├── weather-scene/   # Thin wrapper that mounts the 3D scene
-│   ├── debug-menu/      # F7 overlay: effect type, intensity, cloud cover, fog, wind, etc.
-│   └── footer/          # Footer with attribution
-├── weather-scene/       # 3D scene: SkyBackground, CelestialBodies, CloudEffect, Rain/Snow/Mist/Fog, Stars, Lightning, CameraRig
-├── weather-simulation/  # Bounds, camera frustum, physics helpers
-├── weather/             # Config, sun progress, weather codes
-├── services/
-│   └── weatherService.ts  # API calls, data formatting, geocoding
-├── types/
-│   └── weather.ts       # TypeScript interfaces (WeatherData, Units, etc.)
-├── App.tsx              # Root component, state, WeatherScene, DebugMenu
-├── index.tsx            # Entry point
-└── index.scss           # Global styles and fonts
+│   │   ├── current/         # Current weather display
+│   │   └── weekly/          # 7-day forecast cards
+│   ├── map-picker/          # Resizable drawer with Leaflet map
+│   ├── weather-scene/       # Container: mounts 3D scene + frost overlay
+│   └── debug-menu/          # F7 overlay for simulation overrides
+├── weather-scene/
+│   ├── scene/               # CameraRig, useDeviceOrientation, SkyBackground, DebugBox, FreeCameraWASD
+│   ├── effects/             # CelestialBodies, CloudEffect, Rain, Snow, Mist, Fog, Lightning
+│   │   └── clouds/          # Cloud builder, tiers, spawning, color, constants
+│   ├── physics/             # Wind and weather physics helpers
+│   ├── cameraFrustum.ts     # Frustum-based spawn bounds calculation
+│   └── WeatherScene.tsx     # R3F Canvas and scene composition
+├── weather/                 # Config, types, sun progress, weather codes
+├── services/                # API calls, geocoding, data formatting, error types
+├── App.tsx                  # Root component, state management
+├── index.tsx                # Entry point
+└── index.scss               # Global styles, frost overlay, mobile layout
 ```
 
 ## API
 
-This app uses the [Open-Meteo API](https://open-meteo.com/) — a free, open-source weather API that requires no API key or registration. No environment variables are needed to run the project.
+This app uses the [Open-Meteo API](https://open-meteo.com/) — a free, open-source weather API that requires no API key or registration. No environment variables are needed.

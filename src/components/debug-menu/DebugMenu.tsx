@@ -124,6 +124,8 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.closest("input, textarea, select, [contenteditable]")) return;
       const step = DEBUG_BOX_STEP;
       const update = (delta: Partial<DebugBoxPosition>) => {
         onDebugBoxPositionChange({
@@ -183,10 +185,10 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
         <div className="debug-menu-header">
           <h2>Debug panel</h2>
           <div className="debug-menu-header-actions">
-            <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto">
+            <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto" aria-label="Reset all to auto">
               <MdRestartAlt />
             </button>
-            <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close">
+            <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close" aria-label="Close debug menu">
               <VscClose />
             </button>
           </div>
