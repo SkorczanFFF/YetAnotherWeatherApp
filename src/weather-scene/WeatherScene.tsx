@@ -3,14 +3,13 @@ import { Canvas } from "@react-three/fiber";
 import { Stars, OrbitControls, Stats } from "@react-three/drei";
 import type { SimulationConfig } from "./types";
 import { SceneRefsProvider } from "./SceneRefsContext";
-import { SkyBackground } from "./scene/SkyBackground";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
 import { FreeCameraWASD } from "./scene/FreeCameraWASD";
 import { FogEffect } from "./effects/FogEffect";
 import { RainEffect } from "./effects/RainEffect";
 import { SnowEffect } from "./effects/SnowEffect";
-import { CloudEffect } from "./effects/CloudEffect";
+import { VolumetricClouds } from "./effects/VolumetricClouds";
 import { MistEffect } from "./effects/MistEffect";
 import { LightningEffect } from "./effects/LightningEffect";
 import { CelestialBodies } from "./effects/CelestialBodies";
@@ -37,12 +36,11 @@ function SceneContent({
   debugBoxPosition?: DebugBoxPosition;
   freeCamera?: boolean;
 }) {
-  const ambientIntensity = 1;
+  const ambientIntensity = 0.4;
 
   return (
     <>
       <ambientLight intensity={ambientIntensity} />
-      <SkyBackground config={config} />
       <CelestialBodies config={config} />
       {config.timeOfDay === "night" && (
         <Stars
@@ -67,8 +65,8 @@ function SceneContent({
       <FogEffect config={config} />
       <RainEffect config={config} />
       <SnowEffect config={config} />
-      <CloudEffect config={config} />
       <MistEffect config={config} />
+      <VolumetricClouds config={config} />
       {showDebugBox && debugBoxPosition && (
         <DebugBox position={debugBoxPosition} />
       )}
@@ -107,7 +105,7 @@ export function WeatherScene({
       }}
     >
       <Canvas
-        camera={{ position: [0, 0, 5], fov: 75 }}
+        camera={{ position: [0, 0, 5], fov: 75, near: 0.1, far: 1_000_000 }}
         gl={{ alpha: true, antialias: true }}
         eventSource={eventSource}
         eventPrefix="client"

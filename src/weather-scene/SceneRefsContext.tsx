@@ -4,6 +4,10 @@ import * as THREE from "three";
 
 export interface SceneRefsContextValue {
   cloudGroupRef: RefObject<THREE.Group | null>;
+  sunMeshRef: RefObject<THREE.Mesh | null>;
+  moonMeshRef: RefObject<THREE.Mesh | null>;
+  sunWorldPosRef: RefObject<THREE.Vector3>;
+  moonWorldPosRef: RefObject<THREE.Vector3>;
 }
 
 const SceneRefsContext = createContext<SceneRefsContextValue | null>(null);
@@ -20,7 +24,17 @@ export function useSceneRefsRequired(): SceneRefsContextValue {
 
 export function SceneRefsProvider({ children }: { children: React.ReactNode }) {
   const cloudGroupRef = useRef<THREE.Group | null>(null);
-  const value: SceneRefsContextValue = { cloudGroupRef };
+  const sunMeshRef = useRef<THREE.Mesh | null>(null);
+  const moonMeshRef = useRef<THREE.Mesh | null>(null);
+  const sunWorldPosRef = useRef(new THREE.Vector3());
+  const moonWorldPosRef = useRef(new THREE.Vector3());
+  const value: SceneRefsContextValue = {
+    cloudGroupRef,
+    sunMeshRef,
+    moonMeshRef,
+    sunWorldPosRef,
+    moonWorldPosRef,
+  };
   return (
     <SceneRefsContext.Provider value={value}>
       {children}

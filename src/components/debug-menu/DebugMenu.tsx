@@ -4,7 +4,6 @@ import { MdRestartAlt } from "react-icons/md";
 import type { DebugOverrides } from "../../weather/config";
 import type { EffectType, Intensity, TimeOfDay, SimulationConfig } from "../../weather/types";
 import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
-import { getTierForCover } from "../../weather-scene/effects/clouds/cloudTiers";
 import "./DebugMenu.scss";
 
 const DEBUG_BOX_STEP = 0.5;
@@ -256,7 +255,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             <DebugNumericField label="Wind dir (°)" field="windDirection" step={5} min={0} max={360} currentDisplay={c != null ? String(c.windDirection) : null} overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">
-            <DebugNumericField label="Cloud count" field="cloudCount" step={10} min={0} max={400} currentDisplay={c != null ? `${getTierForCover(c.cloudCover).name}: ${getTierForCover(c.cloudCover).count}` : null} overrides={o} onSet={set} />
+            <DebugNumericField label="Cloud count" field="cloudCount" step={10} min={0} max={400} currentDisplay={c != null ? `cover ${c.cloudCover.toFixed(2)}` : null} overrides={o} onSet={set} />
             <DebugNumericField label="Cloud cover" field="cloudCover" step={0.05} min={0} max={1} currentDisplay={c != null ? String(c.cloudCover) : null} overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">

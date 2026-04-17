@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { FrustumBounds } from "../types";
-import { getSpawnX, getSpawnZ } from "../cameraFrustum";
 import { WIND_GUST_VARIANCE, windToXZ } from "../physics/weatherPhysics";
 
 export interface SpawnParams {
@@ -12,8 +11,10 @@ export interface SpawnParams {
 }
 
 export function computeSpawnParams(bounds: FrustumBounds): SpawnParams {
-  const { center: xCenter, radius: xRadius } = getSpawnX(bounds);
-  const { center: zCenter, radius: zRadius } = getSpawnZ(bounds);
+  const xCenter = (bounds.spawnXMin + bounds.spawnXMax) / 2;
+  const xRadius = (bounds.spawnXMax - bounds.spawnXMin) / 2;
+  const zCenter = (bounds.spawnZMin + bounds.spawnZMax) / 2;
+  const zRadius = (bounds.spawnZMax - bounds.spawnZMin) / 2;
   return {
     xCenter,
     xRadius,
