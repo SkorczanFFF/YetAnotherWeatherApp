@@ -1,8 +1,8 @@
+// Public surface of the effects module. CelestialBodies, VolumetricClouds,
+// GodRays, and LensFlare are mounted internally by SkyStage — they don't
+// need a barrel export. Particle / fog / lightning effects are scene-level
+// siblings of SkyStage, so they're the only ones re-exported here.
 export { SkyStage } from "./SkyStage";
-export { CelestialBodies } from "./CelestialBodies";
-export { VolumetricClouds } from "./VolumetricClouds";
-export { GodRays } from "./GodRays";
-export { LensFlare } from "./LensFlare";
 export { RainEffect } from "./RainEffect";
 export { SnowEffect } from "./SnowEffect";
 export { MistEffect } from "./MistEffect";

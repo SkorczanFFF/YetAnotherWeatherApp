@@ -4,23 +4,22 @@
   z-index: 8000;
   pointer-events: none;
 
-  &--open {
-    pointer-events: auto;
-  }
+  &--open { pointer-events: auto; }
 }
 
 .map-picker-backdrop__overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(1px);
+  border: 0;
+  padding: 0;
+  background: oklch(0 0 0 / 0.32);
+  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
   opacity: 0;
   transition: opacity 0.25s ease-out;
 
-  .map-picker-backdrop--open & {
-    opacity: 1;
-  }
+  .map-picker-backdrop--open & { opacity: 1; }
 }
 
 .map-picker-drawer {
@@ -31,97 +30,145 @@
   max-width: 800px;
   height: 100vh;
   z-index: 8001;
-  background: rgba(31, 31, 31, 0.02);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #fff;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.35);
+  background: oklch(0.18 0.02 240 / 0.55);
+  border-left: 1px solid var(--stroke);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  color: var(--fg);
+  box-shadow: -16px 0 40px oklch(0 0 0 / 0.4);
   display: flex;
   flex-direction: column;
-  transition: transform 0.25s ease-out;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
   transform: translateX(100%);
-  font-family: "Chakra Petch", "Noto Sans", sans-serif;
+  font-family: var(--font-sans);
 
-  &--open {
-    transform: translateX(0);
-  }
+  &--open { transform: translateX(0); }
 }
 
 .map-picker-drawer__resize-handle {
   position: absolute;
-  left: -8px;
+  left: -10px;
   top: 0;
   bottom: 0;
-  width: 8px;
+  width: 12px;
   cursor: col-resize;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  isolation: isolate;
   visibility: hidden;
   pointer-events: none;
+  background: transparent;
 
   .map-picker-drawer--open & {
     visibility: visible;
     pointer-events: auto;
   }
 
-  &:hover,
-  &:active {
-    background: rgba(255, 255, 255, 0.08);
+  &::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--stroke);
+    transition: background 0.2s;
+  }
+
+  &:hover::before,
+  &:active::before {
+    background: var(--accent-warm);
   }
 }
 
-.map-picker-drawer__resize-handle-icon {
+.map-picker-drawer__resize-grip {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.55);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 999px;
+  background: var(--fill);
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   pointer-events: none;
-  flex-shrink: 0;
+  transition: border-color 0.2s, background 0.2s;
+
+  span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--fg-mute);
+  }
 
   .map-picker-drawer__resize-handle:hover &,
   .map-picker-drawer__resize-handle:active & {
-    color: rgba(255, 255, 255, 0.9);
+    background: var(--fill-strong);
+    border-color: var(--accent-warm);
+
+    span { background: var(--fg); }
   }
 }
 
 .map-picker-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--stroke);
   flex-shrink: 0;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+
+  &__pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--fill);
+    border: 1px solid var(--stroke);
+    color: var(--accent-warm);
+    flex: none;
+
+    svg { width: 14px; height: 14px; }
+  }
 
   h2 {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
   }
 }
 
 .map-picker-close {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.8);
-  display: flex;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s ease-out;
-  margin-right: -10px;
+  border: 1px solid var(--stroke);
+  background: var(--fill);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--fg-mute);
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+
+  svg { width: 14px; height: 14px; }
 
   &:hover {
-    color: #ff5521;
+    color: var(--fg);
+    background: var(--fill-strong);
+    border-color: var(--stroke-strong);
   }
 }
 
@@ -136,58 +183,164 @@
   flex: 1;
   min-height: 200px;
   width: 100%;
+  position: relative;
+
+  .leaflet-container {
+    background: oklch(0.22 0.02 240);
+    font-family: var(--font-sans);
+  }
+
+  .leaflet-control-zoom {
+    border: 1px solid var(--stroke) !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+    background: var(--fill);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: 0 6px 20px oklch(0 0 0 / 0.3);
+
+    a {
+      background: transparent !important;
+      color: var(--fg-dim) !important;
+      border-bottom: 1px solid var(--stroke) !important;
+      transition: background 0.2s, color 0.2s;
+
+      &:last-child { border-bottom: 0 !important; }
+      &:hover {
+        background: var(--fill-strong) !important;
+        color: var(--fg) !important;
+      }
+    }
+  }
+
+  .leaflet-control-attribution {
+    background: oklch(0 0 0 / 0.55) !important;
+    color: var(--fg-mute) !important;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    padding: 3px 6px;
+    border-top-left-radius: 6px;
+
+    a { color: var(--fg-dim) !important; }
+    a:hover { color: var(--accent-warm) !important; }
+  }
+
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    background: oklch(0.18 0.02 240 / 0.92);
+    color: var(--fg);
+    border: 1px solid var(--stroke);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    box-shadow: 0 6px 24px oklch(0 0 0 / 0.4);
+  }
+  .leaflet-popup-content {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    margin: 8px 12px;
+    color: var(--fg-dim);
+  }
+  .leaflet-popup-close-button {
+    color: var(--fg-mute) !important;
+    &:hover { color: var(--fg) !important; }
+  }
 }
 
 .map-picker-actions {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--stroke);
+  background: oklch(0.16 0.02 240 / 0.4);
+}
+
+.map-picker-coords {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+
+  .k {
+    color: var(--fg-faint);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .v {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .v.map-picker-coords--empty {
+    color: var(--fg-mute);
+    font-style: normal;
+  }
 }
 
 .map-picker-confirm {
-  padding: 0.75rem;
-  font-size: 0.9375rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
-  border: none;
-  background: #EB6E4B;
-  color: #fff;
-  cursor: pointer;
-  transition: all 0.25s ease-out;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-family: "Chakra Petch", "Noto Sans", sans-serif;
+  color: var(--fg);
+  background: var(--accent-warm);
+  border: 1px solid var(--accent-warm);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
 
   &:hover:not(:disabled) {
-    background: #e75931;
+    background: oklch(0.86 0.16 62);
+    border-color: oklch(0.86 0.16 62);
   }
 
   &:disabled {
-    opacity: 0.5;
+    background: var(--fill);
+    border-color: var(--stroke);
+    color: var(--fg-mute);
     cursor: not-allowed;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .map-picker-backdrop__overlay {
-    transition: none;
-  }
-  .map-picker-drawer {
-    transition: none;
-  }
+  .map-picker-backdrop__overlay,
+  .map-picker-drawer { transition: none; }
 }
 
-// Ensure Leaflet doesn’t collapse our custom marker (pin uses inline styles in TSX)
+// Keep Leaflet from collapsing the custom marker pin
 :global(.map-picker-marker) {
   background: none !important;
   border: none !important;
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
   z-index: 1000 !important;
   display: flex !important;
   align-items: flex-end !important;
   justify-content: center !important;
+
+  filter: drop-shadow(0 4px 8px oklch(0 0 0 / 0.45));
+
+  .map-picker-marker__pin svg {
+    width: 100%;
+    height: 100%;
+  }
 }

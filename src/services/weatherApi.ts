@@ -14,20 +14,31 @@ export interface OpenMeteoCurrentData {
   wind_speed_10m: number;
   wind_direction_10m: number;
   is_day: number;
+  cloud_cover: number;
+  visibility: number;
+  uv_index: number;
+  dew_point_2m: number;
+  precipitation: number;
+}
+
+export interface OpenMeteoHourlyData {
+  time: string[];
+  temperature_2m: number[];
+  precipitation_probability: number[];
+  weather_code: number[];
 }
 
 export interface OpenMeteoDailyData {
   time: string[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
-  apparent_temperature_max: number[];
-  apparent_temperature_min: number[];
   weather_code: number[];
   sunrise: string[];
   sunset: string[];
-  precipitation_sum: number[];
+  precipitation_probability_max: number[];
   wind_speed_10m_max: number[];
-  wind_gusts_10m_max: number[];
+  wind_direction_10m_dominant: number[];
+  uv_index_max: number[];
 }
 
 export interface OpenMeteoResponse {
@@ -37,6 +48,7 @@ export interface OpenMeteoResponse {
   timezone_abbreviation: string;
   elevation: number;
   current: OpenMeteoCurrentData;
+  hourly: OpenMeteoHourlyData;
   daily: OpenMeteoDailyData;
   current_units: Record<string, string>;
   daily_units: Record<string, string>;
@@ -49,7 +61,10 @@ export interface OpenMeteoQueryParams {
   temperature_unit: string;
   wind_speed_unit: string;
   current: string;
+  hourly: string;
   daily: string;
+  forecast_hours?: number;
+  forecast_days?: number;
 }
 
 export const getWeatherData = async (

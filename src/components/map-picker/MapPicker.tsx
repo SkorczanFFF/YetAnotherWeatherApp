@@ -2,16 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { VscClose } from "react-icons/vsc";
-import { IoPinSharp } from "react-icons/io5";
-import { BsGripVertical } from "react-icons/bs";
 import "leaflet/dist/leaflet.css";
 import "./MapPicker.scss";
 
 const DRAWER_WIDTH_MIN = 385;
 const DRAWER_WIDTH_MAX = 800;
 
-const PIN_SIZE = 32;
+const PIN_SIZE = 36;
 
 function createMarkerIcon(pinSvgHtml: string): L.DivIcon {
   return L.divIcon({
@@ -21,6 +18,17 @@ function createMarkerIcon(pinSvgHtml: string): L.DivIcon {
     iconAnchor: [PIN_SIZE / 2, PIN_SIZE],
   });
 }
+
+const PinSvg = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path
+      d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z"
+      fill="oklch(0.82 0.14 62)"
+      stroke="oklch(0.34 0.06 240)"
+    />
+    <circle cx="12" cy="9" r="2.6" fill="oklch(0.34 0.06 240)" stroke="none" />
+  </svg>
+);
 
 const DEFAULT_CENTER: [number, number] = [52, 21];
 const DEFAULT_ZOOM = 4;
@@ -91,8 +99,12 @@ export function MapPicker({
   const pinIconHtml = useMemo(
     () =>
       renderToStaticMarkup(
-        <span aria-hidden="true" className="map-picker-marker__pin">
-          <IoPinSharp size={PIN_SIZE} color="#dc2626" />
+        <span
+          aria-hidden="true"
+          className="map-picker-marker__pin"
+          style={{ width: PIN_SIZE, height: PIN_SIZE, display: "block" }}
+        >
+          <PinSvg />
         </span>
       ),
     []
@@ -186,9 +198,17 @@ export function MapPicker({
           role="presentation"
           aria-hidden
         >
-          <BsGripVertical className="map-picker-drawer__resize-handle-icon" aria-hidden />
+          <span className="map-picker-drawer__resize-grip" aria-hidden>
+            <span /><span /><span />
+          </span>
         </div>
         <header className="map-picker-header">
+          <span className="map-picker-header__pin" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
+              <circle cx="12" cy="9" r="2.5" />
+            </svg>
+          </span>
           <h2>Pick location</h2>
           <button
             ref={closeButtonRef}
@@ -197,7 +217,9 @@ export function MapPicker({
             onClick={onClose}
             aria-label="Close"
           >
-            <VscClose size={20} />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
           </button>
         </header>
         <div className="map-picker-body">
@@ -230,12 +252,25 @@ export function MapPicker({
             </div>
           )}
           <div className="map-picker-actions">
+            <div className="map-picker-coords" aria-live="polite">
+              <span className="k">Selected</span>
+              {picked ? (
+                <span className="v">
+                  Lat {picked.lat.toFixed(3)} · Lon {picked.lon.toFixed(3)}
+                </span>
+              ) : (
+                <span className="v map-picker-coords--empty">Click on the map to pick</span>
+              )}
+            </div>
             <button
               type="button"
               className="map-picker-confirm"
               onClick={handleConfirm}
               disabled={!picked}
             >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
               Use this location
             </button>
           </div>

@@ -53,14 +53,11 @@ export interface DebugOverrides {
   fogDensity?: number | "auto";
   timeOfDay?: TimeOfDay | "auto";
   cloudCover?: number | "auto";
-  cloudCount?: number | "auto";
   windSpeed?: number | "auto";
   windDirection?: number | "auto";
   parallaxAmount?: number | "auto";
   temperature?: number | "auto";
   humidity?: number | "auto";
-  cloudOpacity?: number | "auto";
-  cloudColor?: number | "auto";
 }
 
 const DEFAULT_CONFIG: SimulationConfig = {
@@ -198,10 +195,6 @@ export function mapToSimulationConfig(
     fogDensity,
     thunderstorm: effectType === "thunderstorm",
     cloudCover,
-    cloudCount:
-      o.cloudCount !== undefined && o.cloudCount !== "auto"
-        ? o.cloudCount
-        : undefined,
     windSpeed:
       o.windSpeed !== undefined && o.windSpeed !== "auto"
         ? o.windSpeed
@@ -226,13 +219,5 @@ export function mapToSimulationConfig(
     temperature,
     humidity,
     isDrizzle,
-    cloudOpacity:
-      o.cloudOpacity !== undefined && o.cloudOpacity !== "auto"
-        ? o.cloudOpacity
-        : undefined,
-    cloudColorOverride:
-      o.cloudColor !== undefined && o.cloudColor !== "auto"
-        ? o.cloudColor
-        : undefined,
   };
 }

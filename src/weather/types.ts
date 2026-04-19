@@ -10,9 +10,23 @@ export type Units = "metric" | "imperial";
 
 export interface DailyWeather {
   title: string;
+  date: string;
   temp: number;
   temp_min: number;
   icon: string;
+  details: string;
+  precip_prob: number;
+  wind_max: number;
+  wind_dir?: number;
+  uv_max: number;
+}
+
+export interface HourlyForecast {
+  /** Unix seconds */
+  time: number;
+  temp: number;
+  precip_prob: number;
+  weather_code: number;
 }
 
 export interface WeatherData {
@@ -29,14 +43,29 @@ export interface WeatherData {
   feels_like: number;
   sunrise: number;
   sunset: number;
+  /** Tomorrow's sunrise (Unix seconds) — used for night moon arc. */
+  next_sunrise?: number;
+  /** Yesterday/today's sunset before sunrise — for pre-dawn night phase. */
+  prev_sunset?: number;
   humidity: number;
   speed: number;
   details: string;
   icon: string;
   daily: DailyWeather[];
+  hourly: HourlyForecast[];
   weather_code: number;
   is_day: number;
   wind_direction?: number;
+  /** Cloud cover %, 0–100. */
+  cloud_cover?: number;
+  /** Visibility in metres. */
+  visibility?: number;
+  /** UV index (current). */
+  uv_index?: number;
+  /** Dew point in the same temp unit as `temp`. */
+  dew_point?: number;
+  /** Current precipitation rate (mm or in). */
+  precipitation?: number;
 }
 
 export type EffectType =
@@ -57,7 +86,6 @@ export interface SimulationConfig {
   fogDensity: number;
   thunderstorm: boolean;
   cloudCover: number;
-  cloudCount?: number;
   windSpeed: number;
   windDirection: number;
   timeOfDay: TimeOfDay;
@@ -75,10 +103,6 @@ export interface SimulationConfig {
   humidity?: number;
   /** Drizzle (WMO 51–57): different fall speed and wind factor. */
   isDrizzle?: boolean;
-  /** Debug override: cloud opacity multiplier (0–1). undefined = auto from cloud cover. */
-  cloudOpacity?: number;
-  /** Debug override: cloud color (0 = white, 1 = dark gray). undefined = auto from weather. */
-  cloudColorOverride?: number;
   /** Height fog falloff rate. Higher = fog hugs ground more. Default 0.25. */
   fogHeightFalloff?: number;
 }

@@ -30,24 +30,26 @@ const TIME_OPTIONS: (TimeOfDay | "auto")[] = [
   "dusk",
 ];
 
+const OVERRIDE_KEYS: (keyof DebugOverrides)[] = [
+  "effectType",
+  "intensity",
+  "particleCount",
+  "fogDensity",
+  "timeOfDay",
+  "cloudCover",
+  "windSpeed",
+  "windDirection",
+  "parallaxAmount",
+  "temperature",
+  "humidity",
+];
+
 export function isOverridesDirty(overrides: DebugOverrides | null): boolean {
   if (!overrides) return false;
-  const o = overrides;
-  return (
-    (o.effectType !== undefined && o.effectType !== "auto") ||
-    (o.intensity !== undefined && o.intensity !== "auto") ||
-    (o.particleCount !== undefined && o.particleCount !== "auto") ||
-    (o.fogDensity !== undefined && o.fogDensity !== "auto") ||
-    (o.timeOfDay !== undefined && o.timeOfDay !== "auto") ||
-    (o.cloudCover !== undefined && o.cloudCover !== "auto") ||
-    (o.windSpeed !== undefined && o.windSpeed !== "auto") ||
-    (o.windDirection !== undefined && o.windDirection !== "auto") ||
-    (o.parallaxAmount !== undefined && o.parallaxAmount !== "auto") ||
-    (o.temperature !== undefined && o.temperature !== "auto") ||
-    (o.humidity !== undefined && o.humidity !== "auto") ||
-    (o.cloudOpacity !== undefined && o.cloudOpacity !== "auto") ||
-    (o.cloudColor !== undefined && o.cloudColor !== "auto")
-  );
+  return OVERRIDE_KEYS.some((k) => {
+    const v = overrides[k];
+    return v !== undefined && v !== "auto";
+  });
 }
 
 interface DebugMenuProps {
@@ -254,14 +256,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             <DebugNumericField label="Wind speed" field="windSpeed" step={2} min={0} currentDisplay={c != null ? String(c.windSpeed) : null} overrides={o} onSet={set} />
             <DebugNumericField label="Wind dir (°)" field="windDirection" step={5} min={0} max={360} currentDisplay={c != null ? String(c.windDirection) : null} overrides={o} onSet={set} />
           </div>
-          <div className="debug-menu-row">
-            <DebugNumericField label="Cloud count" field="cloudCount" step={10} min={0} max={400} currentDisplay={c != null ? `cover ${c.cloudCover.toFixed(2)}` : null} overrides={o} onSet={set} />
-            <DebugNumericField label="Cloud cover" field="cloudCover" step={0.05} min={0} max={1} currentDisplay={c != null ? String(c.cloudCover) : null} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-row">
-            <DebugNumericField label="Cloud opacity" field="cloudOpacity" step={0.05} min={0} max={1} currentDisplay={c != null ? "auto" : null} overrides={o} onSet={set} />
-            <DebugNumericField label="Cloud color" field="cloudColor" step={0.05} min={0} max={1} currentDisplay={c != null ? "auto" : null} placeholder="auto (0=white, 1=gray)" overrides={o} onSet={set} />
-          </div>
+          <DebugNumericField label="Cloud cover" field="cloudCover" step={0.05} min={0} max={1} half={false} currentDisplay={c != null ? c.cloudCover.toFixed(2) : null} overrides={o} onSet={set} />
           <div className="debug-menu-row">
             <DebugNumericField label="Particles" field="particleCount" step={10} min={0} currentDisplay={c != null ? String(c.particleCount) : null} overrides={o} onSet={set} />
             <DebugNumericField label="Fog density" field="fogDensity" step={0.1} min={0} currentDisplay={c != null ? c.fogDensity.toFixed(3) : null} overrides={o} onSet={set} />

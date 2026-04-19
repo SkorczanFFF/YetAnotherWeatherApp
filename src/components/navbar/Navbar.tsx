@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { IoLocationSharp } from "react-icons/io5";
-import { BsGithub, BsSearch, BsMap } from "react-icons/bs";
 import { toast } from "react-toastify";
-import { WeatherQuery } from "../../weather/types";
+import { WeatherQuery, Units } from "../../weather/types";
 import "./Navbar.scss";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery) => void;
   isDebugMode?: boolean;
   onOpenMapPicker?: () => void;
+  units: Units;
+  setUnits: (units: Units) => void;
 }
 
 const isValidCityName = (name: string): boolean => {
@@ -17,7 +17,13 @@ const isValidCityName = (name: string): boolean => {
   return /^[\p{L}\s\-'.]+$/u.test(trimmed);
 };
 
-const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false, onOpenMapPicker }) => {
+const Navbar: React.FC<NavbarProps> = ({
+  setQuery,
+  isDebugMode = false,
+  onOpenMapPicker,
+  units,
+  setUnits,
+}) => {
   const [city, setCity] = useState<string>("");
 
   const handleSearch = (): void => {
@@ -36,77 +42,100 @@ const Navbar: React.FC<NavbarProps> = ({ setQuery, isDebugMode = false, onOpenMa
   };
 
   const handleLocation = (): void => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          setQuery({ lat, lon });
-        },
-        (err) => {
-          const messages: Record<number, string> = {
-            1: "Location permission denied. Please enable it in browser settings.",
-            2: "Location unavailable. Please try again.",
-            3: "Location request timed out. Please try again.",
-          };
-          toast.error(messages[err.code] || "Unable to get location.");
-        },
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
-      );
-    } else {
+    if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser.");
+      return;
     }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setQuery({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      (err) => {
+        const messages: Record<number, string> = {
+          1: "Location permission denied. Please enable it in browser settings.",
+          2: "Location unavailable. Please try again.",
+          3: "Location request timed out. Please try again.",
+        };
+        toast.error(messages[err.code] || "Unable to get location.");
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
   };
 
   return (
-    <nav className="navbar">
-      <a href="https://mskorus.pl/" className="logo">
-        {isDebugMode ? (
-          "DEBUG"
-        ) : (
-          <>
-            <u>YET ANOTHER</u>
-            <br />
-            WEATHER APP
-          </>
-        )}
+    <header className="topbar">
+      <a className="brand" href="https://mskorus.pl/" aria-label="Yet Another Weather App">
+        <span className="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none" />
+            <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+          </svg>
+        </span>
+        <span className="brand-text">
+          {isDebugMode ? "DEBUG MODE" : "YET ANOTHER WEATHER APP"}
+        </span>
       </a>
-      <form className="search-container" onSubmit={handleSubmit}>
-        <button type="button" className="location-icon-container" onClick={handleLocation} aria-label="Use my location">
-          <IoLocationSharp className="location-icon" />
+
+      <form className="search-group" role="search" onSubmit={handleSubmit}>
+        <button
+          type="button"
+          className="icon-btn loc-btn"
+          onClick={handleLocation}
+          aria-label="Use my location"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
         </button>
-        <input
-          value={city}
-          onChange={(e) => setCity(e.currentTarget.value)}
-          type="text"
-          placeholder="Enter city"
-          aria-label="Search city"
-          className="search-input"
-        />
-        <button type="submit" className="search-button" aria-label="Search">
-          <BsSearch />
-        </button>
+        <div className="search">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.currentTarget.value)}
+            type="text"
+            placeholder="Search city…"
+            aria-label="Search city"
+          />
+          <button type="submit" className="search-submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
+        </div>
         {onOpenMapPicker && (
           <button
             type="button"
-            className="map-icon-container"
+            className="icon-btn map-btn"
             onClick={onOpenMapPicker}
-            aria-label="Pick location on map"
+            aria-label="Pick location from map"
           >
-            <BsMap className="map-icon" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 3 3 5.5v15.5L9 18l6 3 6-2.5V3l-6 2.5L9 3Z" />
+              <path d="M9 3v15" />
+              <path d="M15 5.5V21" />
+            </svg>
           </button>
         )}
       </form>
-      <div className="git">
-        <a
-          href="https://github.com/SkorczanFFF/YetAnotherWeatherApp"
-          className="git-a"
-        >
-          SkorczanFFF
-        </a>
-        <BsGithub className="git-icon" />
+
+      <div className="tools">
+        <div className="unit-toggle" role="group" aria-label="Units">
+          <button
+            type="button"
+            className={units === "metric" ? "on" : ""}
+            onClick={() => setUnits("metric")}
+          >
+            °C
+          </button>
+          <button
+            type="button"
+            className={units === "imperial" ? "on" : ""}
+            onClick={() => setUnits("imperial")}
+          >
+            °F
+          </button>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

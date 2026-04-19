@@ -1,20 +1,60 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,200;0,300;0,400;0,500;0,700;1,400;1,500&display=swap");
+:root {
+  --font-sans: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --fg: oklch(0.985 0.005 95);
+  --fg-dim: oklch(0.985 0.005 95 / 0.72);
+  --fg-mute: oklch(0.985 0.005 95 / 0.52);
+  --fg-faint: oklch(0.985 0.005 95 / 0.28);
+  --stroke: oklch(1 0 0 / 0.14);
+  --stroke-strong: oklch(1 0 0 / 0.22);
+  --fill: oklch(1 0 0 / 0.06);
+  --fill-strong: oklch(1 0 0 / 0.10);
+  --fill-hover: oklch(1 0 0 / 0.14);
+
+  --accent-warm: oklch(0.82 0.14 62);
+  --accent-cool: oklch(0.78 0.14 230);
+  --accent-good: oklch(0.80 0.14 145);
+
+  --gap: 20px;
+  --pad: 28px;
+  --radius: 22px;
+  --radius-sm: 14px;
+  --hero-temp-size: clamp(88px, 14vw, 168px);
+  --blur: 6px;
+
+  --app-text-color: var(--fg);
+  --app-accent-color: var(--accent-warm);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: "Chakra Petch", "Noto Sans", sans-serif;
-  margin: 0;
-  background: #72c5e9;
-  /* Set by app from time of day */
-  --app-text-color: #000e3d9d;
-  --app-accent-color: #ad5841;
+  min-height: 100vh;
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  overflow-x: hidden;
+  background: transparent;
 }
 
 .App {
   position: relative;
-  height: 100vh;
+  min-height: 100vh;
 
   .weather-scene-container {
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: 0;
   }
@@ -32,134 +72,187 @@ body {
       pointer-events: none;
       opacity: 0.85;
     }
-
-    .frost-left {
-      top: 0;
-      left: 0;
-    }
-
-    .frost-right {
-      top: 0;
-      right: 0;
-    }
-
-    .frost-top {
-      top: 0;
-      left: 0;
-    }
-
-    .frost-bottom {
-      bottom: 0;
-      left: 0;
-    }
+    .frost-left { top: 0; left: 0; }
+    .frost-right { top: 0; right: 0; }
+    .frost-top { top: 0; left: 0; }
+    .frost-bottom { bottom: 0; left: 0; }
   }
+}
 
-  .navbar,
-  .weather {
-    position: relative;
-    z-index: 1;
-  }
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 3vw, 12px);
+  gap: clamp(20px, 3.5vh, 48px);
+}
 
-  .weather {
-    position: relative;
-    margin: 1rem auto 0 auto;
-    padding: 1rem;
-    color: var(--app-text-color);
-    min-height: 200px;
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 5vh, 56px);
+  width: 100%;
+}
 
-    &.is-loading {
-      .main-info,
-      .atom {
-        filter: blur(8px);
-      }
-    }
+.stack {
+  width: min(920px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
 
-    .loading {
-      position: absolute;
-      inset: 0;
-      z-index: 10;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 200px;
-    }
-
-    .loader {
-      width: 45px;
-      aspect-ratio: 0.75;
-      --c: no-repeat linear-gradient(var(--app-accent-color, #ad5841) 0 0);
-      background:
-        var(--c) 0% 50%,
-        var(--c) 50% 50%,
-        var(--c) 100% 50%;
-      background-size: 20% 60%;
-      animation: l9 1s infinite;
+  &.is-loading {
+    .hero,
+    .hourly,
+    .forecast .day {
+      filter: blur(8px);
     }
   }
 }
 
-@media (max-width: 700px) {
-  .App {
+.error {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: oklch(0.78 0.14 30);
+  background: oklch(0.78 0.14 30 / 0.08);
+  border: 1px solid oklch(0.78 0.14 30 / 0.3);
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.loading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+
+  .loader {
+    width: 45px;
+    aspect-ratio: 0.75;
+    --c: no-repeat linear-gradient(var(--accent-warm) 0 0);
+    background:
+      var(--c) 0% 50%,
+      var(--c) 50% 50%,
+      var(--c) 100% 50%;
+    background-size: 20% 60%;
+    animation: l9 1s infinite;
+  }
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  .footer-row {
+    width: 100%;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
 
-    .navbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 2;
-    }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-    .weather {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      margin-top: 0;
-      padding-top: calc(5rem + 16px);
-      scrollbar-width: none;
-      &::-webkit-scrollbar {
-        display: none;
-      }
-    }
-
-    .weather-scene-frost .frost-edge {
-      opacity: 0.4;
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-good);
     }
   }
+
+  .git-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: var(--fill);
+    border: 1px solid var(--stroke);
+    border-radius: 999px;
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    color: var(--fg-dim);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+
+    svg { width: 14px; height: 14px; }
+
+    &:hover {
+      color: var(--fg);
+      background: var(--fill-strong);
+      border-color: var(--stroke-strong);
+    }
+  }
+
+  .attrib {
+    display: flex;
+    gap: 14px;
+    span { color: var(--fg-mute); }
+  }
 }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stack > * {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stack > *:nth-child(1) { animation-delay: 0.05s; }
+.stack > *:nth-child(2) { animation-delay: 0.15s; }
+.stack > *:nth-child(3) { animation-delay: 0.22s; }
+.stack > *:nth-child(4) { animation-delay: 0.30s; }
 
 @keyframes l9 {
   33% { background-position: 0% 0%, 50% 100%, 100% 0%; }
   66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .App {
-    .weather .loader {
-      animation: none;
+@media (max-width: 720px) {
+  .footer {
+    .footer-row {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
     }
-    .weather-scene-frost {
-      transition: none;
-    }
-    .weather.is-loading .main-info,
-    .weather.is-loading .atom {
-      filter: none;
-    }
+    .attrib { flex-wrap: wrap; justify-content: center; }
   }
+
+  .App .weather-scene-frost .frost-edge { opacity: 0.4; }
 }
 
-/* Tooltips render in portal; keep above content */
+@media (prefers-reduced-motion: reduce) {
+  .stack > * { animation: none; }
+  .App .weather-scene-frost { transition: none; }
+  .App .stack.is-loading .hero,
+  .App .stack.is-loading .hourly,
+  .App .stack.is-loading .forecast .day { filter: none; }
+  .loading .loader { animation: none; }
+}
+
 .react-tooltip,
 .current-weather-tooltip {
   z-index: 9999 !important;
-}
-
-.border {
-  border: 2px solid rgba(255, 255, 255, 0.05);
-}
-.border-light {
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Stats panels from @react-three/drei — stacked column, top-left */
@@ -168,12 +261,6 @@ body {
   right: auto !important;
   z-index: 9998;
 }
-.debug-stats--fps {
-  top: 30px !important;
-}
-.debug-stats--ms {
-  top: 82px !important;
-}
-.debug-stats--mb {
-  top: 134px !important;
-}
+.debug-stats--fps { top: 30px !important; }
+.debug-stats--ms { top: 82px !important; }
+.debug-stats--mb { top: 134px !important; }

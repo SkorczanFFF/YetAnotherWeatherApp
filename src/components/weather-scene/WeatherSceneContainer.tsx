@@ -71,7 +71,7 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
       </div>
       <div
         className="weather-scene-frost"
-        style={{ opacity: showFrostOverlay ? 1 : 0 }}
+        style={{ opacity: showFrostOverlay ? 0.5 : 0 }}
         aria-hidden="true"
       >
         <img className="frost-edge frost-left" src="/effects/frost-left.png" alt="" />

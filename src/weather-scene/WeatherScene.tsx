@@ -1,16 +1,10 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Canvas } from "@react-three/fiber";
-import { Stars, OrbitControls, Stats } from "@react-three/drei";
-import { NoToneMapping } from "three";
+import { OrbitControls, Stats } from "@react-three/drei";
 import type { SimulationConfig } from "./types";
-import { SceneRefsProvider } from "./SceneRefsContext";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
 import { FreeCameraWASD } from "./scene/FreeCameraWASD";
-import {
-  detectQualityTier,
-  getRuntimePreset,
-} from "./effects/internal/qualityPreset";
 import {
   SkyStage,
   FogEffect,
@@ -44,19 +38,9 @@ function SceneContent({
 }) {
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <SkyStage config={config} />
-      {config.timeOfDay === "night" && (
-        <Stars
-          radius={80}
-          depth={50}
-          count={3000}
-          factor={3}
-          saturation={2}
-          fade
-          speed={0.65}
-        />
-      )}
+      {/* Camera rig is mounted first so its useFrame fires *before* SkyStage's
+          children, keeping camera matrix updates ahead of any post-process
+          pass that projects with the camera. */}
       {freeCamera ? (
         <>
           <OrbitControls />
@@ -65,6 +49,7 @@ function SceneContent({
       ) : (
         <CameraRig parallaxAmount={config.parallaxAmount} />
       )}
+      <SkyStage config={config} />
       <LightningEffect config={config} />
       <FogEffect config={config} />
       <RainEffect config={config} />
@@ -96,18 +81,6 @@ export function WeatherScene({
     typeof document !== "undefined"
       ? (document.body as HTMLElement)
       : undefined;
-  // Tier the main Canvas identically to the clouds pass. On low tier (mobile
-  // or integrated GPU) we clamp DPR to 1 and drop MSAA — rendering at native
-  // retina 2× with 4× MSAA is ~8× the fragment work for no perceptible gain
-  // over the already-dominant cloud + atmosphere passes.
-  const tier = useMemo(() => getRuntimePreset(detectQualityTier()).tier, []);
-  const dpr = useMemo<number | [number, number]>(
-    () =>
-      tier === "low"
-        ? 1
-        : [1, Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 2)],
-    [tier],
-  );
 
   return (
     <div
@@ -121,26 +94,25 @@ export function WeatherScene({
         ...style,
       }}
     >
+      {/* Canonical Canvas config from takram's Clouds-Basic Storybook story:
+          gl.depth=false (the AerialPerspective + Clouds passes manage depth
+          themselves via the EffectComposer's normalPass), camera near=1
+          far=4e5 to give plenty of depth precision for the atmospheric
+          scattering shader, no DPR/antialias overrides — defaults are fine
+          since MSAA is disabled inside the composer. */}
       <Canvas
-        camera={{ position: [0, 0, 5], fov: 75, near: 0.1, far: 1_000_000 }}
-        // NoToneMapping on the renderer is required because SkyStage runs a
-        // postprocess AGX ToneMapping pass. R3F's default is
-        // ACESFilmicToneMapping which would re-compress the already-tonemapped
-        // framebuffer, producing the crushed-midtone "dark scene" look.
-        gl={{ alpha: true, antialias: tier !== "low", toneMapping: NoToneMapping }}
-        dpr={dpr}
+        gl={{ depth: false, alpha: true }}
+        camera={{ position: [0, 0, 5], fov: 75, near: 1, far: 4e5 }}
         eventSource={eventSource}
         eventPrefix="client"
         style={{ display: "block" }}
       >
-        <SceneRefsProvider>
-          <SceneContent
-            config={config}
-            showDebugBox={showDebugBox}
-            debugBoxPosition={debugBoxPosition}
-            freeCamera={freeCamera}
-          />
-        </SceneRefsProvider>
+        <SceneContent
+          config={config}
+          showDebugBox={showDebugBox}
+          debugBoxPosition={debugBoxPosition}
+          freeCamera={freeCamera}
+        />
       </Canvas>
     </div>
   );
