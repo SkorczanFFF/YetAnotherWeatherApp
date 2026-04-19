@@ -8,8 +8,8 @@ import {
   recycleParticle,
   computeWind,
   cleanupParticles,
-} from "./particleUtils";
-import { PRECIPITATION_BOUNDS } from "./effectBounds";
+} from "./internal/particleUtils";
+import { PRECIPITATION_BOUNDS } from "./internal/effectBounds";
 import {
   RAIN_WIND_FACTOR,
   DRIZZLE_WIND_FACTOR,

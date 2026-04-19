@@ -67,6 +67,10 @@ export interface SimulationConfig {
   /** Current time (Unix seconds) for sun/moon position when not using real-time clock. */
   dt?: number;
   useRealtimeClock: boolean;
+  /** Weather location in degrees. Drives the atmosphere's NUE frame so the sun
+   * rises/sets at the viewed city rather than (0,0). */
+  lat?: number;
+  lon?: number;
   temperature?: number;
   humidity?: number;
   /** Drizzle (WMO 51–57): different fall speed and wind factor. */

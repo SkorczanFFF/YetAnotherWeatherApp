@@ -1,16 +1,14 @@
 /**
- * Scene fog (FogExp2) with time-of-day color.
- *
- * Sets scene.fog so all fog-supporting materials (clouds, particles, etc.)
- * fade into the fog color at distance. The visual fog volume itself comes
- * from MistEffect (noise-textured billboards).
+ * Scene fog (FogExp2) with time-of-day color. Sets scene.fog so all
+ * fog-supporting materials fade into the fog color at distance. The
+ * visible fog volume itself comes from MistEffect.
  */
 
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
 import type { SimulationConfig } from "../types";
-import { getFogColor } from "./effectColors";
+import { getFogColor } from "./internal/effectColors";
 
 const FOG_DENSITY_MIN = 0.02;
 
@@ -27,10 +25,7 @@ export function FogEffect({ config }: FogEffectProps) {
     const density = Math.max(weatherDensity, FOG_DENSITY_MIN);
     const fogColor = getFogColor(config.timeOfDay, config.thunderstorm);
     if (!fogRef.current) {
-      fogRef.current = new THREE.FogExp2(
-        new THREE.Color(fogColor),
-        density,
-      );
+      fogRef.current = new THREE.FogExp2(new THREE.Color(fogColor), density);
     }
     fogRef.current.density = density;
     fogRef.current.color.setHex(fogColor);

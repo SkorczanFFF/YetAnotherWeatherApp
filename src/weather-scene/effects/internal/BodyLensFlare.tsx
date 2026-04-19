@@ -4,19 +4,17 @@ import { Color, Vector2, Vector3 } from "three";
 import { BlendFunction, EffectPass } from "postprocessing";
 import { LensFlareEffect } from "@react-three/postprocessing";
 
-// The library's <LensFlare> wrapper runs the effect's props through a
-// `JSON.stringify(...restProps)` memoization key (@react-three/postprocessing
-// v3.0.4, `P()` wrapper). Under React 19, `ref` is a regular prop for plain
-// function components, so the internal ref to the mounted LensFlareEffect
-// (which r3f decorates with a circular `__r3f` instance tree) ends up in that
-// stringify call and throws "Converting circular structure to JSON".
+// @react-three/postprocessing v3.0.4's <LensFlare> wrapper memoises its
+// effect on `JSON.stringify(...restProps)`. Under React 19, `ref` counts as
+// a regular prop for plain function components, so the ref that carries
+// r3f's circular `__r3f` instance tree ends up in that stringify call and
+// throws "Converting circular structure to JSON".
 //
-// This wrapper builds the LensFlareEffect ourselves and wraps it in its own
-// EffectPass mounted via <primitive>. Two LensFlareEffects merged into one
-// EffectPass collide on the global `vec2 vTexCoord;` declared inside the
-// library's fragment shader (uniforms are prefixed per-effect, locals are
-// not), so each flare must live in a separate pass. Animated values are
-// driven through refs, so the component renders exactly once.
+// This wrapper builds the LensFlareEffect ourselves and mounts it through
+// a dedicated EffectPass. Two LensFlareEffects sharing one EffectPass
+// collide on the shader's `vec2 vTexCoord` local (uniforms are prefixed
+// per-effect, locals are not), so each flare needs its own pass. Animated
+// values flow through refs so the component renders exactly once.
 
 export interface BodyLensFlareConfig {
   glareSize: number;
@@ -71,7 +69,6 @@ export function BodyLensFlare({
     });
     const p = new EffectPass(camera, fx);
     return { effect: fx, pass: p };
-    // Config is considered stable at mount; runtime values flow through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera]);
 
@@ -106,7 +103,7 @@ export function BodyLensFlare({
       }
       const behind = ndc.z > 1;
       const clipped = Math.abs(ndc.x) > 1.2 || Math.abs(ndc.y) > 1.2;
-      const target = behind || clipped ? 0 : opacityRef.current ?? 0;
+      const target = behind || clipped ? 0 : (opacityRef.current ?? 0);
       if (uOpacity) uOpacity.value = target;
     } else if (uOpacity) {
       uOpacity.value = 0;

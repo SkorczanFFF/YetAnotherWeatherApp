@@ -1,8 +1,7 @@
 /**
- * Noise-textured mist billboards for localized ground-level fog wisps.
- *
- * 16 transparent planes with animated noise textures, blown by wind.
- * Soft-edged via UV fade in the fragment shader.
+ * Noise-textured mist billboards for ground-level fog wisps.
+ * 16 transparent planes with animated Perlin FBM shader, wind-driven,
+ * soft-edged via UV fade in the fragment shader.
  */
 
 import { useFrame } from "@react-three/fiber";
@@ -10,15 +9,13 @@ import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 import type { SimulationConfig } from "../types";
 import { MIST_WIND_FACTOR, windToXZ } from "../physics/weatherPhysics";
-import { MIST_BOUNDS } from "./effectBounds";
-import { getMistColor } from "./effectColors";
-import { getFogNoiseTexture } from "./fogNoise";
+import { MIST_BOUNDS } from "./internal/effectBounds";
+import { getMistColor } from "./internal/effectColors";
+import { getFogNoiseTexture } from "./internal/fogNoise";
 
 const NUM_MIST = 16;
 const PLANE_WIDTH = 40;
 const PLANE_HEIGHT = 20;
-
-// ── Shader ──────────────────────────────────────────────────────────
 
 const MIST_VERT = /* glsl */ `
   varying vec2 vUv;
@@ -37,16 +34,13 @@ const MIST_FRAG = /* glsl */ `
   varying vec2 vUv;
 
   void main() {
-    // Scroll noise by wind + time
     vec2 uv = vUv * 1.5 + uTime * uWindSpeed;
     float noise = texture2D(uNoiseTexture, uv).r;
 
-    // Second octave for detail
     vec2 uv2 = vUv * 3.0 + uTime * uWindSpeed * 1.5 + 0.37;
     float noise2 = texture2D(uNoiseTexture, uv2).r;
     float combined = noise * 0.7 + noise2 * 0.3;
 
-    // Soft edge fade at plane borders
     float edgeFade = smoothstep(0.0, 0.2, vUv.x) * smoothstep(1.0, 0.8, vUv.x)
                    * smoothstep(0.0, 0.2, vUv.y) * smoothstep(1.0, 0.8, vUv.y);
 
@@ -54,8 +48,6 @@ const MIST_FRAG = /* glsl */ `
     gl_FragColor = vec4(uMistColor, alpha);
   }
 `;
-
-// ── Shared uniforms (updated per-frame) ─────────────────────────────
 
 const mistUniforms = {
   uNoiseTexture: { value: getFogNoiseTexture() },
@@ -123,15 +115,19 @@ export function MistEffect({ config }: MistEffectProps) {
     group.visible = showMist;
     if (!showMist) return;
 
-    // Update shared uniforms
     mistUniforms.uTime.value += delta;
     mistUniforms.uOpacity.value = 0.06 + (config.fogDensity ?? 0) * 0.6;
 
-    const { x: windX, z: windZ } = windToXZ(config.windDirection, config.windSpeed, MIST_WIND_FACTOR);
+    const { x: windX, z: windZ } = windToXZ(
+      config.windDirection,
+      config.windSpeed,
+      MIST_WIND_FACTOR,
+    );
     mistUniforms.uWindSpeed.value.set(windX * 8 + 0.003, windZ * 8 + 0.001);
 
-    // Update mist color
-    mistUniforms.uMistColor.value.copy(getMistColor(config.timeOfDay, config.thunderstorm));
+    mistUniforms.uMistColor.value.copy(
+      getMistColor(config.timeOfDay, config.thunderstorm),
+    );
 
     group.children.forEach((child) => {
       const mesh = child as THREE.Mesh;

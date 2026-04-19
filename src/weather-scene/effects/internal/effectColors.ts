@@ -1,4 +1,3 @@
-/** Shared time-of-day color palettes for fog and mist effects. */
 import * as THREE from "three";
 
 export const FOG_COLOR_BY_TIME: Record<string, number> = {

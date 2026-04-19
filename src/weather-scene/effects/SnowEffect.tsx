@@ -7,8 +7,8 @@ import {
   computeSpawnParams,
   recycleParticle,
   computeWind,
-} from "./particleUtils";
-import { PRECIPITATION_BOUNDS } from "./effectBounds";
+} from "./internal/particleUtils";
+import { PRECIPITATION_BOUNDS } from "./internal/effectBounds";
 import {
   SNOW_WIND_FACTOR,
   SNOW_FALL_SPEED_BASE,
@@ -29,7 +29,6 @@ const SNOWFLAKE_TEXTURES = [
 const LAYER_COUNT = SNOWFLAKE_TEXTURES.length;
 const PARTICLES_PER_LAYER = Math.ceil(MAX_SNOW / LAYER_COUNT);
 
-/** Base size per layer – slight variation adds visual depth */
 const LAYER_SIZES = [8, 10, 6];
 
 interface SnowLayer {

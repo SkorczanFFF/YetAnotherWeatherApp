@@ -1,8 +1,5 @@
-/** Precomputed 2D Perlin-like noise texture for patchy fog. */
-
 import * as THREE from "three";
 
-// Simple 2D hash for gradient noise
 function hash(x: number, y: number): [number, number] {
   const a = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   const b = Math.sin(x * 269.5 + y * 183.3) * 43758.5453;
@@ -64,15 +61,14 @@ export function getFogNoiseTexture(): THREE.DataTexture {
 
   const size = FOG_NOISE_SIZE;
   const data = new Uint8Array(size * size);
-  const scale = 4; // noise frequency
+  const scale = 4;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const nx = (x / size) * scale;
       const ny = (y / size) * scale;
-      // fbm returns roughly -0.75..0.75, map to 0..255
       const n = fbm(nx, ny, 3);
-      const mapped = Math.min(255, Math.max(0, Math.floor((n + 0.75) / 1.5 * 255)));
+      const mapped = Math.min(255, Math.max(0, Math.floor(((n + 0.75) / 1.5) * 255)));
       data[y * size + x] = mapped;
     }
   }

@@ -43,12 +43,6 @@ export function buildSunFlareProps(config: SimulationConfig): SunFlareProps {
   const overcastMix = smoothstep(0.3, 0.8, cover);
   const colorGain = SUN_COLOR_WARM.clone().lerp(SUN_COLOR_WHITE, overcastMix);
   const thunder = config.thunderstorm;
-  // Halo + glare here are screen-space multipliers in the LensFlareEffect
-  // shader. The previous values (haloScale 0.8, glareSize 0.35) produced a
-  // halo large enough to wash most of the screen with warm additive colour,
-  // which — together with the dusk sky — read as a dark orange/brown overlay.
-  // Keep them modest so the flare reads as a crisp element rather than a
-  // tint pass.
   return {
     colorGain,
     glareSize: thunder ? 0.08 : 0.14,

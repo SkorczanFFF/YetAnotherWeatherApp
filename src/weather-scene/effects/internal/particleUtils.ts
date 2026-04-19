@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { FrustumBounds } from "../types";
-import { WIND_GUST_VARIANCE, windToXZ } from "../physics/weatherPhysics";
+import type { FrustumBounds } from "../../types";
+import { WIND_GUST_VARIANCE, windToXZ } from "../../physics/weatherPhysics";
 
 export interface SpawnParams {
   xCenter: number;

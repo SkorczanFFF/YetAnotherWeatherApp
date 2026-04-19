@@ -1,4 +1,4 @@
-import type { FrustumBounds } from "../types";
+import type { FrustumBounds } from "../../types";
 
 export const PRECIPITATION_BOUNDS: FrustumBounds = {
   spawnYMin: 8,

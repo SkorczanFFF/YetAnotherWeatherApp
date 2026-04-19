@@ -49,16 +49,22 @@ export function LightningEffect({ config }: LightningEffectProps) {
 
     const t = state.clock.elapsedTime;
 
-    if (pendingSecondFlashRef.current != null && t >= pendingSecondFlashRef.current) {
+    if (
+      pendingSecondFlashRef.current != null &&
+      t >= pendingSecondFlashRef.current
+    ) {
       pendingSecondFlashRef.current = null;
       currentFlashOpacityRef.current =
-        FLASH_OPACITY_MIN + Math.random() * (FLASH_OPACITY_MAX - FLASH_OPACITY_MIN);
+        FLASH_OPACITY_MIN +
+        Math.random() * (FLASH_OPACITY_MAX - FLASH_OPACITY_MIN);
       flashEndRef.current = t + FLASH_DURATION;
     } else if (t >= nextFlashRef.current) {
-      const [min, max] = FLASH_INTERVALS[config.intensity] ?? FLASH_INTERVALS.moderate;
+      const [min, max] =
+        FLASH_INTERVALS[config.intensity] ?? FLASH_INTERVALS.moderate;
       nextFlashRef.current = t + min + Math.random() * (max - min);
       currentFlashOpacityRef.current =
-        FLASH_OPACITY_MIN + Math.random() * (FLASH_OPACITY_MAX - FLASH_OPACITY_MIN);
+        FLASH_OPACITY_MIN +
+        Math.random() * (FLASH_OPACITY_MAX - FLASH_OPACITY_MIN);
       flashEndRef.current = t + FLASH_DURATION;
       if (Math.random() < DOUBLE_FLASH_CHANCE) {
         const delay =
