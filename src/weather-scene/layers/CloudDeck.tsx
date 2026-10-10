@@ -119,8 +119,8 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     const lit = u.uLit.value as Color;
     lit.copy(NIGHT_LIT).lerp(DAY_LIT, s.day);
     lit.lerp(s.sunColor, s.warmth * 0.55 * (1 - s.overcast));
-    lit.lerp(STORM, storm * 0.55);
-    (u.uShade.value as Color).copy(lit).multiply(SHADE_TINT).lerp(STORM, storm * 0.35);
+    lit.lerp(STORM, storm * 0.75);
+    (u.uShade.value as Color).copy(lit).multiply(SHADE_TINT).lerp(STORM, storm * 0.5);
     (u.uHighColor.value as Color).copy(lit).lerp(s.sunColor, s.warmth * 0.4);
   });
 

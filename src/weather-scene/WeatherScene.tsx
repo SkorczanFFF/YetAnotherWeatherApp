@@ -20,6 +20,8 @@ import { FogLayer } from "./layers/FogLayer";
 import { CloudDeck } from "./layers/CloudDeck";
 import { Cumulus } from "./layers/Cumulus";
 import { Precipitation } from "./layers/precip/Precipitation";
+import { Thunder } from "./layers/Thunder";
+import { DiamondDust } from "./layers/DiamondDust";
 import { PerfProbe } from "./debug/PerfProbe";
 import { perfStats } from "./debug/perfStats";
 
@@ -42,6 +44,7 @@ interface WeatherSceneProps extends WeatherSceneDebugProps {
 interface SceneRootProps extends WeatherSceneDebugProps {
   params: SceneParams;
   budget: QualityBudget;
+  isMobile: boolean;
 }
 
 /**
@@ -52,8 +55,10 @@ interface SceneRootProps extends WeatherSceneDebugProps {
 function SceneRoot({
   params,
   budget,
+  isMobile,
   freeCamera,
   showPerf,
+  lightningNonce,
 }: SceneRootProps) {
   const signals = useMemo(createSceneSignals, []);
   const size = useThree((s) => s.size);
@@ -89,6 +94,13 @@ function SceneRoot({
         <Cumulus params={params} frame={frame} budget={budget} />
       </Suspense>
       <Precipitation params={params} frame={frame} budget={budget} />
+      <Thunder
+        enabled={params.thunder}
+        nonce={lightningNonce ?? 0}
+        frame={frame}
+        isMobile={isMobile}
+      />
+      <DiamondDust params={params} frame={frame} count={budget.sparkles} />
 
       {showPerf && (
         <>
@@ -160,6 +172,7 @@ export function WeatherScene({
         <SceneRoot
           params={params}
           budget={budget}
+          isMobile={isMobile}
           freeCamera={freeCamera}
           {...debug}
         />
