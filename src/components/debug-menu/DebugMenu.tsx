@@ -37,7 +37,7 @@ interface DebugMenuProps {
 }
 
 const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
-const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", "low", "medium", "high"];
+const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", "potato", "low", "medium", "high"];
 /** Keys a preset owns — "Auto" preset clears exactly these. */
 const PRESET_KEYS = Object.keys(WEATHER_PRESETS[0].overrides) as (keyof SceneOverrides)[];
 

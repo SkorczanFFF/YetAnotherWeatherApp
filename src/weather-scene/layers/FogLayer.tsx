@@ -5,9 +5,9 @@ import { useSceneSignals } from "../core/sceneSignals";
 
 /**
  * Scene-wide FogExp2: colour = current horizon colour, density from
- * visibility (SceneDriver). Applies to every material with `fog: true` —
- * Lambert clouds, quarks particles and the cloud deck. The sky's own haze
- * lives in SkyGrade, so this costs no draw call.
+ * visibility (SceneDriver). Only the potato-tier <CloudDeck> opts in
+ * (`fog: true`); particles and bolts opt out. The sky's own haze lives in
+ * SkyGrade, so this costs no draw call.
  */
 export function FogLayer() {
   const s = useSceneSignals();

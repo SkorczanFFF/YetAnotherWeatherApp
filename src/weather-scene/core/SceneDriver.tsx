@@ -19,11 +19,10 @@ interface SceneDriverProps {
   frame: ViewFrame;
 }
 
-const DEG = Math.PI / 180;
 /** Celestial bodies move slowly — recompute suncalc at most this often (ms). */
 const CELESTIAL_INTERVAL = 1000;
 /** Any azimuth up to ±135° from straight ahead is squeezed into 80 % of the half-frame. */
-const AZ_SQUEEZE_RANGE = 135 * DEG;
+const AZ_SQUEEZE_RANGE = 135 * MathUtils.DEG2RAD;
 
 // Palette (sRGB hex → linear via Color).
 const DAY_HAZE = new Color("#c8d8e6");
@@ -91,7 +90,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       s.moonFraction = illum.fraction;
     }
     const kAz = Math.min(1, (0.8 * frame.hHalfRaw) / AZ_SQUEEZE_RANGE);
-    const kAlt = (frame.topElevRaw - 5 * DEG) / (Math.PI / 2);
+    const kAlt = (frame.topElevRaw - 5 * MathUtils.DEG2RAD) / (Math.PI / 2);
     directionFromRelative(
       relativeAzimuth(sunAz.current, s.facing) * kAz,
       s.sunAlt * kAlt,
@@ -104,7 +103,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     );
 
     // --- day / night factors from the REAL sun altitude (degrees) ---
-    const a = s.sunAlt / DEG;
+    const a = s.sunAlt * MathUtils.RAD2DEG;
     s.day = smoothstep(a, -2, 8);
     s.night = 1 - smoothstep(a, -12, -3);
     s.warmth = (1 - smoothstep(a, 2, 18)) * smoothstep(a, -8, 0);
@@ -130,20 +129,20 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       .lerp(OVERCAST_NIGHT, s.night);
     horizon.lerp(overcastTint, s.overcast * 0.85);
     if (fog.rime) horizon.lerp(RIME_FOG, 0.6 * (1 - s.night * 0.85));
+    // Under a storm the light at the horizon is dim too.
+    if (params.thunder) horizon.multiplyScalar(0.72);
 
-    // --- lights ---
+    // --- light colours (clouds) ---
     s.sunColor.copy(SUN_LOW).lerp(SUN_HIGH, smoothstep(a, 0, 20));
-    s.sunIntensity = s.day * (1 - 0.75 * s.overcast) * 2.4;
     s.moonIntensity =
       s.night *
-      smoothstep(s.moonAlt / DEG, -1, 5) *
+      smoothstep(s.moonAlt * MathUtils.RAD2DEG, -1, 5) *
       (0.25 + 0.75 * s.moonFraction) *
       0.45 *
       (1 - 0.7 * s.overcast);
     s.hemiSky.copy(HEMI_NIGHT).lerp(HEMI_DAY, s.day);
     s.hemiSky.lerp(scratch.current.copy(HEMI_OVERCAST).multiplyScalar(0.25 + 0.75 * s.day), s.overcast * 0.7);
     s.hemiGround.copy(GROUND_NIGHT).lerp(GROUND_DAY, s.day);
-    s.hemiIntensity = 0.35 + 0.75 * s.day + s.flash * 3;
 
     // --- wind with gusts ---
     const { speedMs, gustMs, fromDeg } = params.wind;

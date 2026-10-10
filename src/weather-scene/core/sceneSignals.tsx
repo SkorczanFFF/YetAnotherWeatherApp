@@ -32,11 +32,10 @@ export interface SceneSignals {
   fogDensity: number;
   horizonColor: Color;
   sunColor: Color;
-  sunIntensity: number;
   moonIntensity: number;
+  /** Sky / ground ambient colours (cloud ambient). */
   hemiSky: Color;
   hemiGround: Color;
-  hemiIntensity: number;
   /** Gust-modulated wind, m/s, world space (y = 0). */
   windVelocity: Vector3;
   /** Accumulated air displacement, metres (y = 0). */
@@ -65,11 +64,9 @@ export function createSceneSignals(): SceneSignals {
     fogDensity: 0.001,
     horizonColor: new Color("#c8d8e6"),
     sunColor: new Color("#fff3df"),
-    sunIntensity: 2,
     moonIntensity: 0,
     hemiSky: new Color("#a9c6e8"),
     hemiGround: new Color("#5b5a55"),
-    hemiIntensity: 1,
     windVelocity: new Vector3(),
     windOffset: new Vector3(),
     flash: 0,

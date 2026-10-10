@@ -24,16 +24,16 @@ export const PARALLAX_RANGE = 1.5;
 /** One scene unit ≈ 20 m; decides how visibility in metres maps onto FogExp2. */
 export const METRES_PER_UNIT = 20;
 
-/** Cloud deck plane height (≈ 1.2 km). */
+/** Fallback ("potato" tier) cloud deck plane height (≈ 1.2 km). */
 export const DECK_Y = 60;
 /** Deck extends this far before fading into the horizon. */
 export const DECK_FAR = 2400;
-/** Cumulus band, below the deck. */
-export const CUMULUS_Y_MIN = 26;
-export const CUMULUS_Y_MAX = 44;
-export const CUMULUS_FAR = 900;
-/** Approximate radius of one drei <Cloud> (bounds + segment sprite size). */
-export const CUMULUS_RADIUS = 60;
+/** Earth radius for the volumetric cloud shell (curvature makes clouds converge at the horizon). */
+export const EARTH_RADIUS_M = 6371000;
+/** Eye height above ground for the volumetric raymarch. */
+export const CAMERA_ALTITUDE_M = 2;
+/** Cloud base under a storm — the raymarch shell and the lightning bolts share it. */
+export const STORM_CLOUD_BASE_M = 1300;
 
 /**
  * Time-lapse factor: scene units per second of drift per m/s of surface wind.
@@ -41,6 +41,8 @@ export const CUMULUS_RADIUS = 60;
  * visible within a few seconds of looking.
  */
 export const CLOUD_WIND_SCALE = 0.35;
+/** Same time-lapse in metres of cloud drift per metre of air (volumetric clouds). */
+export const CLOUD_TIMELAPSE = CLOUD_WIND_SCALE * METRES_PER_UNIT;
 /** Clouds never stop completely — dead calm still reads as a frozen frame. */
 export const MIN_DRIFT_MS = 0.6;
 

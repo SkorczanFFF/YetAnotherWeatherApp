@@ -7,8 +7,8 @@ The human-facing README.md covers features, demo link, UX, and tech stack — do
 ## Stack & running
 
 - React 19 + TypeScript (strict), **Vite** 7 (migrated off CRA). Sass via `sass-embedded`.
-- Three.js via `@react-three/fiber` + `@react-three/drei`, `three.quarks` (particles), `suncalc` (sun/moon). The scene rewrite is documented in `SCENE_REFACTOR.md` (plan + weather catalogue).
-- **Banned libraries**: `@react-three/postprocessing` / `postprocessing` (every compose pass adds overdraw), `@takram/three-atmosphere`, `@takram/three-clouds` (volumetric raymarching killed mid-tier Android), `r3f-perf` (pulls drei 9 → a second drei copy, incompatible with fiber 9 / React 19). drei `<Clouds>` is **allowed only inside `layers/Cumulus.tsx`, within the tier's sprite budget** — full-cover sprite clouds are what melted a 5070 Ti at 300 W; overcast is the cloud deck's job.
+- Three.js via `@react-three/fiber` + `@react-three/drei`, `three.quarks` (particles), `suncalc` (sun/moon). Clouds are our own volumetric raymarch (`layers/VolumetricClouds.tsx`). The scene rewrite is documented in `SCENE_REFACTOR.md` (plan + weather catalogue).
+- **Banned libraries**: `@react-three/postprocessing` / `postprocessing` (every compose pass adds overdraw), `@takram/three-atmosphere`, `@takram/three-clouds` (their full-res volumetrics killed mid-tier Android — ours is low-res + temporally amortised instead), drei `<Cloud>` / `<Clouds>` (sprite overdraw melted a 5070 Ti at 300 W, and they look flat), `r3f-perf` (pulls drei 9 → a second drei copy, incompatible with fiber 9 / React 19).
 - Node 24 (`.nvmrc`). `.npmrc` pins `legacy-peer-deps=true`. New deps are pinned exact.
 - Scripts: `npm start` / `npm run dev` (Vite dev), `npm run build` (`tsc -b && vite build`), `npm run preview`. No tests authored. No lint/format scripts.
 - No env vars required. Open-Meteo and Nominatim are called directly from the browser.
@@ -61,25 +61,32 @@ src/
       SkyGrade.tsx              night gradient + overcast + horizon haze/fog + ground + flash (1 draw)
       StarField.tsx             points only inside the frame's sky patch, continuous opacity
       Moon.tsx                  moon.jpg disc with the real phase, lit limb towards the on-screen sun
-      CloudDeck.tsx             world-space plane at DECK_Y: stratus / stratocumulus + cirrus
-      Cumulus.tsx               drei <Clouds> in the cumulus band, wind drift + wrap
+      VolumetricClouds.tsx      Nubis-style raymarch (low-res ping-pong targets + temporal) + composite
+      CloudDeck.tsx             "potato"-tier fallback: flat world-space plane at DECK_Y
       precip/                   three.quarks: Precipitation, ViewVolumeEmitter, textures
       Thunder.tsx               strike scheduler + drei <Line> bolts, drives signals.flash
       DiamondDust.tsx           drei <Sparkles> at ≤ −10 °C, clear and humid
       Lighting.tsx, FogLayer.tsx
-    shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck)
+    shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck, cloudNoise, volumetricClouds)
     debug/                      PerfProbe + perfStats (renderer.info), VolumeHelpers (spawn wireframes)
 ```
 
 ## World convention & "only where the camera looks"
 
 - Camera at the origin, looking down **-Z**, pitched up 16°, FOV 50. **-Z = south** on the northern hemisphere and **north** on the southern one (`facingFor(lat)`), so the sun always crosses the frame. +X is the viewer's right (west when facing south). Azimuths follow suncalc (radians from south, + towards west). `compassToWorld` / `windVelocity` in `core/worldFrame.ts` are the only places bearings become vectors — wind FROM the west drifts clouds **leftwards**, from the north **away towards the horizon**.
-- Sun and moon use the real altitude for light and colour (`signals.sunAlt`, `day`, `night`, `warmth`) but a **display direction** squeezed into the frame (azimuth ±135° → 80 % of the half-frame, altitude scaled under the top edge). Sky glow, sun disc, key light and moon all use the display direction so they agree.
-- Every layer spawns only inside volumes from `core/viewVolume.ts`, derived from the BASE camera frustum plus a margin covering the parallax range. Drifting things wrap at volume edges that are off-screen or deep in the horizon fog. Precipitation particles get a life that ends exactly when they leave the frame (`ViewVolumeEmitter`). Check it with the debug "spawn volumes" toggle + free camera.
+- Sun and moon use the real altitude for light and colour (`signals.sunAlt`, `day`, `night`, `warmth`) but a **display direction** squeezed into the frame (azimuth ±135° → 80 % of the half-frame, altitude scaled under the top edge). Sky glow, sun disc, key light and moon all use the display direction so they agree. The volumetric clouds are lit from the display azimuth but the **real** altitude — the squeezed altitude lit every cloud nearly horizontally.
+- Every layer spawns only inside volumes from `core/viewVolume.ts`, derived from the BASE camera frustum plus a margin covering the parallax range. Drifting things wrap at volume edges that are off-screen or deep in the horizon fog. Precipitation particles get a life that ends exactly when they leave the frame (`ViewVolumeEmitter`). The volumetric clouds need no volume: they are raymarched per pixel of the view, so their cost follows the cloud target size, not the sky. Check it with the debug "spawn volumes" toggle + free camera.
 
 ## Scene rendering pipeline
 
-No EffectComposer, no render targets, no post-process. Typically 3–6 draw calls; worst case (storm + hail + bolt) ~7.
+No EffectComposer, no post-process. The only offscreen work is the volumetric cloud pass (one full-screen draw into a low-res target per frame, plus the one-off 3D noise generation). Typically 4–7 draw calls including it.
+
+**Volumetric clouds** (`layers/VolumetricClouds.tsx`, `shaders/volumetricClouds.glsl.ts`):
+- A spherical shell over a curved Earth, in metres; shell base/thickness/coverage/type (stratus → cumulus → cumulonimbus) come from `SceneParams` (`shellTargets()`). Cirrus is a 2D layer at 8.5 km in the same pass.
+- Density: Perlin-Worley base shape × height gradient, remapped by a scrolling weather-coverage noise, eroded by Worley detail; closed decks keep a lumpy base. Noise is a tileable RGBA 3D texture rendered slice by slice on the GPU at first mount (`getCloudNoise3D`, cached per size).
+- Lighting: light march towards the sun (or moon), Beer + direction-aware powder, 3-lobe HG phase, depth-weighted multiple-scattering octaves, density-dependent height ambient, aerial perspective to the horizon colour, lightning glow from `signals.flashPosition`. The sun keeps lighting cloud bases ~6° below the horizon (red undersides at dusk).
+- Cost control: render target at `budget.volumetric.scale` of the canvas; each frame re-marches one pixel of every 2×2 block and blends with history (reprojected by view direction, so parallax doesn't smear). Any weather/debug change resets history. Wind drifts the noise by `signals.windOffset × CLOUD_TIMELAPSE`.
+- Composite: full-screen quad, renderOrder 2 (over sky/stars/moon, under precipitation). It **un-premultiplies before tone mapping and sRGB encoding** — see gotchas.
 
 Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subscription order):
 
@@ -88,7 +95,7 @@ Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subsc
 3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated wind, accumulated wind offset).
 4. `<FogLayer>` (scene `FogExp2`) and `<Lighting>` (sun + moon directional, hemisphere, bolt point light — always mounted, only intensities change, so lit materials never recompile).
 5. **`<SkyLayer>`** (renderOrder −2) → **`<SkyGrade>`** (−1) → **`<StarField>`** (0) → **`<Moon>`** (1).
-6. **`<CloudDeck>`** (2) → **`<Cumulus>`** (3).
+6. **`<VolumetricClouds>`** composite (2) — or **`<CloudDeck>`** (2) on tier `potato`.
 7. **`<Precipitation>`** (4) → **`<Thunder>`** bolt (5) → **`<DiamondDust>`** (6).
 8. Debug: `<VolumeHelpers>` (10), `<PerfProbe>` + three drei `<Stats>`.
 
@@ -101,22 +108,28 @@ Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subsc
 | | high | medium | low |
 |---|---|---|---|
 | DPR max / fps cap | 1.5 / 60 | 1.25 / 60 | 1 / 30 |
-| Cumulus clouds × sprites | 10 × 8 | 7 × 7 | 4 × 6 |
+| Cloud target scale / steps / light steps | 0.5 / 64 / 6 | 0.4 / 48 / 5 | 0.33 / 32 / 4 |
+| Cloud noise / max distance | 128³ / 60 km | 96³ / 50 km | 64³ / 40 km |
 | Rain / snow / hail particles | 1800 / 1100 / 260 | 1000 / 650 / 150 | 450 / 300 / 80 |
 | Stars / sparkles | 1600 / 320 | 1000 / 180 | 500 / 90 |
 
+Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<CloudDeck>` instead of the raymarch). `PerformanceMonitor` only reaches it when `low` can't hold 30 fps.
+
 ## Non-obvious gotchas
 
-- **Tone mapping.** Exposure is 0.5 for `<Sky>`. Lambert clouds are lit for that, plus an emissive base colour (sprites face the camera and are usually back-lit by the in-frame sun). Anything that must keep its authored colour sets `toneMapped: false`. **three.quarks drops `toneMapped` when it builds its batch materials**, and drei `<Sparkles>` tone-maps too — both are patched at runtime; without it rain and snow render grey.
+- **Tone mapping.** Exposure is 0.5 for `<Sky>`; the cloud composite tone-maps with it too, so cloud radiance (light colour, ambient, haze ×1.4) is tuned in those pre-tonemap units. Anything that must keep its authored colour sets `toneMapped: false`. **three.quarks drops `toneMapped` when it builds its batch materials**, and drei `<Sparkles>` tone-maps too — both are patched at runtime; without it rain and snow render grey.
 - **Custom ShaderMaterials end with `#include <colorspace_fragment>`** — colours are `THREE.Color` (linear) and must be converted, or hex palettes look wrong.
 - **quarks particle textures are DataTextures with white RGB + alpha.** Canvas-backed textures came out premultiplied (grey edges) on some GPU paths. quarks' particle shader has no colour-space conversion, so those textures stay in "no colour space".
 - **quarks emitters must hang under a `Scene`** (they're added to the `BatchedRenderer`, which is a scene child) or the system disposes itself. quarks clamps delta to 0.1 s. There's no `maxParticle` — visible count = emission rate × mean life (`ViewVolumeEmitter.meanLife` tracks it).
 - **Stretched billboards:** streak length = |velocity| × `speedFactor` × size. `speedFactor: 0` makes rain invisible.
 - **drei `<Sky>` is a box** (`distance` 3000) pinned to the far plane via `z = w`; leaving it in free cam shows black — hence `OrbitControls maxDistance`.
-- **Cloud noise is baked once, module-scoped** (`getCloudNoiseTexture()`, ~30 ms). Assign it after `UniformsUtils.merge`, which would clone it.
+- **Cloud noise is generated once.** The volumetric 3D noise (`getCloudNoise3D`) renders into a `WebGL3DRenderTarget` slice by slice via `setRenderTarget(target, layer)` and is cached per size. The fallback deck's 2D FBM (`getCloudNoiseTexture()`, ~30 ms CPU) is a module singleton — assign it after `UniformsUtils.merge`, which would clone it.
 - **`frameloop="demand"` + `FrameRateGate` is mandatory.** Without the pair the scene renders at monitor rate.
 - **Thunder uses the R3F clock only.** The old version mixed `performance.now()` with `state.clock`, which delayed the first flash by the page's age.
 - **Scene time**: live = `Date.now()` + suncalc (location timezone irrelevant for an instant). The formatter's `dt` / `sunrise` parse local ISO strings in the browser zone — the scene doesn't use them.
+- **Never sRGB-encode premultiplied colour.** The cloud target is premultiplied; encoding it directly inflates thin edges (sRGB's linear toe is ×12.92) and draws white outlines around every cloud. The composite divides by alpha first, then tone-maps/encodes, then normal-blends.
+- **`gl.render()` inside `useFrame` resets `renderer.info`.** `PerfProbe` disables auto-reset and resets once per frame, so the readout covers the cloud pass + the main render.
+- **Headless/software GL (SwiftShader) runs the scene at ~3–10 fps**, so `PerformanceMonitor` drops straight to `potato` — pin the tier in the debug menu when taking screenshots. The 128³ noise also takes seconds there (milliseconds on a real GPU).
 - **`SceneErrorBoundary` in `WeatherSceneContainer` silently renders `null`** on error. If the 3D scene vanishes in dev, open DevTools.
 
 ## UI conventions

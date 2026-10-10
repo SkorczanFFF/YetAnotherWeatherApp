@@ -2,18 +2,11 @@ import { useEffect, useMemo } from "react";
 import { BufferAttribute, BufferGeometry, Color, LineBasicMaterial } from "three";
 import {
   bottomAt,
-  elevatedBand,
   halfWidthAt,
   type PrecipVolume,
   topAt,
   type ViewFrame,
 } from "../core/viewVolume";
-import {
-  CUMULUS_FAR,
-  CUMULUS_RADIUS,
-  CUMULUS_Y_MAX,
-  CUMULUS_Y_MIN,
-} from "../core/worldFrame";
 import { deckFootprint } from "../layers/CloudDeck";
 import { RAIN_VOLUME, SNOW_VOLUME } from "../layers/precip/Precipitation";
 
@@ -47,8 +40,9 @@ function precipCorners(frame: ViewFrame, v: PrecipVolume, d: number): Corner[] {
 }
 
 /**
- * Debug: wireframes of every spawn volume — deck (cyan), cumulus band
- * (orange), rain (blue), snow/hail (white). One draw. Use with the free
+ * Debug: wireframes of every spawn volume — fallback deck (cyan), rain
+ * (blue), snow/hail (white). One draw. The volumetric clouds have no volume
+ * to show: they are raymarched per pixel of the view. Use with the free
  * camera (C) to confirm nothing lives outside the base camera's view.
  */
 export function VolumeHelpers({ frame }: VolumeHelpersProps) {
@@ -67,18 +61,6 @@ export function VolumeHelpers({ frame }: VolumeHelpersProps) {
         ];
         return [c[0], c[1], c[1], c[2], c[2], c[3], c[3], c[0]];
       })(),
-    });
-
-    const band = elevatedBand(frame, CUMULUS_Y_MIN, CUMULUS_Y_MAX, CUMULUS_FAR, CUMULUS_RADIUS);
-    const bandCorners = (d: number): Corner[] => [
-      [-(halfWidthAt(frame, d, band.yMin) + CUMULUS_RADIUS), band.yMin, -d],
-      [halfWidthAt(frame, d, band.yMin) + CUMULUS_RADIUS, band.yMin, -d],
-      [halfWidthAt(frame, d, band.yMax) + CUMULUS_RADIUS, band.yMax, -d],
-      [-(halfWidthAt(frame, d, band.yMax) + CUMULUS_RADIUS), band.yMax, -d],
-    ];
-    segments.push({
-      color: new Color("#ff9a3c"),
-      pts: boxEdges(bandCorners(band.dNear), bandCorners(band.dFar)),
     });
 
     segments.push({

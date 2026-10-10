@@ -2,6 +2,17 @@
 
 > Branch `scene-rewrite` (od `volumetric-clouds`). Commity: tylko jednolinijkowe `feat: …`, bez pushowania.
 
+## Chmury wolumetryczne (2026-10-11)
+
+Deck + drei `<Clouds>` wyglądały płasko, więc zastąpił je własny raymarch w stylu Nubis (Horizon Zero Dawn):
+- powłoka chmur nad zakrzywioną Ziemią (metry), typ stratus → cumulus → cumulonimbus, wysokość podstawy i grubość z `SceneParams`; cirrus jako warstwa 2D na 8,5 km w tym samym przebiegu;
+- szum Perlin-Worley + Worley w teksturze 3D generowanej na GPU przy starcie;
+- światło: marsz w stronę słońca/księżyca, Beer + powder, 3-płatkowa faza HG, aproksymacja wielokrotnego rozpraszania, perspektywa powietrzna, piorun świecący od środka chmury;
+- koszt: render w 0,33–0,5 rozdzielczości, co klatkę liczony 1 piksel z bloku 2×2 + historia z reprojekcją (kamera statyczna → prawie darmowa akumulacja);
+- tier `potato` (poniżej `low`) wraca do płaskiego `CloudDeck`; drei `<Clouds>` i `cloud.png` usunięte.
+
+Weryfikacja na zrzutach z headless Chrome (SwiftShader, tier przypięty ręcznie — tam `PerformanceMonitor` schodzi do `potato`): cumulusy w południe, różowe/łososiowe o świcie i zmierzchu, overcast z falującą podstawą, burza, noc z łuną. Wydajności na prawdziwym GPU nie mierzyłem.
+
 ## Status (2026-10-10)
 
 Wszystkie kroki 0–8 zrobione na `scene-rewrite` (commity `feat: …`, niepushowane). Odstępstwa od planu poniżej:

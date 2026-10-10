@@ -41,8 +41,9 @@ export function deckFootprint(frame: ViewFrame) {
 }
 
 /**
- * Stratus / stratocumulus / cirrus on one world-space plane, sized to exactly
- * what the camera can see of it. Hidden when there's nothing to draw.
+ * "potato"-tier fallback for <VolumetricClouds>: stratus / stratocumulus /
+ * cirrus on one world-space plane, sized to exactly what the camera can see
+ * of it. Hidden when there's nothing to draw.
  */
 export function CloudDeck({ params, frame }: CloudDeckProps) {
   const s = useSceneSignals();

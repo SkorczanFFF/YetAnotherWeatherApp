@@ -18,7 +18,6 @@ const DISTANCE = 1400;
 /** Drawn ~4× the real 0.5° so it reads at phone sizes. */
 const ANGULAR_DIAMETER = MathUtils.degToRad(2.2);
 const SIZE = 2 * DISTANCE * Math.tan(ANGULAR_DIAMETER / 2);
-const DEG = Math.PI / 180;
 
 /** Textured moon with the real phase; the lit limb faces the on-screen sun. */
 export function Moon() {
@@ -54,7 +53,7 @@ export function Moon() {
     if (!mesh) return;
     // Daytime moon is pale and only shows when enough of it is lit (a thin
     // crescent next to the sun is lost in the glare); clouds and haze hide it.
-    const above = MathUtils.smoothstep(s.moonAlt / DEG, -1, 2);
+    const above = MathUtils.smoothstep(s.moonAlt * MathUtils.RAD2DEG, -1, 2);
     const dayVisibility = 0.45 * MathUtils.smoothstep(s.moonFraction, 0.05, 0.35);
     const opacity =
       above *

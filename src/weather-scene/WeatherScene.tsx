@@ -15,10 +15,9 @@ import { SkyLayer } from "./layers/SkyLayer";
 import { SkyGrade } from "./layers/SkyGrade";
 import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
-import { Lighting } from "./layers/Lighting";
 import { FogLayer } from "./layers/FogLayer";
 import { CloudDeck } from "./layers/CloudDeck";
-import { Cumulus } from "./layers/Cumulus";
+import { VolumetricClouds } from "./layers/VolumetricClouds";
 import { Precipitation } from "./layers/precip/Precipitation";
 import { Thunder } from "./layers/Thunder";
 import { DiamondDust } from "./layers/DiamondDust";
@@ -84,7 +83,6 @@ function SceneRoot({
       )}
       <SceneDriver params={params} frame={frame} />
       <FogLayer />
-      <Lighting />
 
       <SkyLayer />
       <SkyGrade />
@@ -92,10 +90,11 @@ function SceneRoot({
       <Suspense fallback={null}>
         <Moon />
       </Suspense>
-      <CloudDeck params={params} frame={frame} />
-      <Suspense fallback={null}>
-        <Cumulus params={params} frame={frame} budget={budget} />
-      </Suspense>
+      {budget.volumetric ? (
+        <VolumetricClouds params={params} budget={budget.volumetric} />
+      ) : (
+        <CloudDeck params={params} frame={frame} />
+      )}
       <Precipitation params={params} frame={frame} budget={budget} />
       <Thunder
         enabled={params.thunder}

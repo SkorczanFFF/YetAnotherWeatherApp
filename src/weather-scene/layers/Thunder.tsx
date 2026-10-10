@@ -4,7 +4,10 @@ import { Line } from "@react-three/drei";
 import { type Group, MathUtils, Vector3 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
-import { DECK_Y } from "../core/worldFrame";
+import { METRES_PER_UNIT, STORM_CLOUD_BASE_M } from "../core/worldFrame";
+
+/** Bolts start just inside the storm cloud base. */
+const BOLT_TOP_Y = (STORM_CLOUD_BASE_M * 1.05) / METRES_PER_UNIT;
 
 interface ThunderProps {
   enabled: boolean;
@@ -42,10 +45,10 @@ function jagged(a: Vector3, b: Vector3, roughness: number, depth: number, out: V
 
 function makeBolt(frame: ViewFrame): Bolt {
   const d = MathUtils.lerp(STRIKE_NEAR, STRIKE_FAR, Math.random());
-  const hw = halfWidthAt(frame, d, DECK_Y) * 0.8;
+  const hw = halfWidthAt(frame, d, BOLT_TOP_Y) * 0.8;
   const x = (Math.random() * 2 - 1) * hw;
   // From the cloud base to just below the horizon line at that distance.
-  const top = new Vector3(x, DECK_Y * 0.9, -d);
+  const top = new Vector3(x, BOLT_TOP_Y, -d);
   const bottom = new Vector3(x + (Math.random() - 0.5) * 40, -d * 0.02, -d);
   const main: Vector3[] = [top.clone()];
   jagged(top, bottom, 0.22, 6, main);
@@ -69,9 +72,9 @@ function makeBolt(frame: ViewFrame): Bolt {
 
 /**
  * Thunderstorm: random 4–12 s strikes on ONE time base (the R3F clock).
- * Each strike draws a branching bolt inside the frame (drei <Line>), parks
- * the flash point light at it and drives `signals.flash`, which brightens the
- * sky grade, the cloud deck and the hemisphere light. Sharp attack,
+ * Each strike draws a branching bolt inside the frame (drei <Line>), stores
+ * its position in `signals.flashPosition` and drives `signals.flash`, which
+ * brightens the sky grade and the clouds (from the bolt) and dims the stars. Sharp attack,
  * exponential decay, optional second pulse.
  */
 export function Thunder({ enabled, nonce, frame, isMobile }: ThunderProps) {

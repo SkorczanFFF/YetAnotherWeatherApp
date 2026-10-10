@@ -8,7 +8,7 @@ import {
   getEffectTypeAndIntensity,
 } from "./codes";
 
-export type QualityTier = "low" | "medium" | "high";
+export type QualityTier = "potato" | "low" | "medium" | "high";
 export type Auto<T> = T | "auto";
 
 export interface CloudLayers {

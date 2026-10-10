@@ -68,30 +68,6 @@ export function nearestVisibleDistance(f: ViewFrame, y: number): number {
   return Math.max(0, y) / f.tanTop;
 }
 
-/** Horizontal band of an elevated layer (clouds), as distances along -Z. */
-export interface ElevatedBand {
-  yMin: number;
-  yMax: number;
-  dNear: number;
-  dFar: number;
-}
-
-/**
- * Band for objects living between yMin and yMax with the given radius. The
- * near edge is pushed back until a whole object fits above the top of the
- * frame, so a wrap through it is never seen.
- */
-export function elevatedBand(
-  f: ViewFrame,
-  yMin: number,
-  yMax: number,
-  dFar: number,
-  radius: number,
-): ElevatedBand {
-  const dNear = Math.max(1, nearestVisibleDistance(f, yMin - radius) - radius);
-  return { yMin, yMax, dNear, dFar };
-}
-
 /** Near-field volume for precipitation particles. */
 export interface PrecipVolume {
   dNear: number;
