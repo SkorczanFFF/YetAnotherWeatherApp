@@ -1,19 +1,26 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { MathUtils } from "three";
+import { MathUtils, Vector3 } from "three";
 import { useDeviceOrientation } from "./useDeviceOrientation";
+import { CAMERA_PITCH, LOOK_DISTANCE, PARALLAX_RANGE } from "./worldFrame";
 
-const PARALLAX = 1.5;
 const SMOOTH = 0.08;
+
+/** Fixed look target — the base view is static; parallax only nudges the eye. */
+export const LOOK_TARGET = new Vector3(
+  0,
+  Math.tan(CAMERA_PITCH) * LOOK_DISTANCE,
+  -LOOK_DISTANCE,
+);
 
 interface CameraRigProps {
   parallaxAmount: number;
 }
 
 /**
- * Pointer/gyro parallax rig. The camera always looks at the world origin
- * where the single box sits. Mouse or device tilt nudges the camera's
- * x/y on a small range so the box gets a subtle parallax motion.
+ * Static camera at the origin, pitched up towards LOOK_TARGET. Pointer (desktop)
+ * or device tilt (mobile) translates the eye by up to PARALLAX_RANGE ×
+ * parallaxAmount; view volumes are padded for exactly this range.
  */
 export function CameraRig({ parallaxAmount }: CameraRigProps) {
   const orientation = useDeviceOrientation();
@@ -28,11 +35,10 @@ export function CameraRig({ parallaxAmount }: CameraRigProps) {
     smoothX.current = MathUtils.lerp(smoothX.current, inputX, SMOOTH);
     smoothY.current = MathUtils.lerp(smoothY.current, inputY, SMOOTH);
 
+    const range = parallaxAmount * PARALLAX_RANGE;
     const camera = state.camera;
-    camera.position.x = smoothX.current * parallaxAmount * PARALLAX;
-    camera.position.y = smoothY.current * parallaxAmount * PARALLAX;
-    camera.position.z = 5;
-    camera.lookAt(0, 0, 0);
+    camera.position.set(smoothX.current * range, smoothY.current * range, 0);
+    camera.lookAt(LOOK_TARGET);
     camera.updateMatrixWorld(true);
   });
 

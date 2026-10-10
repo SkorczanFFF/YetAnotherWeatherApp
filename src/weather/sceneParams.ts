@@ -100,7 +100,7 @@ export interface SceneOverrides {
 }
 
 /** Single source of truth for "is a simulated state active" — extend when adding a key. */
-export const OVERRIDE_KEYS: (keyof SceneOverrides)[] = [
+const OVERRIDE_KEYS: (keyof SceneOverrides)[] = [
   "hour",
   "date",
   "cloudLow",

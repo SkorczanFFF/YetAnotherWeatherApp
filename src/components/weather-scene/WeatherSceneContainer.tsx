@@ -1,9 +1,17 @@
 import React, { Component, useMemo, useEffect } from "react";
 import type { ReactNode } from "react";
-import { WeatherData } from "../../weather/types";
-import type { DebugOverrides } from "../../weather/config";
-import { mapToSimulationConfig } from "../../weather/config";
-import { WeatherScene as Scene3D, type DebugBoxPosition } from "../../weather-scene/WeatherScene";
+import type { Units, WeatherData } from "../../weather/types";
+import {
+  getFrostAmount,
+  isNightAt,
+  mapToSceneParams,
+  type SceneOverrides,
+} from "../../weather/sceneParams";
+import {
+  WeatherScene as Scene3D,
+  type WeatherSceneDebugProps,
+} from "../../weather-scene/WeatherScene";
+import { useNow } from "../../weather-scene/core/useNow";
 
 class SceneErrorBoundary extends Component<
   { children: ReactNode },
@@ -19,28 +27,30 @@ class SceneErrorBoundary extends Component<
   }
 }
 
-interface WeatherSceneContainerProps {
+interface WeatherSceneContainerProps extends WeatherSceneDebugProps {
   weather: WeatherData | null;
-  overrides?: DebugOverrides | null;
-  showDebugBox?: boolean;
-  debugBoxPosition?: DebugBoxPosition;
-  freeCamera?: boolean;
+  units: Units;
+  overrides?: SceneOverrides | null;
 }
+
+/** Max frost overlay opacity (at −15 °C and below). */
+const FROST_MAX_OPACITY = 0.7;
 
 const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
   weather,
+  units,
   overrides,
-  showDebugBox,
-  debugBoxPosition,
-  freeCamera = false,
+  ...debug
 }) => {
-  const config = useMemo(
-    () => mapToSimulationConfig(weather, overrides),
-    [weather, overrides],
+  const params = useMemo(
+    () => mapToSceneParams(weather, units, overrides),
+    [weather, units, overrides],
   );
+  const now = useNow(60_000);
+  const isNight = isNightAt(params.time ?? now, params.lat, params.lon);
+
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const isNight = config?.timeOfDay === "night";
     document.body.style.setProperty(
       "--app-text-color",
       isNight ? "#eaf2f7" : "#000e3d9d",
@@ -53,25 +63,19 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
       document.body.style.removeProperty("--app-text-color");
       document.body.style.removeProperty("--app-accent-color");
     };
-  }, [config?.timeOfDay]);
-  const showFrostOverlay =
-    typeof config.temperature === "number" && config.temperature < 0;
+  }, [isNight]);
+  const frostOpacity = getFrostAmount(params) * FROST_MAX_OPACITY;
 
   return (
     <>
       <div className="weather-scene-container" aria-hidden="true">
         <SceneErrorBoundary>
-          <Scene3D
-            config={config}
-            showDebugBox={showDebugBox}
-            debugBoxPosition={debugBoxPosition}
-            freeCamera={freeCamera}
-          />
+          <Scene3D params={params} {...debug} />
         </SceneErrorBoundary>
       </div>
       <div
         className="weather-scene-frost"
-        style={{ opacity: showFrostOverlay ? 0.5 : 0 }}
+        style={{ opacity: frostOpacity }}
         aria-hidden="true"
       >
         <img className="frost-edge frost-left" src="/effects/frost-left.png" alt="" />

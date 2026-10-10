@@ -7,13 +7,16 @@ import CurrentWeather from "./components/weather/current/CurrentWeather";
 import HourlyChart from "./components/weather/hourly/HourlyChart";
 import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
-import DebugMenu, { isOverridesDirty } from "./components/debug-menu/DebugMenu";
+import DebugMenu, { type DebugTools } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
-import { type DebugOverrides, mapToSimulationConfig } from "./weather/config";
-import type { DebugBoxPosition } from "./weather-scene/scene/DebugBox";
+import {
+  isOverridesDirty,
+  mapToSceneParams,
+  type SceneOverrides,
+} from "./weather/sceneParams";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherError } from "./services/errors";
-import { type SimulationConfig, type WeatherQuery, type Units, type WeatherData } from "./weather/types";
+import { type WeatherQuery, type Units, type WeatherData } from "./weather/types";
 
 const MIN_LOADING_MS = 500;
 
@@ -38,18 +41,22 @@ const App = (): React.ReactElement => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
-  const [debugOverrides, setDebugOverrides] = useState<DebugOverrides | null>(null);
-  const [debugBoxPosition, setDebugBoxPosition] = useState<DebugBoxPosition>({
-    x: 0,
-    y: 0,
-    z: 0,
+  const [debugOverrides, setDebugOverrides] = useState<SceneOverrides | null>(null);
+  const [debugTools, setDebugTools] = useState<DebugTools>({
+    showVolumes: false,
+    showPerf: true,
   });
+  const [lightningNonce, setLightningNonce] = useState(0);
   const [freeCamera, setFreeCamera] = useState(false);
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
-  const currentConfig = useMemo<SimulationConfig | null>(
-    () => mapToSimulationConfig(weather, null),
-    [weather],
+  const currentParams = useMemo(
+    () => mapToSceneParams(weather, units, null),
+    [weather, units],
+  );
+  const effectiveParams = useMemo(
+    () => mapToSceneParams(weather, units, debugOverrides),
+    [weather, units, debugOverrides],
   );
 
   useEffect(() => {
@@ -107,10 +114,12 @@ const App = (): React.ReactElement => {
     <div className="App" id="App">
       <WeatherScene
         weather={weather}
+        units={units}
         overrides={debugOverrides}
-        showDebugBox={debugOpen}
-        debugBoxPosition={debugBoxPosition}
         freeCamera={freeCamera}
+        showVolumes={debugOpen && debugTools.showVolumes}
+        showPerf={debugOpen && debugTools.showPerf}
+        lightningNonce={lightningNonce}
       />
       <div className="shell">
         <Navbar
@@ -193,9 +202,11 @@ const App = (): React.ReactElement => {
         }}
         overrides={debugOverrides}
         onOverridesChange={setDebugOverrides}
-        currentConfig={currentConfig}
-        debugBoxPosition={debugBoxPosition}
-        onDebugBoxPositionChange={setDebugBoxPosition}
+        currentParams={currentParams}
+        effectiveParams={effectiveParams}
+        tools={debugTools}
+        onToolsChange={setDebugTools}
+        onForceLightning={() => setLightningNonce((n) => n + 1)}
         freeCamera={freeCamera}
       />
       <Analytics />

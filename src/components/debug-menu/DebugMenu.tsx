@@ -1,72 +1,47 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { VscClose } from "react-icons/vsc";
 import { MdRestartAlt } from "react-icons/md";
-import type { DebugOverrides } from "../../weather/config";
-import type { EffectType, Intensity, TimeOfDay, SimulationConfig } from "../../weather/types";
-import type { DebugBoxPosition } from "../../weather-scene/scene/DebugBox";
+import * as SunCalc from "suncalc";
+import { DateTime } from "luxon";
+import {
+  type Auto,
+  type QualityTier,
+  type SceneOverrides,
+  type SceneParams,
+  getSunAltitude,
+} from "../../weather/sceneParams";
+import { WEATHER_PRESETS } from "../../weather/scenePresets";
+import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
+import { perfStats } from "../../weather-scene/debug/perfStats";
+import { toCardinal } from "../../services/weatherFormatter";
 import "./DebugMenu.scss";
 
-const DEBUG_BOX_STEP = 0.5;
-
-const EFFECT_OPTIONS: (EffectType | "auto")[] = [
-  "auto",
-  "clear",
-  "rain",
-  "snow",
-  "fog",
-  "thunderstorm",
-];
-const INTENSITY_OPTIONS: (Intensity | "auto")[] = [
-  "auto",
-  "light",
-  "moderate",
-  "heavy",
-];
-const TIME_OPTIONS: (TimeOfDay | "auto")[] = [
-  "auto",
-  "night",
-  "dawn",
-  "day",
-  "dusk",
-];
-
-const OVERRIDE_KEYS: (keyof DebugOverrides)[] = [
-  "effectType",
-  "intensity",
-  "particleCount",
-  "fogDensity",
-  "timeOfDay",
-  "cloudCover",
-  "windSpeed",
-  "windDirection",
-  "parallaxAmount",
-  "temperature",
-  "humidity",
-];
-
-export function isOverridesDirty(overrides: DebugOverrides | null): boolean {
-  if (!overrides) return false;
-  return OVERRIDE_KEYS.some((k) => {
-    const v = overrides[k];
-    return v !== undefined && v !== "auto";
-  });
+export interface DebugTools {
+  showVolumes: boolean;
+  showPerf: boolean;
 }
 
 interface DebugMenuProps {
   open: boolean;
   onClose: () => void;
-  overrides: DebugOverrides | null;
-  onOverridesChange: (overrides: DebugOverrides | null) => void;
-  currentConfig: SimulationConfig | null;
-  debugBoxPosition: DebugBoxPosition;
-  onDebugBoxPositionChange: (pos: DebugBoxPosition) => void;
+  overrides: SceneOverrides | null;
+  onOverridesChange: (overrides: SceneOverrides | null) => void;
+  /** Weather-driven values (no overrides) — shown as the "auto" hint. */
+  currentParams: SceneParams;
+  /** What the scene is actually rendering. */
+  effectiveParams: SceneParams;
+  tools: DebugTools;
+  onToolsChange: (tools: DebugTools) => void;
+  onForceLightning: () => void;
   freeCamera?: boolean;
 }
 
-function effective<T>(override: T | "auto" | undefined, current: T | undefined): T | undefined {
-  if (override !== undefined && override !== "auto") return override as T;
-  return current;
-}
+const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
+const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", "low", "medium", "high"];
+/** Keys a preset owns — "Auto" preset clears exactly these. */
+const PRESET_KEYS = Object.keys(WEATHER_PRESETS[0].overrides) as (keyof SceneOverrides)[];
+
+type BoolKey = "drizzle" | "freezing" | "showers" | "hail" | "grains" | "thunder" | "rime";
 
 function numericOrAuto(v: string): number | "auto" {
   if (v === "") return "auto";
@@ -74,37 +49,89 @@ function numericOrAuto(v: string): number | "auto" {
   return Number.isFinite(n) ? n : "auto";
 }
 
-interface DebugNumericFieldProps {
+const fmt = (v: number, digits = 1) => v.toFixed(digits).replace(/\.0+$/, "");
+
+function moonPhaseName(phase: number): string {
+  const names = [
+    "new",
+    "waxing crescent",
+    "first quarter",
+    "waxing gibbous",
+    "full",
+    "waning gibbous",
+    "last quarter",
+    "waning crescent",
+  ];
+  return names[Math.round(phase * 8) % 8];
+}
+
+interface NumericFieldProps {
   label: string;
-  field: keyof DebugOverrides;
+  field: keyof SceneOverrides;
   step: number;
   min?: number;
   max?: number;
-  currentDisplay?: string | null;
-  placeholder?: string;
+  current: string;
   half?: boolean;
-  overrides: DebugOverrides;
-  onSet: <K extends keyof DebugOverrides>(key: K, value: DebugOverrides[K]) => void;
+  overrides: SceneOverrides;
+  onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
 }
 
-function DebugNumericField({ label, field, step, min, max, currentDisplay, placeholder, half = true, overrides, onSet }: DebugNumericFieldProps) {
+function NumericField({ label, field, step, min, max, current, half = true, overrides, onSet }: NumericFieldProps) {
   const raw = overrides[field];
   const display = raw === undefined || raw === "auto" ? "" : String(raw);
-  const ph = placeholder ?? (currentDisplay != null ? `auto (${currentDisplay})` : "auto");
   return (
     <div className={`debug-menu-group${half ? " debug-menu-group--half" : ""}`}>
       <label>
-        {label} {currentDisplay != null && <span className="debug-menu-current">({currentDisplay})</span>}
+        {label} <span className="debug-menu-current">({current})</span>
         <input
           type="number"
           step={step}
           min={min}
           max={max}
-          placeholder={ph}
+          placeholder={`auto (${current})`}
           value={display}
-          onChange={(e) => onSet(field, numericOrAuto(e.target.value.trim()))}
+          onChange={(e) => onSet(field, numericOrAuto(e.target.value.trim()) as never)}
         />
       </label>
+    </div>
+  );
+}
+
+interface FlagChipProps {
+  label: string;
+  field: BoolKey;
+  effective: boolean;
+  overrides: SceneOverrides;
+  onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
+}
+
+/** Tri-state chip: auto → on → off → auto. */
+function FlagChip({ label, field, effective, overrides, onSet }: FlagChipProps) {
+  const raw = overrides[field];
+  const state = raw === undefined || raw === "auto" ? "auto" : raw ? "on" : "off";
+  const next = state === "auto" ? true : state === "on" ? false : "auto";
+  return (
+    <button
+      type="button"
+      className={`debug-menu-option-btn${state !== "auto" ? " debug-menu-option-btn--active" : ""}`}
+      onClick={() => onSet(field, next)}
+      title="auto → on → off"
+    >
+      {label}: {state === "auto" ? `auto (${effective ? "on" : "off"})` : state}
+    </button>
+  );
+}
+
+function PerfReadout() {
+  const [stats, setStats] = useState({ ...perfStats });
+  useEffect(() => {
+    const id = window.setInterval(() => setStats({ ...perfStats }), 500);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <div className="debug-menu-readout">
+      {stats.fps} fps · {stats.calls} draws · {stats.triangles} tris · {stats.points} pts · tier {stats.tier}
     </div>
   );
 }
@@ -114,66 +141,42 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   onClose,
   overrides,
   onOverridesChange,
-  currentConfig,
-  debugBoxPosition,
-  onDebugBoxPositionChange,
+  currentParams: c,
+  effectiveParams: e,
+  tools,
+  onToolsChange,
+  onForceLightning,
   freeCamera = false,
 }) => {
   const o = overrides ?? {};
-  const c = currentConfig;
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target?.closest("input, textarea, select, [contenteditable]")) return;
-      const step = DEBUG_BOX_STEP;
-      const update = (delta: Partial<DebugBoxPosition>) => {
-        onDebugBoxPositionChange({
-          ...debugBoxPosition,
-          ...delta,
-        });
-      };
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        update({ x: debugBoxPosition.x - step });
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        update({ x: debugBoxPosition.x + step });
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        update({ z: debugBoxPosition.z + step });
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        update({ z: debugBoxPosition.z - step });
-      } else if (e.key === "Control" && !e.repeat) {
-        e.preventDefault();
-        update({ y: debugBoxPosition.y + step });
-      } else if (e.key === " ") {
-        e.preventDefault();
-        update({ y: debugBoxPosition.y - step });
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, debugBoxPosition, onDebugBoxPositionChange]);
+  if (!open) return null;
 
-  const update = (next: DebugOverrides) => {
-    onOverridesChange(next);
+  const set = <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => {
+    onOverridesChange({ ...o, [key]: value });
   };
 
-  const set = <K extends keyof DebugOverrides>(
-    key: K,
-    value: DebugOverrides[K],
-  ) => {
-    update({ ...o, [key]: value });
+  const applyPreset = (id: string | null) => {
+    setActivePreset(id);
+    const cleared: SceneOverrides = { ...o };
+    PRESET_KEYS.forEach((k) => delete cleared[k]);
+    const preset = WEATHER_PRESETS.find((p) => p.id === id);
+    onOverridesChange(preset ? { ...cleared, ...preset.overrides } : cleared);
   };
 
   const resetAll = () => {
+    setActivePreset(null);
     onOverridesChange(null);
   };
 
-  if (!open) return null;
+  const time = e.time ?? Date.now();
+  const sunAlt = (getSunAltitude(time, e.lat, e.lon) * 180) / Math.PI;
+  const moon = SunCalc.getMoonIllumination(new Date(time));
+  const facing = facingFor(e.lat);
+  const hourValue = typeof o.hour === "number" ? o.hour : null;
+  const local = DateTime.fromMillis(time).setZone(e.timezone);
+  const liveHour = local.hour + local.minute / 60;
 
   return (
     <div
@@ -182,7 +185,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
       role="dialog"
       aria-label="Debug menu"
     >
-      <div className="debug-menu-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="debug-menu-panel" onClick={(ev) => ev.stopPropagation()}>
         <div className="debug-menu-header">
           <h2>Debug panel</h2>
           <div className="debug-menu-header-actions">
@@ -195,77 +198,171 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           </div>
         </div>
         <div className="debug-menu-body">
-          <div className="debug-menu-group debug-menu-group--debug-box">
-            <label>Debug box</label>
-            <div className="debug-menu-debug-box-coords">
-              x: {debugBoxPosition.x.toFixed(2)} · y:{" "}
-              {debugBoxPosition.y.toFixed(2)} · z:{" "}
-              {debugBoxPosition.z.toFixed(2)}
-            </div>
-            <div className="debug-menu-debug-box-keys">
-              ← → X · ↑ ↓ Z · Ctrl Y+ · Space Y−
-            </div>
-            <p className="debug-menu-hint">Press <kbd>C</kbd> for free camera — WASD move, mouse orbit</p>
-          </div>
           <div className="debug-menu-group">
-            <label>Effect type {c && <span className="debug-menu-current">(current: {effective(o.effectType, c.effectType) ?? "—"})</span>}</label>
+            <label>Weather preset</label>
             <div className="debug-menu-button-group">
-              {EFFECT_OPTIONS.map((opt) => (
+              <button
+                type="button"
+                className={`debug-menu-option-btn${activePreset === null ? " debug-menu-option-btn--active" : ""}`}
+                onClick={() => applyPreset(null)}
+              >
+                auto
+              </button>
+              {WEATHER_PRESETS.map((p) => (
                 <button
-                  key={opt}
+                  key={p.id}
                   type="button"
-                  className={`debug-menu-option-btn ${(effective(o.effectType, c?.effectType) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
-                  onClick={() => set("effectType", opt)}
+                  className={`debug-menu-option-btn${activePreset === p.id ? " debug-menu-option-btn--active" : ""}`}
+                  onClick={() => applyPreset(p.id)}
                 >
-                  {opt}
+                  {p.label}
                 </button>
               ))}
             </div>
           </div>
+
           <div className="debug-menu-group">
-            <label>Intensity {c && <span className="debug-menu-current">(current: {effective(o.intensity, c.intensity) ?? "—"})</span>}</label>
+            <label>
+              Local hour{" "}
+              <span className="debug-menu-current">
+                ({hourValue === null ? "live" : "pinned"} {local.toFormat("HH:mm")})
+              </span>
+            </label>
+            <div className="debug-menu-row">
+              <input
+                type="range"
+                min={0}
+                max={24}
+                step={0.25}
+                value={hourValue ?? liveHour}
+                onChange={(ev) => set("hour", parseFloat(ev.target.value))}
+              />
+              <button type="button" className={`debug-menu-option-btn${hourValue === null ? " debug-menu-option-btn--active" : ""}`} onClick={() => set("hour", "auto")}>
+                live
+              </button>
+            </div>
+          </div>
+          <div className="debug-menu-row">
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>
+                Date
+                <input
+                  type="text"
+                  placeholder="auto (today) YYYY-MM-DD"
+                  value={typeof o.date === "string" && o.date !== "auto" ? o.date : ""}
+                  onChange={(ev) => set("date", ev.target.value.trim() === "" ? "auto" : ev.target.value.trim())}
+                />
+              </label>
+            </div>
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Sky</label>
+              <div className="debug-menu-readout">
+                sun {fmt(sunAlt)}° · moon {moonPhaseName(moon.phase)} {Math.round(moon.fraction * 100)}%
+              </div>
+            </div>
+          </div>
+
+          <div className="debug-menu-row">
+            <NumericField label="Cloud low" field="cloudLow" step={0.05} min={0} max={1} current={fmt(c.clouds.low, 2)} overrides={o} onSet={set} />
+            <NumericField label="mid" field="cloudMid" step={0.05} min={0} max={1} current={fmt(c.clouds.mid, 2)} overrides={o} onSet={set} />
+            <NumericField label="high" field="cloudHigh" step={0.05} min={0} max={1} current={fmt(c.clouds.high, 2)} overrides={o} onSet={set} />
+          </div>
+
+          <div className="debug-menu-row">
+            <NumericField label="Wind m/s" field="windSpeed" step={1} min={0} current={fmt(c.wind.speedMs)} overrides={o} onSet={set} />
+            <NumericField label="Gust m/s" field="windGust" step={1} min={0} current={fmt(c.wind.gustMs)} overrides={o} onSet={set} />
+            <NumericField label="From °" field="windFrom" step={15} min={0} max={360} current={`${Math.round(c.wind.fromDeg)} ${toCardinal(c.wind.fromDeg)}`} overrides={o} onSet={set} />
+          </div>
+          <div className="debug-menu-group">
             <div className="debug-menu-button-group">
-              {INTENSITY_OPTIONS.map((opt) => (
+              {COMPASS.map((deg) => (
                 <button
-                  key={opt}
+                  key={deg}
                   type="button"
-                  className={`debug-menu-option-btn ${(effective(o.intensity, c?.intensity) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
-                  onClick={() => set("intensity", opt)}
+                  className={`debug-menu-option-btn${o.windFrom === deg ? " debug-menu-option-btn--active" : ""}`}
+                  onClick={() => set("windFrom", deg)}
                 >
-                  {opt}
+                  {toCardinal(deg)}
+                </button>
+              ))}
+            </div>
+            <div className="debug-menu-readout">
+              from {toCardinal(e.wind.fromDeg)} → clouds drift {describeScreenDrift(e.wind.fromDeg, facing)} (facing {facing})
+            </div>
+          </div>
+
+          <div className="debug-menu-row">
+            <NumericField label="Rain mm/h" field="rain" step={0.5} min={0} current={fmt(c.precip.rainMmH)} overrides={o} onSet={set} />
+            <NumericField label="Snow cm/h" field="snow" step={0.25} min={0} current={fmt(c.precip.snowCmH, 2)} overrides={o} onSet={set} />
+          </div>
+          <div className="debug-menu-group">
+            <div className="debug-menu-button-group">
+              <FlagChip label="drizzle" field="drizzle" effective={e.precip.drizzle} overrides={o} onSet={set} />
+              <FlagChip label="freezing" field="freezing" effective={e.precip.freezing} overrides={o} onSet={set} />
+              <FlagChip label="showers" field="showers" effective={e.precip.showers} overrides={o} onSet={set} />
+              <FlagChip label="hail" field="hail" effective={e.precip.hail} overrides={o} onSet={set} />
+              <FlagChip label="grains" field="grains" effective={e.precip.grains} overrides={o} onSet={set} />
+              <FlagChip label="thunder" field="thunder" effective={e.thunder} overrides={o} onSet={set} />
+              <button type="button" className="debug-menu-option-btn" onClick={onForceLightning}>
+                ⚡ force lightning
+              </button>
+            </div>
+          </div>
+
+          <div className="debug-menu-row">
+            <NumericField label="Visibility m" field="visibility" step={100} min={50} current={fmt(c.fog.visibilityM, 0)} overrides={o} onSet={set} />
+            <NumericField label="Temp °C" field="temperature" step={1} current={fmt(c.temperatureC)} overrides={o} onSet={set} />
+            <NumericField label="Humidity" field="humidity" step={0.05} min={0} max={1} current={fmt(c.humidity, 2)} overrides={o} onSet={set} />
+          </div>
+          <div className="debug-menu-row">
+            <NumericField label="Parallax 0–1" field="parallax" step={0.05} min={0} max={1} current={fmt(c.parallaxAmount, 2)} overrides={o} onSet={set} />
+            <div className="debug-menu-group debug-menu-group--half">
+              <label>Rime</label>
+              <div className="debug-menu-button-group">
+                <FlagChip label="rime" field="rime" effective={e.fog.rime} overrides={o} onSet={set} />
+              </div>
+            </div>
+          </div>
+
+          <div className="debug-menu-group">
+            <label>Quality tier</label>
+            <div className="debug-menu-button-group">
+              {QUALITY_OPTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className={`debug-menu-option-btn${(o.quality ?? "auto") === q ? " debug-menu-option-btn--active" : ""}`}
+                  onClick={() => set("quality", q)}
+                >
+                  {q}
                 </button>
               ))}
             </div>
           </div>
+
           <div className="debug-menu-group">
-            <label>Time of day {c && <span className="debug-menu-current">(current: {effective(o.timeOfDay, c.timeOfDay) ?? "—"})</span>}</label>
+            <label>Tools</label>
             <div className="debug-menu-button-group">
-              {TIME_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`debug-menu-option-btn ${(effective(o.timeOfDay, c?.timeOfDay) ?? "auto") === opt ? "debug-menu-option-btn--active" : ""}`}
-                  onClick={() => set("timeOfDay", opt)}
-                >
-                  {opt}
-                </button>
-              ))}
+              <button
+                type="button"
+                className={`debug-menu-option-btn${tools.showVolumes ? " debug-menu-option-btn--active" : ""}`}
+                onClick={() => onToolsChange({ ...tools, showVolumes: !tools.showVolumes })}
+              >
+                spawn volumes
+              </button>
+              <button
+                type="button"
+                className={`debug-menu-option-btn${tools.showPerf ? " debug-menu-option-btn--active" : ""}`}
+                onClick={() => onToolsChange({ ...tools, showPerf: !tools.showPerf })}
+              >
+                perf
+              </button>
             </div>
+            {tools.showPerf && <PerfReadout />}
+            <p className="debug-menu-readout">
+              <kbd>C</kbd> free camera — WASD move, mouse orbit
+            </p>
           </div>
-          <div className="debug-menu-row">
-            <DebugNumericField label="Wind speed" field="windSpeed" step={2} min={0} currentDisplay={c != null ? String(c.windSpeed) : null} overrides={o} onSet={set} />
-            <DebugNumericField label="Wind dir (°)" field="windDirection" step={5} min={0} max={360} currentDisplay={c != null ? String(c.windDirection) : null} overrides={o} onSet={set} />
-          </div>
-          <DebugNumericField label="Cloud cover" field="cloudCover" step={0.05} min={0} max={1} half={false} currentDisplay={c != null ? c.cloudCover.toFixed(2) : null} overrides={o} onSet={set} />
-          <div className="debug-menu-row">
-            <DebugNumericField label="Particles" field="particleCount" step={10} min={0} currentDisplay={c != null ? String(c.particleCount) : null} overrides={o} onSet={set} />
-            <DebugNumericField label="Fog density" field="fogDensity" step={0.1} min={0} currentDisplay={c != null ? c.fogDensity.toFixed(3) : null} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-row">
-            <DebugNumericField label="Temp (°C)" field="temperature" step={5} currentDisplay={c?.temperature != null ? String(c.temperature) : null} overrides={o} onSet={set} />
-            <DebugNumericField label="Humidity (%)" field="humidity" step={5} min={0} max={100} currentDisplay={c?.humidity != null ? String(c.humidity) : null} overrides={o} onSet={set} />
-          </div>
-          <DebugNumericField label="Parallax (0–1)" field="parallaxAmount" step={0.05} min={0} max={1} half={false} currentDisplay={c != null ? String(c.parallaxAmount) : null} overrides={o} onSet={set} />
         </div>
       </div>
     </div>

@@ -172,30 +172,23 @@
   }
 }
 
-.debug-menu-group--debug-box {
-  .debug-menu-debug-box-coords {
-    font-size: 0.9rem;
-    font-variant-numeric: tabular-nums;
-    margin-bottom: 0.25rem;
-    color: #fff;
-  }
+.debug-menu-group input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: #e8846b;
+}
 
-  .debug-menu-debug-box-keys {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
+.debug-menu-readout {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.7);
 
-  .debug-menu-hint {
-    margin: 0.5rem 0 0;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-
-    kbd {
-      padding: 0.1em 0.35em;
-      font-size: 0.9em;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 3px;
-    }
+  kbd {
+    padding: 0.1em 0.35em;
+    font-size: 0.9em;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
   }
 }
 
