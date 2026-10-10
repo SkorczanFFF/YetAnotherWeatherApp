@@ -69,6 +69,9 @@ export const formatCurrentWeather = (
     cloud_cover_mid,
     cloud_cover_high,
     wind_gusts_10m,
+    rain,
+    showers,
+    snowfall,
   } = current;
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
   const { description: details } =
@@ -114,6 +117,9 @@ export const formatCurrentWeather = (
     cloud_cover_mid,
     cloud_cover_high,
     wind_gusts: wind_gusts_10m,
+    rain,
+    showers,
+    snowfall,
   };
 };
 

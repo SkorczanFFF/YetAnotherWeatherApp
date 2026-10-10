@@ -72,6 +72,11 @@ export interface WeatherData {
   cloud_cover_high?: number;
   /** Wind gusts in the same speed unit as `speed`. */
   wind_gusts?: number;
+  /** Liquid precipitation split, mm (preceding hour). */
+  rain?: number;
+  showers?: number;
+  /** Snowfall, cm (preceding hour). */
+  snowfall?: number;
 }
 
 export type EffectType =

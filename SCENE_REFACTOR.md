@@ -64,20 +64,61 @@ Scena w tle (`src/weather-scene/`) jest wynikiem kilku przepisań (git log: lens
 Ciągłe wartości w jednostkach SI, bez faz:
 ```ts
 interface SceneParams {
-  time: number;            // unix ms (instant); suncalc nie potrzebuje strefy
+  time: number | null;     // null = żywy zegar; liczba = przypięte przez debug
   lat: number; lon: number; timezone: string;
   clouds: { total: number; low: number; mid: number; high: number }; // 0..1
   wind: { speedMs: number; gustMs: number; fromDeg: number };
-  precip: { kind: "none" | "rain" | "snow"; rateMmH: number; drizzle: boolean };
+  precip: {
+    rainMmH: number;       // ciekły opad (rain + showers z API)
+    snowCmH: number;       // snowfall z API (cm/h)
+    drizzle: boolean;      // 51–57
+    freezing: boolean;     // 56, 57, 66, 67 (gołoledź)
+    showers: boolean;      // 80–86, 95–99 (konwekcja: kłębiaste niebo, opad pulsuje)
+    hail: boolean;         // 96, 99
+    grains: boolean;       // 77 (krupa/ziarna śniegu)
+  };
   thunder: boolean;
-  visibilityM: number;
+  fog: { visibilityM: number; rime: boolean }; // rime = 48 (szadź)
   temperatureC: number;
+  humidity: number;        // 0..1
   parallaxAmount: number;
+  quality: QualityTier | null;
 }
 ```
+Rodzaj opadu nie jest już enumem — deszcz ze śniegiem to po prostu `rainMmH > 0 && snowCmH > 0`. Do zapytania API dochodzą jeszcze `rain, showers, snowfall` (Open-Meteo zwraca je osobno w `current`).
 - `mapToSceneParams(weather, units, overrides)`: normalizacja jednostek (mph→m/s, km/h→m/s, °F→°C, in→mm); `kind` z `weather/codes.ts` (reuse `getEffectTypeAndIntensity`, `isDrizzleCode`); `rateMmH` z API `precipitation`, a gdy 0 przy kodzie opadu → fallback z tabeli intensywności; brak `low/mid/high` → wyprowadzenie z `total`.
 - `isNightAt(params)` (z suncalc) eksportowane dla `WeatherSceneContainer` (zmienne CSS `--app-text-color`) — zachowujemy obecne zachowanie, tylko źródło się zmienia. Frost overlay: `temperatureC < 0` (naprawia imperial).
 - `SceneOverrides` — ta sama semantyka `"auto"`; `isOverridesDirty()` dalej źródłem prawdy dla badge'a `DEBUG` w Navbar.
+
+### Katalog warunków pogodowych
+
+Każdy kod WMO z Open-Meteo (oraz przypadki wynikające z temperatury, wiatru i widzialności) ma zdefiniowany wygląd. Każdy wiersz jest też **presetem w debug menu**, żeby dało się go sprawdzić jednym kliknięciem.
+
+| Warunek | Źródło w danych | Wygląd w scenie |
+|---|---|---|
+| Bezchmurnie / prawie (0, 1) | `cloud_cover` niskie | sam `<Sky>`, pojedyncze cumulusy przy 1, cirrus z `cloud_cover_high` |
+| Częściowe zachmurzenie (2) | `cloud_cover` 25–70 % | cumulusy drei (liczba ∝ pokrycie), deck rozbity (stratocumulus) |
+| Pochmurno (3) | `cloud_cover_low` ≥ ~85 % | pełny deck, brak cumulusów, niebo przyciemnione (SkyGrade overcast), słońce przygaszone, światło rozproszone |
+| Zamglenie / smog | `visibility` 1–10 km, kody 4–9 | lekka mgła `FogExp2` + haze przy horyzoncie (przy upale cieplejszy odcień) |
+| Mgła (45) | `visibility` < 1 km | gęsty `FogExp2`, haze przy horyzoncie, chmury znikają w mgle |
+| Mgła osadzająca szadź (48) | kod 48 | jak mgła + bielszy kolor mgły + frost overlay |
+| Mżawka (51–55) | kod + `rain` | krótkie, cienkie, wolne krople, gęsta emisja, lekkie `Noise`; zawsze nisko wiszący deck |
+| Marznąca mżawka / deszcz (56, 57, 66, 67) | kod | deszcz/mżawka z chłodnym, jaśniejszym odcieniem kropli + frost overlay |
+| Deszcz słaby / umiarkowany / silny (61–65) | `rain` mm/h | gęstość, długość i prędkość streaków ∝ intensywność; pochylenie od wiatru |
+| Przelotne opady (80–82, 85, 86) | kod / `showers` | więcej i wyższe cumulusy (wypiętrzone), deck nie zamyka się do końca, słońce może świecić, intensywność opadu pulsuje |
+| Deszcz ze śniegiem | `rain` > 0 i `snowfall` > 0 | dwa systemy quarks naraz (deszcz o połowie gęstości + mokre, szybsze płatki) |
+| Śnieg słaby / umiarkowany / silny (71–75) | `snowfall` cm/h | płatki (`snowflake*.png`), wolne opadanie, kołysanie `Noise`, dryf z wiatrem |
+| Ziarna śniegu (77) | kod 77 | drobne, okrągłe, szybsze cząstki zamiast płatków |
+| Zamieć / zawieja | śnieg + wiatr ≥ ~10 m/s | płatki niemal poziomo, mocniejsze `Noise`, spadek widzialności (z danych) |
+| Burza (95) | kod | ciemny deck (cumulonimbus), silny deszcz, błyski (niebo + światło na chmurach) **i widoczne pioruny**: łamana linia z odgałęzieniami (drei `<Line>`) od decku do horyzontu, ~150 ms, losowo w kadrze |
+| Burza z gradem (96, 99) | kod | jak burza + trzeci system quarks: białe, szybkie kulki gradu |
+| Mróz | `temperatureC` < 0 | frost overlay z płynną siłą: 0 przy 0 °C → max przy −15 °C (dziś jest stałe 0.5) |
+| Pył diamentowy | ≤ −10 °C, mało chmur, wilgotność ≥ 70 % | drei `<Sparkles>` w bliskiej objętości kadru (migoczące kryształki) |
+| Upał | ≥ 30 °C | cieplejszy, gęstszy haze przy horyzoncie (bez distortion — postprocess zbanowany) |
+| Silny wiatr / porywy | `wind_gusts_10m` | szybszy dryf chmur, mocniej pochylony opad, porywy modulują prędkość w czasie |
+| Noc / świt / zmierzch | suncalc | wszystko powyżej w każdej porze dnia; gwiazdy i księżyc chowają się za chmurami |
+
+Świadomie pominięte: tęcza (fizycznie wymaga słońca za obserwatorem, a my trzymamy słońce w kadrze), zorza, burze piaskowe (Open-Meteo nie zwraca tych kodów).
 
 ### Współdzielony stan per-klatka (`core/sceneSignals.ts`)
 Context z mutowalnymi refami (bez React state): `sunDirDisplay`, `moonDirDisplay`, `dayFactor`, `nightFactor`, `windVelocity` (z porywami: szum między `speed` a `gust`), `windOffset` (akumulowany), `flash`. Liczone raz na klatkę w `<SceneDriver>` montowanym tuż po kamerze — zastępuje „thunder trzyma ref do materiału nieba”.
@@ -103,6 +144,10 @@ Context z mutowalnymi refami (bez React state): `sunDirDisplay`, `moonDirDisplay
 | 8 | `FogLayer` | `<fogExp2>` (kolor = horyzont, gęstość z `visibilityM`) — działa na Lambert chmury i quarks; + horyzontalny fog quad (reuse shadera z `FogEffect.tsx`) gdy `visibilityM < 2000` | 0–1 |
 | — | `Lighting` | `directionalLight` z kierunku wyświetlanego słońca/księżyca, `hemisphereLight` (niebo/ziemia); `flash` podbija intensywność → błyskawica rozświetla chmury | 0 |
 | — | `Thunder` | scheduler (4–12 s, double-bump) na **jednej bazie czasu** (`state.clock`), pisze do `sceneSignals.flash` | 0 |
+| 9 | `LightningBolt` | drei `<Line>`: proceduralna łamana z odgałęzieniami w objętości kadru, montowana tylko na czas wyładowania | 0–1 |
+| 10 | `DiamondDust` | drei `<Sparkles>` w bliskiej objętości kadru, tylko przy mrozie ≤ −10 °C | 0–1 |
+
+Grad i deszcz ze śniegiem to osobne systemy quarks (osobne materiały → osobne batche). Najgorszy realny przypadek (burza z gradem przy overcast: gwiazdy, księżyc i cumulusy wygaszone) to ~7 draw calli.
 
 Budżety w `core/quality.ts` (tiery `low/medium/high`, startowy z `useIsMobile`, potem drei **`<PerformanceMonitor>`** schodzi tier niżej przy spadkach fps; DPR per tier):
 
@@ -135,10 +180,12 @@ Usuwane: `SkyDome`, `Celestial`, `Stars`, `CloudLayer`, `RainEffect`, `SnowEffec
 
 ## Debug menu (przebudowa, `components/debug-menu/DebugMenu.tsx`)
 Reuse istniejących klas z `DebugMenu.scss` (`debug-menu-group`, `-row`, `-button-group`, `-option-btn`, `-current`), bez nowego CSS poza ewentualnym suwakiem.
+- **Presety pogody:** jeden przycisk na każdy wiersz z „Katalogu warunków pogodowych” (ustawia komplet overrides), plus „Auto”.
 - **Czas:** suwak godziny lokalnej 0–24 + pole daty (zmiana fazy Księżyca / długości dnia); readout: wysokość słońca, faza Księżyca.
 - **Chmury:** low / mid / high (0–1) + total.
 - **Wiatr:** prędkość (m/s) + porywy, kierunek jako przyciski kompasu (N, NE…) + pole stopni; readout „wieje z X → chmury płyną w Y”.
-- **Opady:** kind (auto/none/rain/snow), rate mm/h, drizzle toggle; thunder (auto/on/off) + przycisk **Force lightning**.
+- **Opady:** deszcz mm/h, śnieg cm/h, flagi drizzle / freezing / showers / hail / grains; thunder (auto/on/off) + przycisk **Force lightning**.
+- **Atmosfera:** dodatkowo wilgotność (pył diamentowy, haze) i flaga rime.
 - **Atmosfera:** visibility (m), temperatura (°C), parallax.
 - **Narzędzia:** quality tier (auto/low/medium/high), toggle `VolumeHelpers` (wireframe objętości spawnu — z free camem widać, że poza kadrem nic nie ma), toggle `PerfOverlay` (r3f-perf: draw calls, tris, GPU ms; lazy import, tylko gdy debug otwarty). Zastępuje 3× drei `<Stats>` i DebugBox + strzałki.
 - F7 / C jak dziś (`App.tsx`). Nowe klucze overrides dopisane do `OVERRIDE_KEYS`.
