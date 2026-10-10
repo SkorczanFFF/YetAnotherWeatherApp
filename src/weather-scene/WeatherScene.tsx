@@ -19,6 +19,7 @@ import { Lighting } from "./layers/Lighting";
 import { FogLayer } from "./layers/FogLayer";
 import { CloudDeck } from "./layers/CloudDeck";
 import { Cumulus } from "./layers/Cumulus";
+import { Precipitation } from "./layers/precip/Precipitation";
 import { PerfProbe } from "./debug/PerfProbe";
 import { perfStats } from "./debug/perfStats";
 
@@ -87,6 +88,7 @@ function SceneRoot({
       <Suspense fallback={null}>
         <Cumulus params={params} frame={frame} budget={budget} />
       </Suspense>
+      <Precipitation params={params} frame={frame} budget={budget} />
 
       {showPerf && (
         <>
