@@ -1,18 +1,22 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stats } from "@react-three/drei";
+import type { ShaderMaterial } from "three";
 import type { SimulationConfig } from "./types";
 import { CameraRig } from "./scene/CameraRig";
 import { DebugBox, type DebugBoxPosition } from "./scene/DebugBox";
 import { FreeCameraWASD } from "./scene/FreeCameraWASD";
-import {
-  SkyStage,
-  FogEffect,
-  RainEffect,
-  SnowEffect,
-  MistEffect,
-  LightningEffect,
-} from "./effects";
+import { FrameRateGate } from "./scene/FrameRateGate";
+import { useIsMobile } from "./scene/useIsMobile";
+import { PHASE_PALETTES } from "./scene/phasePalette";
+import { SkyDome } from "./effects/SkyDome";
+import { Celestial } from "./effects/Celestial";
+import { Stars } from "./effects/Stars";
+import { CloudLayer } from "./effects/CloudLayer";
+import { RainEffect } from "./effects/RainEffect";
+import { SnowEffect } from "./effects/SnowEffect";
+import { FogEffect } from "./effects/FogEffect";
+import { ThunderEffect } from "./effects/ThunderEffect";
 
 export type { DebugBoxPosition } from "./scene/DebugBox";
 
@@ -25,22 +29,24 @@ interface WeatherSceneProps {
   freeCamera?: boolean;
 }
 
+interface SceneContentExtraProps {
+  isMobile: boolean;
+}
+
 function SceneContent({
   config,
   showDebugBox,
   debugBoxPosition,
   freeCamera,
-}: {
-  config: SimulationConfig;
-  showDebugBox?: boolean;
-  debugBoxPosition?: DebugBoxPosition;
-  freeCamera?: boolean;
-}) {
+  isMobile,
+}: Omit<WeatherSceneProps, "className" | "style"> & SceneContentExtraProps) {
+  const palette = PHASE_PALETTES[config.timeOfDay];
+  const skyMaterialRef = useRef<ShaderMaterial | null>(null);
+
   return (
     <>
-      {/* Camera rig is mounted first so its useFrame fires *before* SkyStage's
-          children, keeping camera matrix updates ahead of any post-process
-          pass that projects with the camera. */}
+      <FrameRateGate fps={60} />
+
       {freeCamera ? (
         <>
           <OrbitControls />
@@ -49,12 +55,36 @@ function SceneContent({
       ) : (
         <CameraRig parallaxAmount={config.parallaxAmount} />
       )}
-      <SkyStage config={config} />
-      <LightningEffect config={config} />
-      <FogEffect config={config} />
-      <RainEffect config={config} />
-      <SnowEffect config={config} />
-      <MistEffect config={config} />
+
+      <SkyDome config={config} materialRef={skyMaterialRef} />
+      <Stars config={config} isMobile={isMobile} />
+      <Celestial config={config} />
+      <CloudLayer config={config} />
+      {(config.effectType === "rain" || config.effectType === "thunderstorm") && (
+        <RainEffect config={config} isMobile={isMobile} />
+      )}
+      {config.effectType === "snow" && (
+        <SnowEffect config={config} isMobile={isMobile} />
+      )}
+      {config.effectType === "fog" && <FogEffect config={config} />}
+      {config.effectType === "thunderstorm" && (
+        <ThunderEffect
+          config={config}
+          skyMaterialRef={skyMaterialRef}
+          isMobile={isMobile}
+        />
+      )}
+
+      <ambientLight
+        color={palette.ambient}
+        intensity={palette.ambientIntensity}
+      />
+      <directionalLight
+        color={palette.dirColor}
+        intensity={palette.dirIntensity}
+        position={palette.dirPos}
+      />
+
       {showDebugBox && debugBoxPosition && (
         <DebugBox position={debugBoxPosition} />
       )}
@@ -81,6 +111,7 @@ export function WeatherScene({
     typeof document !== "undefined"
       ? (document.body as HTMLElement)
       : undefined;
+  const isMobile = useIsMobile();
 
   return (
     <div
@@ -94,15 +125,11 @@ export function WeatherScene({
         ...style,
       }}
     >
-      {/* Canonical Canvas config from takram's Clouds-Basic Storybook story:
-          gl.depth=false (the AerialPerspective + Clouds passes manage depth
-          themselves via the EffectComposer's normalPass), camera near=1
-          far=4e5 to give plenty of depth precision for the atmospheric
-          scattering shader, no DPR/antialias overrides — defaults are fine
-          since MSAA is disabled inside the composer. */}
       <Canvas
-        gl={{ depth: false, alpha: true }}
-        camera={{ position: [0, 0, 5], fov: 75, near: 1, far: 4e5 }}
+        frameloop="demand"
+        camera={{ position: [0, 0, 5], fov: 50, near: 0.1, far: 100 }}
+        dpr={[1, isMobile ? 1 : 1.5]}
+        gl={{ alpha: false, antialias: !isMobile }}
         eventSource={eventSource}
         eventPrefix="client"
         style={{ display: "block" }}
@@ -112,6 +139,7 @@ export function WeatherScene({
           showDebugBox={showDebugBox}
           debugBoxPosition={debugBoxPosition}
           freeCamera={freeCamera}
+          isMobile={isMobile}
         />
       </Canvas>
     </div>

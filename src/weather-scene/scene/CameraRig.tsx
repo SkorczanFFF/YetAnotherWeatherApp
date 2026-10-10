@@ -3,13 +3,18 @@ import { useFrame } from "@react-three/fiber";
 import { MathUtils } from "three";
 import { useDeviceOrientation } from "./useDeviceOrientation";
 
-const PARALLAX = 2;
+const PARALLAX = 1.5;
 const SMOOTH = 0.08;
 
 interface CameraRigProps {
   parallaxAmount: number;
 }
 
+/**
+ * Pointer/gyro parallax rig. The camera always looks at the world origin
+ * where the single box sits. Mouse or device tilt nudges the camera's
+ * x/y on a small range so the box gets a subtle parallax motion.
+ */
 export function CameraRig({ parallaxAmount }: CameraRigProps) {
   const orientation = useDeviceOrientation();
   const smoothX = useRef(0);

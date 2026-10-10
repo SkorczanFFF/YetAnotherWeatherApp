@@ -1,160 +1,137 @@
-import { useFrame } from "@react-three/fiber";
-import { useLayoutEffect, useRef } from "react";
-import * as THREE from "three";
+import { useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  NormalBlending,
+  Points,
+  ShaderMaterial,
+  TextureLoader,
+  RepeatWrapping,
+} from "three";
 import type { SimulationConfig } from "../types";
-import {
-  initParticlePositions,
-  computeSpawnParams,
-  recycleParticle,
-  computeWind,
-} from "./internal/particleUtils";
-import { PRECIPITATION_BOUNDS } from "./internal/effectBounds";
-import {
-  SNOW_WIND_FACTOR,
-  SNOW_FALL_SPEED_BASE,
-} from "../physics/weatherPhysics";
-
-const SNOW_COLOR = 0xe8eef4;
-const SNOW_SWAY_AMPLITUDE = 1.2;
-const SNOW_SWAY_OMEGA = 1.4;
-const SNOW_PARTICLE_COUNT_MULTIPLIER = 1.4;
-const MAX_SNOW = 4000;
-
-const SNOWFLAKE_TEXTURES = [
-  "/effects/snowflake1.png",
-  "/effects/snowflake2.png",
-  "/effects/snowflake3.png",
-];
-
-const LAYER_COUNT = SNOWFLAKE_TEXTURES.length;
-const PARTICLES_PER_LAYER = Math.ceil(MAX_SNOW / LAYER_COUNT);
-
-const LAYER_SIZES = [8, 10, 6];
-
-interface SnowLayer {
-  points: THREE.Points;
-  geometry: THREE.BufferGeometry;
-  material: THREE.PointsMaterial;
-}
+import { computeParticleBounds } from "./internal/particleBounds";
+import { SNOW_VERT, SNOW_FRAG } from "./shaders/snow.glsl";
 
 interface SnowEffectProps {
   config: SimulationConfig;
+  isMobile?: boolean;
 }
 
-const loader = new THREE.TextureLoader();
+const COUNTS_DESKTOP = { light: 400, moderate: 700, heavy: 1000 } as const;
+const COUNTS_MOBILE = { light: 200, moderate: 350, heavy: 500 } as const;
+const FALL_SPEED = { light: 2.5, moderate: 3.5, heavy: 5 } as const;
+const WIND_FACTOR = 0.025;
 
-export function SnowEffect({ config }: SnowEffectProps) {
-  const groupRef = useRef<THREE.Group>(null);
-  const layersRef = useRef<SnowLayer[]>([]);
-  const swayTimeRef = useRef(0);
+// Module-scope texture cache so all snowflake instances share one atlas.
+// We cycle through three PNGs by seeding per-particle UVs; the shader
+// does a single texture2D sample.
+let snowTexture: ReturnType<TextureLoader["load"]> | null = null;
+function getSnowTexture(): NonNullable<typeof snowTexture> {
+  if (snowTexture) return snowTexture;
+  const loader = new TextureLoader();
+  snowTexture = loader.load("/effects/snowflake1.png");
+  snowTexture.wrapS = RepeatWrapping;
+  snowTexture.wrapT = RepeatWrapping;
+  return snowTexture;
+}
 
-  useLayoutEffect(() => {
-    const group = groupRef.current;
-    if (!group) return;
+export function SnowEffect({ config, isMobile = false }: SnowEffectProps) {
+  const intensity = config.intensity;
+  const count = (isMobile ? COUNTS_MOBILE : COUNTS_DESKTOP)[intensity];
+  const fallSpeed = FALL_SPEED[intensity];
+  const { camera, size } = useThree();
+  const fov = "fov" in camera ? (camera as { fov: number }).fov : 50;
 
-    const layers: SnowLayer[] = [];
+  const bounds = useMemo(
+    () =>
+      computeParticleBounds({
+        fov,
+        aspect: size.width / Math.max(1, size.height),
+        depthMin: 4,
+        depthMax: 18,
+        extraHeightTop: 4,
+        extraHeightBottom: 2,
+      }),
+    [fov, size.width, size.height],
+  );
 
-    for (let l = 0; l < LAYER_COUNT; l++) {
-      const positions = initParticlePositions(
-        PARTICLES_PER_LAYER,
-        PRECIPITATION_BOUNDS,
-      );
-      const phases = new Float32Array(PARTICLES_PER_LAYER);
-      for (let i = 0; i < PARTICLES_PER_LAYER; i++) {
-        phases[i] = Math.random() * Math.PI * 2;
-      }
-
-      const geom = new THREE.BufferGeometry();
-      geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      geom.setAttribute("phase", new THREE.BufferAttribute(phases, 1));
-
-      const texture = loader.load(SNOWFLAKE_TEXTURES[l]);
-      texture.colorSpace = THREE.SRGBColorSpace;
-
-      const pixelRatio = Math.min(window.devicePixelRatio, 2);
-      const material = new THREE.PointsMaterial({
-        color: SNOW_COLOR,
-        size: LAYER_SIZES[l] * pixelRatio,
-        map: texture,
-        transparent: true,
-        opacity: 0.85,
-        alphaTest: 0.05,
-        sizeAttenuation: false,
-        depthWrite: false,
-        depthTest: true,
-        blending: THREE.NormalBlending,
-      });
-
-      const points = new THREE.Points(geom, material);
-      group.add(points);
-      layers.push({ points, geometry: geom, material });
+  const { geometry, material, positions, pointsRef } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    const ph = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3 + 0] = randIn(bounds.xMin, bounds.xMax);
+      pos[i * 3 + 1] = randIn(bounds.yMin, bounds.yMax);
+      pos[i * 3 + 2] = randIn(bounds.zMin, bounds.zMax);
+      sz[i] = 3 + Math.random() * 4;
+      ph[i] = Math.random();
     }
-
-    layersRef.current = layers;
-
-    return () => {
-      for (const layer of layers) {
-        group.remove(layer.points);
-        layer.geometry.dispose();
-        layer.material.map?.dispose();
-        layer.material.dispose();
-      }
-      layersRef.current = [];
+    const geom = new BufferGeometry();
+    geom.setAttribute("position", new BufferAttribute(pos, 3));
+    geom.setAttribute("aSize", new BufferAttribute(sz, 1));
+    geom.setAttribute("aPhase", new BufferAttribute(ph, 1));
+    const mat = new ShaderMaterial({
+      uniforms: {
+        uTex: { value: getSnowTexture() },
+        uColor: { value: new Color("#f6f9ff") },
+        uPixelRatio: { value: Math.min(window.devicePixelRatio ?? 1, 2) },
+        uTime: { value: 0 },
+      },
+      vertexShader: SNOW_VERT,
+      fragmentShader: SNOW_FRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: NormalBlending,
+    });
+    return {
+      geometry: geom,
+      material: mat,
+      positions: pos,
+      pointsRef: { current: null as Points | null },
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count, bounds.xMin, bounds.xMax, bounds.yMin, bounds.yMax]);
 
-  useFrame((_state, delta) => {
-    const layers = layersRef.current;
-    if (layers.length === 0) return;
+  const windXPerSec = useRef(0);
+  const windRad = ((config.windDirection ?? 0) * Math.PI) / 180;
+  windXPerSec.current = -Math.sin(windRad) * (config.windSpeed ?? 0) * WIND_FACTOR;
 
-    const showSnow = config.effectType === "snow";
-    for (const layer of layers) {
-      layer.points.visible = showSnow;
-    }
-    if (!showSnow) return;
-
-    swayTimeRef.current += delta;
-    const bounds = PRECIPITATION_BOUNDS;
-    const rawCount = Math.floor(
-      config.particleCount * SNOW_PARTICLE_COUNT_MULTIPLIER,
-    );
-    const totalActive = Math.min(MAX_SNOW, rawCount);
-    const perLayer = Math.ceil(totalActive / LAYER_COUNT);
-
-    const { windX, windZ } = computeWind(
-      config.windDirection,
-      config.windSpeed,
-      SNOW_WIND_FACTOR,
-    );
-    const fallSpeed = SNOW_FALL_SPEED_BASE;
-    const spawn = computeSpawnParams(bounds);
-    const t0 = swayTimeRef.current;
-
-    for (const layer of layers) {
-      const geom = layer.geometry;
-      const activeCount = Math.min(PARTICLES_PER_LAYER, perLayer);
-      geom.setDrawRange(0, activeCount);
-
-      const pos = geom.attributes.position.array as Float32Array;
-      const phases =
-        (geom.attributes.phase?.array as Float32Array) ?? null;
-
-      for (let i = 0; i < activeCount; i++) {
-        const i3 = i * 3;
-        const phase = phases ? phases[i] : 0;
-        const t = t0 + phase;
-        const swayDx =
-          SNOW_SWAY_AMPLITUDE * SNOW_SWAY_OMEGA * Math.cos(t) * delta;
-        const swayDz =
-          -SNOW_SWAY_AMPLITUDE * SNOW_SWAY_OMEGA * Math.sin(t) * delta;
-        pos[i3] += windX + swayDx;
-        pos[i3 + 1] -= fallSpeed;
-        pos[i3 + 2] += windZ + swayDz;
-        recycleParticle(pos, i3, bounds, spawn);
+  useFrame((state, delta) => {
+    const p = pointsRef.current;
+    if (!p) return;
+    material.uniforms.uTime.value = state.clock.elapsedTime;
+    const wx = windXPerSec.current * delta;
+    const dy = -fallSpeed * delta;
+    const pos = positions;
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      pos[i3 + 0] += wx;
+      pos[i3 + 1] += dy;
+      if (pos[i3 + 1] < bounds.yMin) {
+        pos[i3 + 0] = randIn(bounds.xMin, bounds.xMax);
+        pos[i3 + 1] = bounds.yMax;
+        pos[i3 + 2] = randIn(bounds.zMin, bounds.zMax);
       }
-      geom.attributes.position.needsUpdate = true;
+      if (pos[i3 + 0] < bounds.xMin - 1) pos[i3 + 0] = bounds.xMax;
+      else if (pos[i3 + 0] > bounds.xMax + 1) pos[i3 + 0] = bounds.xMin;
     }
+    (geometry.attributes.position as BufferAttribute).needsUpdate = true;
   });
 
-  return <group ref={groupRef} />;
+  return (
+    <points
+      ref={(el) => {
+        pointsRef.current = el as Points | null;
+      }}
+      geometry={geometry}
+      material={material}
+      frustumCulled={false}
+    />
+  );
+}
+
+function randIn(min: number, max: number): number {
+  return min + Math.random() * (max - min);
 }

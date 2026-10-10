@@ -7,12 +7,11 @@ The human-facing README.md covers features, demo link, UX, and tech stack — do
 ## Stack & running
 
 - React 19 + TypeScript (strict), **Vite** 7 (migrated off CRA). Sass via `sass-embedded`.
-- Three.js via `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`.
-- Atmosphere / volumetric clouds via `@takram/three-atmosphere` and `@takram/three-clouds`.
+- Three.js via `@react-three/fiber` + `@react-three/drei`. The 3D scene is a layered clip-space composition — see the pipeline section below. **Explicitly banned libraries**: `@react-three/drei` `<Cloud>` / `<Clouds>` (transparent-sprite overdraw melted a 5070 Ti at 300 W), `@react-three/postprocessing` / `postprocessing` (every compose pass adds overdraw), `@takram/three-atmosphere`, `@takram/three-clouds` (volumetric raymarching killed mid-tier Android). Don't reach for them without reading the git log first.
 - Node 24 (`.nvmrc`). `.npmrc` pins `legacy-peer-deps=true`.
 - Scripts: `npm start` / `npm run dev` (Vite dev), `npm run build` (`tsc -b && vite build`), `npm run preview`. No tests authored. No lint/format scripts.
 - No env vars required. Open-Meteo and Nominatim are called directly from the browser.
-- Fonts: **Chakra Petch** (sans body) + **Geist Mono** (small uppercase labels), both from Google Fonts. OKLCH design tokens defined in `src/index.scss` (`--fg*`, `--stroke*`, `--fill*`, `--accent-warm/cool/good`, `--blur: 24px`, etc.).
+- Fonts: **Chakra Petch** (sans body) + **Geist Mono** (small uppercase labels), both from Google Fonts. OKLCH design tokens defined in `src/index.scss`.
 
 ## Data flow (one path, memorise it)
 
@@ -20,14 +19,14 @@ The human-facing README.md covers features, demo link, UX, and tech stack — do
 WeatherQuery {q | lat,lon}
   → services/weatherService.ts
       → geocoder.ts   (Open-Meteo search; reverseGeocode via Nominatim)
-      → weatherApi.ts (Open-Meteo /forecast — current + hourly + daily,
-                       forecast_hours=25, forecast_days=8)
+      → weatherApi.ts (Open-Meteo /forecast — current + hourly + daily)
       → weatherFormatter.ts → WeatherData { current, daily[], hourly[] }
   → weather/config.ts: mapToSimulationConfig(weather, overrides)
-      uses weather/codes.ts (WMO → EffectType) to derive effectType/intensity/
-      cloudCover; merges DebugOverrides ("auto" = pass through)
+      uses weather/codes.ts (WMO → EffectType) to derive effectType/intensity;
+      prefers API cloud_cover (0–100) over weather_code derivation;
+      merges DebugOverrides ("auto" = pass through)
   → <WeatherSceneContainer> wraps <WeatherScene config={…}/>
-  → scene/effects read SimulationConfig every frame
+  → Every effect component reads SimulationConfig + a single `isMobile` flag
 ```
 
 `App.tsx` owns all top-level state (query, units, weather, overrides, debug UI, freeCamera, map drawer) and the `.shell` layout (topbar → main → stack → footer). `WeatherSceneContainer` also flips a frost overlay on when `temperature < 0` (opacity `0.5`).
@@ -39,148 +38,133 @@ src/
   App.tsx                       top-level state + keybinds (F7 debug, C free cam)
   index.tsx, index.scss         OKLCH tokens, shell layout, footer rules
   services/                     weatherService, weatherApi, geocoder, weatherFormatter
-                                weatherFormatter.ts owns CARDINALS + toCardinal()
   weather/                      config (map → SimulationConfig), codes (WMO → effect), types
-  components/
-    navbar/                     brand, loc-btn + search pill + map-btn, units toggle
-    map-picker/                 Leaflet drawer (glass restyled)
-    weather-scene/              WeatherSceneContainer (SceneErrorBoundary + frost overlay)
-    weather/
-      current/                  CurrentWeather hero card (meta-row, 8-stat grid, sun/moon arc)
-      hourly/                   HourlyChart (12-point SVG line chart + HTML dot/label overlay)
-      weekly/                   WeeklyForecast (6 glass tiles, date, condition, precip, wind, UV)
-    debug-menu/                 F7 overlay (exports isOverridesDirty used by App)
-  weather-scene/                the R3F scene itself
-    WeatherScene.tsx            <Canvas> + SceneContent
+  components/                   UI (navbar, map-picker, current/hourly/weekly cards, debug-menu)
+  weather-scene/                the R3F scene
+    WeatherScene.tsx            <Canvas> + SceneContent orchestrator
     types.ts                    re-exports weather types + FrustumBounds
     scene/
-      CameraRig.tsx             parallax (gyro on mobile, pointer on desktop)
+      CameraRig.tsx             parallax (gyro on mobile, pointer on desktop); lookAt(0,0,0)
       FreeCameraWASD.tsx        debug-only, paired with <OrbitControls/>
-      DebugBox.tsx, useDeviceOrientation.ts
-    physics/weatherPhysics.ts   wind/fall-speed constants + windToXZ()
+      DebugBox.tsx              wireframe cube for distance eyeballing in debug menu
+      FrameRateGate.tsx         rAF-throttled invalidate() — caps render at 60 fps
+      phasePalette.ts           Record<TimeOfDay, PhasePalette> — central colour table
+      useDeviceOrientation.ts   gyro permission + beta/gamma normalisation
+      useIsMobile.ts            UA + matchMedia('pointer: coarse') — memoed per mount
     effects/
-      index.ts                  barrel — exports SkyStage + particle/fog/lightning
-      SkyStage.tsx              canonical <Atmosphere> + <EffectComposer>
-                                {<Clouds>, <AerialPerspective sky sun moon
-                                sunLight skyLight>, <ToneMapping AGX>}
-      VolumetricClouds.tsx      @takram/three-clouds pass (library defaults)
-      Rain/Snow/Mist/Fog/LightningEffect.tsx
-      internal/                 module-private helpers — do NOT import from outside effects/
-        cloudProps.ts, cloudTiers.ts
-        effectBounds.ts, effectColors.ts, fogNoise.ts, particleUtils.ts
+      SkyDome.tsx               fullscreen-quad gradient (horizon→zenith, phase lerp, uFlash)
+      Celestial.tsx             sun + moon discs on a simple arc (sunrise → sunset progress)
+      Stars.tsx                 drei <Stars> wrapper — count scaled by starsOpacity
+      CloudLayer.tsx            THE central cloud renderer — one plane + FBM shader
+      RainEffect.tsx            THREE.Points + vertical-streak shader
+      SnowEffect.tsx            THREE.Points + snowflake1.png texture + sway
+      FogEffect.tsx             fullscreen fog overlay (horizon-biased)
+      ThunderEffect.tsx         no-geometry — drives SkyDome's uFlash via shared ref
+      shaders/                  GLSL strings (skyDome / celestial / cloudLayer / rain / snow)
+      internal/
+        noiseTexture.ts         module-scoped tileable FBM 256×256 singleton
+        particleBounds.ts       FOV-sized spawn/recycle box helper
 ```
 
-## Scene rendering pipeline — canonical takram setup
+## Scene rendering pipeline
 
-The scene mirrors the official **`Clouds-Basic`** Storybook story from `takram-design-engineering/three-geospatial`. Sun, moon, sky color, sun light, and sky light all come from `<AerialPerspective>`'s post-process flags — there are no custom sun/moon meshes, no custom god-rays pass, and no custom lens-flare passes.
+Every layer is a single draw call. Worst case (thunderstorm with everything on): **6–7 draws total**. No EffectComposer, no render targets, no post-process.
 
-`SceneContent` in `WeatherScene.tsx` mounts components in this order so `useFrame` callbacks fire in the right sequence:
+Mount order in `SceneContent` (`WeatherScene.tsx`), matters for phase transitions + thunder driving SkyDome:
 
-1. **CameraRig / FreeCameraWASD** (mounted first) — updates `camera.position` and calls `camera.updateMatrixWorld(true)` which refreshes `camera.matrixWorldInverse`. Mounted before SkyStage so any post-process pass that projects with the camera sees the up-to-date matrix.
-2. **SkyStage** — contains:
-   - `<Atmosphere ref correctAltitude textures={CDN_URL}>` with a per-frame `updateByDate(...)` driven by `config.dt` / `useRealtimeClock`.
-   - Inside the atmosphere context: `useLayoutEffect` installs `worldToECEFMatrix` via `Ellipsoid.WGS84.getNorthUpEastFrame(surfaceECEF, …)` so the sun/moon directions reflect the *viewed city's* local time. Without this, the atmosphere always paints the (0,0)-equator schedule.
-   - `<EffectComposer multisampling={0} enableNormalPass>` containing, in order:
-     1. `<VolumetricClouds config>` → `<Clouds coverage *Velocity>`
-     2. `<AerialPerspective sky sun moon sunLight skyLight />`
-     3. `<ToneMapping mode={AGX} />`
-3. Particle / fog / lightning effects.
-4. Debug box + Stats panels (when F7 is open).
-
-`enableNormalPass` is required because `AerialPerspective sunLight skyLight` does post-process Lambertian lighting on scene geometry. `multisampling={0}` because MSAA isn't worth the cost on top of the cloud raymarch.
-
-### Why no `NoToneMapping` override on `<Canvas>`
-
-The canonical setup leaves `gl.toneMapping` at R3F's default. We then post-process with `<ToneMapping mode={AGX}/>`. That works because the postprocess `<ToneMapping>` pass writes its result back to the framebuffer in display-space; R3F's renderer-level tonemap does not double-apply when the EffectComposer is the last thing to write.
+1. **`<FrameRateGate fps={60}>`** — pairs with `frameloop="demand"` on the Canvas. rAF-throttles `invalidate()` so on a 240 Hz display the scene still renders at 60 fps. This alone is the biggest perf win (4× fewer pipeline invocations than uncapped).
+2. **`<CameraRig>` / `<FreeCameraWASD>`** — camera parallax; `lookAt(0, 0, 0)`. Mounted first so downstream useFrame callbacks see fresh `matrixWorldInverse`.
+3. **`<SkyDome>`** — fullscreen clip-space quad. Shader `mix(uHorizon, uZenith, smoothstep(vUv.y))`. Phase palette lerp over ~0.5 s so dusk→night doesn't snap. `materialRef` is passed through so `<ThunderEffect>` can drive the `uFlash` uniform (lightning pop) without a second draw call.
+4. **`<Stars>`** — drei `<Stars>` wrapped with conditional mount. drei's star shader has no continuous-opacity uniform (its `fade` is compared `== 1.0` in the frag), so we scale `count` by `starsOpacity` instead. Unmounted entirely when `timeOfDay === 'day'`.
+5. **`<Celestial>`** — sun + moon disc billboards. Arc position: `angle = π × (dt - sunrise) / (sunset - sunrise)` for the sun; moon uses the inverse window (sunset → next sunrise, with a 24 h fallback when `next_sunrise` isn't in `SimulationConfig`). Both bodies below-horizon returns null, so one disc = 1 draw.
+6. **`<CloudLayer>`** — the central piece. One `<planeGeometry args={[2,2]}>` as a clip-space quad with a custom shader. Samples a pre-baked 256×256 tileable FBM noise texture (singleton in `internal/noiseTexture.ts`) at two offset scales, blends, then thresholds by `cloudCover` + `uMode`. Modes switch via hysteresis at `cloudCover` crossing 0.68 / 0.72 to avoid flicker.
+7. **`<RainEffect>` / `<SnowEffect>`** — mounted only when `effectType` matches. Plain `THREE.Points` with typed-array positions + per-frame recycle. Sway and size-attenuation in the vertex shader.
+8. **`<FogEffect>`** — fullscreen horizon-biased fog overlay. Mounted only when `effectType === 'fog'` AND `fogDensity > 0.005`.
+9. **`<ThunderEffect>`** — no geometry. Mounts only for thunderstorm. Schedules random 4–12 s flash intervals, drives `SkyDome`'s `uFlash` uniform via the shared `skyMaterialRef`.
+10. Debug box + three `<Stats>` panels when F7 is open.
 
 ### `<Canvas>` config
 
 ```tsx
 <Canvas
-  gl={{ depth: false, alpha: true }}
-  camera={{ position: [0, 0, 5], fov: 75, near: 1, far: 4e5 }}
-  ...
+  frameloop="demand"                                  // FPS cap via FrameRateGate
+  camera={{ position: [0, 0, 5], fov: 50, near: 0.1, far: 100 }}
+  dpr={[1, isMobile ? 1 : 1.5]}
+  gl={{ alpha: false, antialias: !isMobile }}
 />
 ```
 
-`gl.depth: false` because the Atmosphere + Clouds passes manage depth themselves through the EffectComposer's normal pass. `near: 1, far: 4e5` matches takram's recommendation — gives plenty of depth precision for the atmospheric scattering shader without overflow.
+Everything else is scene-level. `alpha: false` because `SkyDome` is always opaque. `antialias` off on mobile — we don't have opaque geometry edges that benefit from MSAA; the gradient + shader-based soft edges already AA themselves.
 
-### What was removed in the canonical migration
+## Cloud shader cheat sheet
 
-The previous custom layer is gone. Specifically deleted:
+`CloudLayer.tsx` is the heart of the scene. Its shader (`shaders/cloudLayer.glsl.ts`):
 
-- `effects/CelestialBodies.tsx` — sun/moon meshes following a fixed arc. Replaced by `<AerialPerspective sun moon>` which renders both bodies in their actual ECEF positions.
-- `effects/GodRays.tsx` — `@react-three/postprocessing` `GodRays` pass targeting our sun mesh. No canonical equivalent — the takram atmosphere handles aerial-light scattering inside `AerialPerspective`.
-- `effects/LensFlare.tsx` + `effects/internal/BodyLensFlare.tsx` — custom per-body `LensFlareEffect` passes. The canonical setup uses `LensFlare` from `@takram/three-geospatial-effects/r3f`; that package is not currently installed.
-- `effects/internal/flareProps.ts` — opacity gates / colour gain config for the custom flares.
-- `effects/internal/qualityPreset.ts` — GPU sniffing + tier-based DPR/MSAA/cloud-quality selection. The canonical setup uses `qualityPreset='high'` with no tier detection.
-- `SceneRefsContext.tsx` — sun/moon mesh + world-position refs shared between CelestialBodies, GodRays, and BodyLensFlare. None of those exist any more.
-- The custom `<ambientLight>` + `<directionalLight>` from `WeatherScene.tsx` — sun/sky light comes from `AerialPerspective`'s `sunLight skyLight` flags.
-- The `<Stars>` (drei) at night — `<AerialPerspective>` already renders the night sky with stars.
+```glsl
+// Two-scale FBM sample — blends any seam from the pre-baked texture.
+vec2 uv1 = vUv * 1.4 + uWindUV;
+vec2 uv2 = vUv * 3.1 + uWindUV * 1.8;
+float n  = texture2D(uNoise, uv1).r * 0.65 + texture2D(uNoise, uv2).r * 0.35;
 
-Bundle size dropped ~40 KB JS / ~12 KB gzipped after this cleanup.
+// CUMULUS — sharp puffy threshold; cover controls size + count.
+// STRATUS — flat blanket modulated by noise; cover controls fill.
+alpha = mode == 0
+  ? smoothstep(1.0 - cover * 0.85, 0.14 below it, n)
+  : ((cover - 0.3) × 1.45) × (0.7 + 0.3 × smoothstep(0.25, 0.75, n));
+```
 
-### Scene origin frame
+`uWindUV` accumulates from `config.windSpeed` + `config.windDirection` every frame. The pre-baked FBM is tileable (`hash2D` wraps modulo the grid period, see `internal/noiseTexture.ts`), so arbitrary wind drift never shows a seam.
 
-The scene sits ~500 m above WGS84 **at the viewed city's (lat, lon)**, North-Up-East: **+X=north, +Y=up, +Z=east**. `SURFACE_ECEF` is computed each render from `config.lat`/`config.lon` via `new Geodetic(lon, lat, 500).toECEF()`; the matrix is installed in `SkyStageInside` via `Ellipsoid.WGS84.getNorthUpEastFrame(surfaceECEF, worldToECEFMatrix)` inside `useLayoutEffect` keyed on the memoised ECEF — re-runs on city change so dusk/dawn/night colouring follows the new local time. `useEffect` (instead of layout) races with `AerialPerspective`'s first `useFrame` and leaves the sky looking at Earth's interior.
+## Mobile adaptations
 
-### Volumetric clouds — library defaults
+`useIsMobile()` — single source of truth. Resolved once per scene mount; doesn't flip on resize.
 
-`VolumetricClouds.tsx` mounts `<Clouds>` with only the weather-driven `coverage` + wind-velocity props. Everything else uses the library defaults: 4-layer stack 750 – 8500 m (cumulus / altostratus / cirrus), default `qualityPreset='high'`, default `maxRayDistance = 200 km`, default `skyLightScale = 1`, default `groundBounceScale = 1`, default `scatteringCoefficient = 1`.
+| Parameter | Desktop | Mobile |
+|---|---|---|
+| DPR clamp | `[1, 1.5]` | `[1, 1]` |
+| `gl.antialias` | `true` | `false` |
+| Rain particle count | 500 / 900 / 1500 | 250 / 450 / 700 |
+| Snow particle count | 400 / 700 / 1000 | 200 / 350 / 500 |
+| Stars max count | 2500 | 1200 |
+| Thunder peak intensity | 1.0 | 0.7 |
 
-`buildCloudsProps(config)` in `internal/cloudProps.ts`:
+## Non-obvious gotchas
 
-- `coverage` from `cloudTiers.ts` smoothstep on `config.cloudCover`
-- `localWeatherVelocity` / `shapeVelocity` / `shapeDetailVelocity` derived from `config.windSpeed` (km/h) and `config.windDirection` with three tuned multipliers (`WIND_TO_LOCAL_WEATHER`, `WIND_TO_SHAPE`, `WIND_TO_DETAIL`). `MIN_DRIFT` keeps the sky breathing at wind=0.
-
-- Wind drives clouds via `buildCloudsProps`. `windSpeed` (km/h) → m/s → three tuned factors (`WIND_TO_LOCAL_WEATHER`, `WIND_TO_SHAPE`, `WIND_TO_DETAIL`). `MIN_DRIFT` keeps the sky breathing at wind=0. Factors are ~4× lower than ground-wind units would suggest because angular velocity falls off with distance — clouds kilometres overhead shouldn't sprint across the sky.
-- Quality tier detection (`qualityPreset.ts`) **sniffs `UNMASKED_RENDERER_WEBGL`** — integrated GPUs (Intel UHD / Iris / Iris Xe, Mali, Adreno, PowerVR, SwiftShader, ANGLE) are pinned to `low` regardless of core count. Apple M-series is treated as discrete. `WEBGL_debug_renderer_info` unavailable → `low` (safer default). Tier maps to three-clouds' internal presets AND to a `resolutionScale` applied to the clouds fullscreen pass.
-- Main `<Canvas>` also tiers by GPU: on low tier, DPR is clamped to 1 and MSAA is off.
-- `cloudTiers.ts` remaps linear `config.cloudCover` 0..1 onto `{coverage, densityScale}` via five anchors with smoothstep; early-exits to zero at `cover ≤ 0.05` so the `<Clouds>` pass contributes no mass on a clear day.
-
-### SceneRefsContext
-
-Shared refs: `sunMeshRef`, `moonMeshRef`, `sunWorldPosRef`, `moonWorldPosRef`. CelestialBodies writes all four every frame (mesh position + world-pos Vector3). GodRays reads `sunMeshRef` to target its pass; `LensFlare`/`BodyLensFlare` read `*WorldPosRef` to project to NDC. Only `useSceneRefsRequired()` is exported — there's no optional variant.
-
-## Non-obvious gotchas (the ones that will bite you)
-
-- **CameraRig must mount before SkyStage.** See "Scene rendering pipeline" above. This was a real bug — anything that projected with the camera trailed the scene by one frame during parallax motion until the mount order was fixed.
-- **Atmosphere textures come from the CDN** (`DEFAULT_PRECOMPUTED_TEXTURES_URL`) to sidestep a React 19 StrictMode race in `PrecomputedTexturesGenerator` — async multi-frame texture build vs. effect cleanup calling `dispose()`. The canonical Storybook story relies on the in-process generator instead; switch back to that (drop the `textures` prop) if you ever stop hitting the StrictMode bug.
-- **`worldToECEFMatrix` is set in `SkyStageInside`'s `useLayoutEffect`**, not `useEffect`. `useEffect` would race `AerialPerspective`'s first `useFrame` (which copies the matrix into its uniform) and leave the sky looking at Earth's interior. Re-runs when `config.lat` or `config.lon` changes.
-- **Rain and snow are `THREE.Points` with `sizeAttenuation: false`**; size is multiplied by clamped `devicePixelRatio` (max 2). Snow uses 3 textured layers with phase-offset sway. `setDrawRange` controls active particle count — allocated buffers are `MAX_*` sized once and never reallocated.
-- **`SceneErrorBoundary` in `WeatherSceneContainer` silently renders `null`** on error. If the 3D scene vanishes in dev, open DevTools — no visible fallback.
+- **`CameraRig` must mount before anything that projects with the camera.** Mount order in `SceneContent` is load-bearing — `CameraRig` updates `camera.matrixWorldInverse` before `useFrame` cascades into downstream effects.
+- **Thunder drives SkyDome via a shared `skyMaterialRef`.** `ThunderEffect` itself returns `null` — there's no geometry to render. If you swap out the sky dome, keep the `uFlash` uniform or wire the ref somewhere else.
+- **drei `<Stars>` fade is binary.** The shader compares `fade == 1.0` — it's not a continuous opacity. We scale `count` by `starsOpacity` to get the apparent dimming.
+- **Cloud noise is baked once, module-scoped.** `getCloudNoiseTexture()` caches the result across all CloudLayer remounts. Don't try to regenerate the texture per-tier — it's a ~30 ms singleton.
+- **`frameloop="demand"` + `FrameRateGate` is mandatory.** Without this pair, the scene renders at monitor rate (240+ fps on high-refresh displays) and burns GPU for zero visual benefit. The cap is also why thunder's uFlash decay looks smooth at 60 fps rather than flickering.
+- **Particle volumes are sized to camera FOV.** `computeParticleBounds` in `internal/particleBounds.ts` takes `fov + aspect` and computes an axis-aligned box that covers the visible cone. Portrait (mobile) automatically gets a narrower box.
+- **`SceneErrorBoundary` in `WeatherSceneContainer` silently renders `null`** on error. If the 3D scene vanishes in dev, open DevTools — there is no visible fallback.
 
 ## UI conventions
 
-- Glass cards use `backdrop-filter: blur(var(--blur)) saturate(1.3)` (24 px). The weekly forecast tiles override to `blur(32px) saturate(1.6)` for a stronger frosted effect over bright sky pixels.
+- Glass cards use `backdrop-filter: blur(var(--blur)) saturate(1.3)`. The weekly forecast tiles override to `blur(32px) saturate(1.6)` for a stronger frosted effect over bright sky pixels.
 - Small labels use `font-family: var(--font-mono)` uppercase 10–11 px with positive letter-spacing; body and temperatures use `var(--font-sans)` (Chakra Petch).
-- Footer is a 2-row block inside `.stack`: top row is `[status] … [attrib]` (`space-between`), bottom row centres the SkorczanFFF GitHub pill.
-- Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke` on the SVG arc path, and renders the sun/moon glyph as an absolutely positioned HTML overlay (so it stays circular when the track is stretched wide). Progress is rendered via a `<clipPath>` rect whose width grows with time — **not** `stroke-dasharray`, which doesn't normalise correctly under `preserveAspectRatio="none"` + `non-scaling-stroke` and produces disjoint painted segments.
-- Hourly chart uses the same hybrid: SVG path + area + grid with `non-scaling-stroke`, HTML overlay for data points and hour labels so they aren't horizontally stretched.
+- Footer is a 2-row block inside `.stack`: top row `[status] … [attrib]`, bottom row centres the SkorczanFFF GitHub pill.
+- Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke`. Progress via a `<clipPath>` rect, not `stroke-dasharray` (which doesn't normalise correctly under those settings).
+- Hourly chart: SVG path + area + grid with `non-scaling-stroke`, HTML overlay for data points and hour labels so they aren't horizontally stretched.
 
 ## Debug menu & overrides
 
 - **F7** toggles the menu; **C** toggles free camera (only while debug menu is open). Key handlers ignore inputs/textareas.
 - Every override accepts a literal value or the string `"auto"` (pass-through). `isOverridesDirty()` is the single source of truth for "is a simulated state active"; `App.tsx` wires it to `Navbar` to show a `DEBUG` badge in the brand slot. The dirty-check iterates `OVERRIDE_KEYS` — add new override keys there when you extend `DebugOverrides`.
-- Overriding `effectType` to a weather effect auto-bumps `cloudCover` (thunderstorm ≥0.95, rain/snow ≥0.85, fog ≥0.9). Overriding `timeOfDay` disables `useRealtimeClock` so the pinned `dt` is used.
-- **Cloud-related overrides that work in the canonical setup:** just `cloudCover` (0..1) — nothing else feeds the `<Clouds>` component. The previous custom knobs (`cloudOpacity`, `skyLightScale`, `groundBounceScale`, `cloudCount`, `cloudColor`) were removed when the cloud setup was reset to library defaults.
-- `debugBoxPosition` is independent world-space coordinates for the wireframe cube (used to eyeball distances).
+- Overriding `effectType` to a weather effect auto-bumps `cloudCover` (thunderstorm ≥ 0.95, rain/snow ≥ 0.85, fog ≥ 0.9). Overriding `timeOfDay` disables `useRealtimeClock` so the pinned phase is used directly.
+- **All overrides are LIVE** against the new scene — `cloudCover` drives `CloudLayer` cumulus/stratus switch, `windSpeed`/`windDirection` drift clouds + particles, `fogDensity` powers `FogEffect`, etc.
+- `debugBoxPosition` is independent world-space coordinates for the wireframe `<DebugBox>`.
 
 ## Conventions
 
-- Files use named exports, except `WeatherSceneContainer` and `App` which default-export. Barrel at `weather-scene/effects/index.ts` — only export particle/fog/lightning effects and `SkyStage`; CelestialBodies/VolumetricClouds/GodRays/LensFlare are internal to SkyStage.
-- `effects/internal/` is module-private. Nothing outside `effects/` imports from it.
+- Files use named exports, except `WeatherSceneContainer` and `App` which default-export.
 - New `SimulationConfig` fields: add to `weather/types.ts`, default in `weather/config.ts` `DEFAULT_CONFIG`, populate from weather in the inline object, and plumb an override (with `"auto"`) if user-adjustable.
-- Per-frame allocations: avoid in `useFrame`. Existing code uses `useRef(new Vector3())` scratches and preallocated typed arrays; keep that pattern.
-- Textures & geometries created in `useLayoutEffect` must be disposed in the cleanup (see `cleanupParticles` in `particleUtils.ts`).
+- Per-frame allocations: avoid in `useFrame`. Use `useRef(new Vector3())` / `useRef(new Color())` scratches and pre-allocated `Float32Array` for positions.
+- Textures & `ShaderMaterial` instances created in `useMemo` / `useEffect` must be disposed in cleanup when the effect is re-created (none of the current effects re-create materials, but add a dispose path if you do).
 - Wind compass labels come from `services/weatherFormatter.ts::toCardinal()` (16-point compass, shared by CurrentWeather and WeeklyForecast). Don't duplicate.
-
-## Further reading
-
-- **`docs/SCENE_ASTRONOMY.md`** — deep dive into how `@takram/three-atmosphere` + `@takram/three-clouds` actually compute the sky, why deep night is correctly black, and how the Open-Meteo `dt`/`lat`/`lon` flow into `updateByDate(...)` and `worldToECEFMatrix`. Read this before adjusting anything in `SkyStage.tsx` or `VolumetricClouds.tsx`.
 
 ## Things that are NOT bugs
 
 - `.claude/` and `.cursor/` are gitignored — local editor state only.
-- The `MistEffect` fragment shader uses a hand-rolled FBM texture baked once at 128×128 in `fogNoise.ts` — cached module-level, intentional.
 - `tsconfig.node.json` (for `vite.config.ts`) and `tsconfig.tsbuildinfo` / `tsconfig.node.tsbuildinfo` (incremental-compile caches) are all required/harmless artefacts of `tsc -b`. Don't delete them.
+- The Vite `>500 KB` chunk warning is Leaflet + three.js; not worth chasing until the scene grows to justify code-splitting.
+- The pre-baked cloud noise texture spends ~30 ms CPU on first scene mount. Users see the box + sky render immediately; noise texture populates once before any `CloudLayer` frame runs.

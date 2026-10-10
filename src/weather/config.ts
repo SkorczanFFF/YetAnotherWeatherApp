@@ -107,7 +107,16 @@ export function mapToSimulationConfig(
           weather.weather_code === 48 ? 0.45
           : type === "fog" ? 0.15
           : 0.25;
-        const cloudCover = getCloudCoverFromWeatherCode(weather.weather_code);
+        // Prefer the API's actual cloud-cover reading (percentage 0–100) when
+        // available. Open-Meteo reports it directly; the weather_code → cover
+        // mapping is only a fallback for the legacy path. Real readings vary
+        // meaningfully within a single WMO code (e.g. "partly cloudy" 2 can
+        // be anywhere from 25% to 60% cover), so using actual percentages
+        // makes the scene density match the observed sky.
+        const cloudCover =
+          typeof weather.cloud_cover === "number"
+            ? Math.max(0, Math.min(1, weather.cloud_cover / 100))
+            : getCloudCoverFromWeatherCode(weather.weather_code);
         const isDrizzle =
           type === "rain" && isDrizzleCode(weather.weather_code);
         return {
