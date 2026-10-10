@@ -15,7 +15,7 @@ export type Facing = "south" | "north";
 export const CAMERA_FOV = 50;
 export const CAMERA_NEAR = 0.5;
 export const CAMERA_FAR = 4000;
-export const CAMERA_PITCH = MathUtils.degToRad(10);
+export const CAMERA_PITCH = MathUtils.degToRad(16);
 /** Parallax rig looks at a point this far ahead, so translation also tilts the view a hair. */
 export const LOOK_DISTANCE = 30;
 /** Camera translation (scene units) at parallaxAmount = 1. */
@@ -30,10 +30,10 @@ export const DECK_Y = 60;
 export const DECK_FAR = 2400;
 /** Cumulus band, below the deck. */
 export const CUMULUS_Y_MIN = 26;
-export const CUMULUS_Y_MAX = 50;
+export const CUMULUS_Y_MAX = 44;
 export const CUMULUS_FAR = 900;
 /** Approximate radius of one drei <Cloud> (bounds + segment sprite size). */
-export const CUMULUS_RADIUS = 28;
+export const CUMULUS_RADIUS = 60;
 
 /**
  * Time-lapse factor: scene units per second of drift per m/s of surface wind.

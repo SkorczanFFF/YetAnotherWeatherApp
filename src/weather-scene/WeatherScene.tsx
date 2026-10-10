@@ -17,6 +17,8 @@ import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
 import { Lighting } from "./layers/Lighting";
 import { FogLayer } from "./layers/FogLayer";
+import { CloudDeck } from "./layers/CloudDeck";
+import { Cumulus } from "./layers/Cumulus";
 import { PerfProbe } from "./debug/PerfProbe";
 import { perfStats } from "./debug/perfStats";
 
@@ -80,6 +82,10 @@ function SceneRoot({
       <StarField frame={frame} count={budget.stars} />
       <Suspense fallback={null}>
         <Moon />
+      </Suspense>
+      <CloudDeck params={params} frame={frame} />
+      <Suspense fallback={null}>
+        <Cumulus params={params} frame={frame} budget={budget} />
       </Suspense>
 
       {showPerf && (
