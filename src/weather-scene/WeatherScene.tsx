@@ -23,6 +23,7 @@ import { Precipitation } from "./layers/precip/Precipitation";
 import { Thunder } from "./layers/Thunder";
 import { DiamondDust } from "./layers/DiamondDust";
 import { PerfProbe } from "./debug/PerfProbe";
+import { VolumeHelpers } from "./debug/VolumeHelpers";
 import { perfStats } from "./debug/perfStats";
 
 export interface WeatherSceneDebugProps {
@@ -57,6 +58,7 @@ function SceneRoot({
   budget,
   isMobile,
   freeCamera,
+  showVolumes,
   showPerf,
   lightningNonce,
 }: SceneRootProps) {
@@ -73,7 +75,8 @@ function SceneRoot({
       <FrameRateGate fps={budget.fps} />
       {freeCamera ? (
         <>
-          <OrbitControls target={LOOK_TARGET} />
+          {/* Stay inside the <Sky> box (half-size 1500) so the debug view keeps its sky. */}
+          <OrbitControls target={LOOK_TARGET} maxDistance={600} />
           <FreeCameraWASD />
         </>
       ) : (
@@ -102,6 +105,7 @@ function SceneRoot({
       />
       <DiamondDust params={params} frame={frame} count={budget.sparkles} />
 
+      {showVolumes && <VolumeHelpers frame={frame} />}
       {showPerf && (
         <>
           <PerfProbe />

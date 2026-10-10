@@ -28,5 +28,5 @@ export function SkyLayer() {
     u.mieDirectionalG.value = 0.86;
   });
 
-  return <Sky ref={ref} distance={1000} />;
+  return <Sky ref={ref} distance={3000} />;
 }
