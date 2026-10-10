@@ -2,6 +2,18 @@
 
 > Branch `scene-rewrite` (od `volumetric-clouds`). Commity: tylko jednolinijkowe `feat: …`, bez pushowania.
 
+## Status (2026-10-10)
+
+Wszystkie kroki 0–8 zrobione na `scene-rewrite` (commity `feat: …`, niepushowane). Odstępstwa od planu poniżej:
+
+- Debug menu przebudowane razem z przełączeniem sceny (krok 3), bo stary `DebugOverrides` blokował build; krok 7 dołożył już tylko `VolumeHelpers`.
+- Opady: zamiast „spawn nad górną krawędzią” emitter liczy **przepływ przez objętość kadru** (losowy punkt w kadrze → cofnięcie wzdłuż prędkości do krawędzi wejścia → `life` do krawędzi wyjścia). Bez tego przy wichurze płatki spędzały większość życia poza kadrem.
+- Cumulusy dostają kolor bazowy przez `emissive` (sprite'y patrzą w kamerę i są podświetlone od tyłu przez słońce w kadrze, sam Lambert dawał szare plamy) i wygaszają się bliżej niż 110 j. od kamery.
+- Pitch kamery 16° zamiast 10°, bo pas „ziemi” pod horyzontem zjadał 30 % ekranu.
+- three.quarks i drei `<Sparkles>` gubią `toneMapped: false` → łatane w runtime; tekstury cząstek to `DataTexture` (biały RGB + alfa).
+- Zmierzone (headless Chrome, SwiftShader, tier `low` na 390×844): 3–4 draw calle w czystym niebie, deszczu i burzy z gradem.
+- Weryfikacja wizualna była robiona headless (rozszerzenie Claude in Chrome nie było połączone); warto obejrzeć na prawdziwym GPU, zwłaszcza płynność ruchu i kolory przy zmierzchu.
+
 ## Ustalenia z kroku 0 (nadpisują resztę planu)
 
 - `suncalc@1.9.0` (+ `@types/suncalc@1.9.2`) — linia 2.x jest za świeża (wydana kilka dni temu).
