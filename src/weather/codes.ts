@@ -96,28 +96,6 @@ export function getEffectTypeAndIntensity(code: number): {
   return { type: "clear", intensity };
 }
 
-/** True for WMO drizzle codes 51–57 (drizzle, freezing drizzle). */
-export function isDrizzleCode(code: number): boolean {
-  const c = Math.floor(code);
-  return c >= 51 && c <= 57;
-}
-
-export const PARTICLE_COUNTS: Record<Intensity, number> = {
-  light: 1600,
-  moderate: 2000,
-  heavy: 4500,
-};
-
-export function getParticleCountForIntensity(intensity: Intensity): number {
-  return PARTICLE_COUNTS[intensity];
-}
-
-export const FOG_DENSITIES: Record<Intensity, number> = {
-  light: 0.025,
-  moderate: 0.055,
-  heavy: 0.1,
-};
-
 export function getCloudCoverFromWeatherCode(weatherCode: number): number {
   const c = Math.floor(weatherCode);
   if (c >= 0 && c <= 3) return [0, 0.2, 0.55, 0.95][c];
@@ -137,9 +115,3 @@ export function getCloudCoverFromWeatherCode(weatherCode: number): number {
   if (c >= 58 && c <= 60) return 0.7;
   return 0.6;
 }
-
-export const CLEAR_INTENSITY_TO_CLOUD_COVER: Record<Intensity, number> = {
-  light: 0.2,
-  moderate: 0.55,
-  heavy: 0.95,
-};

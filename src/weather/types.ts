@@ -1,4 +1,4 @@
-/** All weather types: API data, effect classification, time phases, simulation config. */
+/** Weather domain types: API data and WMO effect classification. Scene parameters live in sceneParams.ts. */
 
 export interface WeatherQuery {
   q?: string;
@@ -87,33 +87,3 @@ export type EffectType =
   | "thunderstorm";
 
 export type Intensity = "light" | "moderate" | "heavy";
-
-export type TimeOfDay = "night" | "dawn" | "day" | "dusk";
-
-export interface SimulationConfig {
-  effectType: EffectType;
-  intensity: Intensity;
-  particleCount: number;
-  fogDensity: number;
-  thunderstorm: boolean;
-  cloudCover: number;
-  windSpeed: number;
-  windDirection: number;
-  timeOfDay: TimeOfDay;
-  parallaxAmount: number;
-  sunrise: number;
-  sunset: number;
-  /** Current time (Unix seconds) for sun/moon position when not using real-time clock. */
-  dt?: number;
-  useRealtimeClock: boolean;
-  /** Weather location in degrees. Drives the atmosphere's NUE frame so the sun
-   * rises/sets at the viewed city rather than (0,0). */
-  lat?: number;
-  lon?: number;
-  temperature?: number;
-  humidity?: number;
-  /** Drizzle (WMO 51–57): different fall speed and wind factor. */
-  isDrizzle?: boolean;
-  /** Height fog falloff rate. Higher = fog hugs ground more. Default 0.25. */
-  fogHeightFalloff?: number;
-}
