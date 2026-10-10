@@ -66,6 +66,12 @@ export interface WeatherData {
   dew_point?: number;
   /** Current precipitation rate (mm or in). */
   precipitation?: number;
+  /** Cloud cover per altitude band, %, 0–100. */
+  cloud_cover_low?: number;
+  cloud_cover_mid?: number;
+  cloud_cover_high?: number;
+  /** Wind gusts in the same speed unit as `speed`. */
+  wind_gusts?: number;
 }
 
 export type EffectType =

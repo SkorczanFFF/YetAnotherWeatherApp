@@ -66,7 +66,7 @@ const getFormattedWeatherData = async (
     temperature_unit,
     wind_speed_unit,
     current:
-      "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation",
+      "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_gusts_10m",
     hourly: "temperature_2m,precipitation_probability,weather_code",
     daily:
       "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max",

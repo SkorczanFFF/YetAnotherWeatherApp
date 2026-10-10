@@ -65,6 +65,10 @@ export const formatCurrentWeather = (
     uv_index,
     dew_point_2m,
     precipitation,
+    cloud_cover_low,
+    cloud_cover_mid,
+    cloud_cover_high,
+    wind_gusts_10m,
   } = current;
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
   const { description: details } =
@@ -106,6 +110,10 @@ export const formatCurrentWeather = (
     uv_index,
     dew_point: dew_point_2m,
     precipitation,
+    cloud_cover_low,
+    cloud_cover_mid,
+    cloud_cover_high,
+    wind_gusts: wind_gusts_10m,
   };
 };
 

@@ -15,6 +15,10 @@ export interface OpenMeteoCurrentData {
   wind_direction_10m: number;
   is_day: number;
   cloud_cover: number;
+  cloud_cover_low?: number;
+  cloud_cover_mid?: number;
+  cloud_cover_high?: number;
+  wind_gusts_10m?: number;
   visibility: number;
   uv_index: number;
   dew_point_2m: number;
