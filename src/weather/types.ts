@@ -12,6 +12,7 @@ export type Units = "metric" | "imperial";
 export type LoadSource = "initial" | "search" | "location" | "map" | "units";
 
 export interface DailyWeather {
+  /** Short weekday, e.g. "Mon". */
   title: string;
   date: string;
   temp: number;
@@ -33,7 +34,6 @@ export interface HourlyForecast {
 }
 
 export interface WeatherData {
-  dt: number;
   timezone: string;
   name: string;
   country: string;
@@ -48,12 +48,9 @@ export interface WeatherData {
   sunset: number;
   /** Tomorrow's sunrise (Unix seconds) — used for night moon arc. */
   next_sunrise?: number;
-  /** Yesterday/today's sunset before sunrise — for pre-dawn night phase. */
-  prev_sunset?: number;
   humidity: number;
   speed: number;
   details: string;
-  icon: string;
   daily: DailyWeather[];
   hourly: HourlyForecast[];
   weather_code: number;

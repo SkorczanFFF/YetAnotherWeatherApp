@@ -6,8 +6,61 @@
 //
 // Hover/active states raise `--glass-lift` instead of replacing `background`,
 // which would drop the tint.
-@mixin liquid-glass($blur: var(--glass-blur)) {
+$glass-reveal: 160px;
+
+// Cursor reveal, for any boxed UI element (liquid glass includes it): a ring
+// just inside the border lights up wherever the mouse is near — hovered or
+// not, even from the gap between two cards — and brightens on :hover.
+// `--glass-spot: 1` marks the element for useGlassSpotlight
+// (styles/useGlassSpotlight.ts), which writes the cursor position to
+// `--mx` / `--my`. The mixin owns `::after`; it can't decorate replaced
+// elements (input, select, img). Pass `$position: null` when the element is
+// already positioned (absolute/fixed). Components that declare their own
+// `transition` list must add `--glass-glow 0.35s ease` to it.
+@mixin glass-reveal($position: relative) {
+  --glass-spot: 1;
+  position: $position;
+  transition: --glass-glow 0.35s ease;
+
+  // Drawn inside the padding box so `overflow: hidden` boxes don't clip it.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: radial-gradient(
+      $glass-reveal circle at var(--mx, -999px) var(--my, -999px),
+      oklch(1 0 0 / calc(0.55 + var(--glass-glow) * 0.35)),
+      oklch(1 0 0 / calc(0.12 + var(--glass-glow) * 0.1)) 55%,
+      transparent 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { --glass-glow: 1; }
+  }
+}
+
+@mixin liquid-glass($blur: var(--glass-blur), $position: relative) {
+  @include glass-reveal($position);
+  // Top layer: inner glow under the cursor while hovered.
   background:
+    radial-gradient(
+      220px circle at var(--mx, -999px) var(--my, -999px),
+      oklch(1 0 0 / calc(var(--glass-glow) * 0.16)),
+      oklch(1 0 0 / calc(var(--glass-glow) * 0.05)) 45%,
+      transparent 70%
+    ),
     linear-gradient(
       135deg,
       oklch(1 0 0 / calc(0.13 + var(--glass-lift, 0))),
@@ -15,7 +68,7 @@
       oklch(1 0 0 / calc(0.07 + var(--glass-lift, 0)))
     ),
     oklch(0.24 0.025 250 / calc(0.08 + var(--scene-light) * 0.26));
-  border: 1px solid oklch(1 0 0 / 0.18);
+  border: 1px solid oklch(1 0 0 / calc(0.18 + var(--glass-glow) * 0.12));
   backdrop-filter: blur($blur) saturate(1.7) brightness(calc(1 - var(--scene-light) * 0.28));
   -webkit-backdrop-filter: blur($blur) saturate(1.7) brightness(calc(1 - var(--scene-light) * 0.28));
   box-shadow:

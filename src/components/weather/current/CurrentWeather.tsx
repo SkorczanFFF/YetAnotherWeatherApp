@@ -4,8 +4,10 @@ import {
   formatToLocalTime,
   formatTemperature,
   formatSpeed,
+  tempSymbol,
   toCardinal,
 } from "../../../services/weatherFormatter";
+import { PinIcon } from "../../icons";
 import { WeatherData, Units } from "../../../weather/types";
 import "./CurrentWeather.scss";
 
@@ -25,6 +27,9 @@ const uvLabel = (uv?: number): string => {
   return "extreme";
 };
 
+/** Cloud outline (24×24) whose flat base sits at `y`. */
+const cloud = (y: number) => `M7 ${y}a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 ${y}H7Z`;
+
 const conditionIcon = (code: number, isDay: number) => {
   if (code <= 1) {
     return isDay ? (
@@ -42,10 +47,10 @@ const conditionIcon = (code: number, isDay: number) => {
   if (code === 2) return (
     <>
       <circle cx="17" cy="7" r="3" />
-      <path d="M7 18a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 18H7Z" />
+      <path d={cloud(18)} />
     </>
   );
-  if (code === 3) return <path d="M7 18a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 18H7Z" />;
+  if (code === 3) return <path d={cloud(18)} />;
   if (code === 45 || code === 48) return (
     <g strokeLinecap="round">
       <path d="M3 8h13" /><path d="M5 12h15" /><path d="M3 16h11" /><path d="M16 16h5" />
@@ -53,7 +58,7 @@ const conditionIcon = (code: number, isDay: number) => {
   );
   if ((code >= 71 && code <= 77) || code === 85 || code === 86 || code === 66 || code === 67) return (
     <>
-      <path d="M7 15a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 15H7Z" />
+      <path d={cloud(15)} />
       <g strokeLinecap="round">
         <path d="M9 19v2" /><path d="M13 19v2" /><path d="M17 19v2" />
       </g>
@@ -61,13 +66,13 @@ const conditionIcon = (code: number, isDay: number) => {
   );
   if (code >= 95 && code <= 99) return (
     <>
-      <path d="M7 16a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 16H7Z" />
+      <path d={cloud(16)} />
       <path d="m11 17-2 4h3l-1 3 3-5h-3l2-2" />
     </>
   );
   return (
     <>
-      <path d="M7 15a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 15H7Z" />
+      <path d={cloud(15)} />
       <path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3" strokeLinecap="round" />
     </>
   );
@@ -88,13 +93,18 @@ const visibilityKm = (m?: number) => {
   return (m / 1000).toFixed(1);
 };
 
+// Sun/moon arc: a quadratic Bézier from (ARC_X0, ARC_Y) over ARC_PEAK_Y to (ARC_X1, ARC_Y).
 const ARC_VB_W = 200;
 const ARC_VB_H = 40;
-const arcAt = (t: number) => {
-  const x = 4 + (196 - 4) * t;
-  const y = (1 - t) * (1 - t) * 36 + 2 * t * (1 - t) * -12 + t * t * 36;
-  return { x, y };
-};
+const ARC_X0 = 4;
+const ARC_X1 = ARC_VB_W - ARC_X0;
+const ARC_Y = 36;
+const ARC_PEAK_Y = -12;
+const ARC_PATH = `M${ARC_X0} ${ARC_Y} Q ${ARC_VB_W / 2} ${ARC_PEAK_Y} ${ARC_X1} ${ARC_Y}`;
+const arcAt = (t: number) => ({
+  x: ARC_X0 + (ARC_X1 - ARC_X0) * t,
+  y: (1 - t) * (1 - t) * ARC_Y + 2 * t * (1 - t) * ARC_PEAK_Y + t * t * ARC_Y,
+});
 
 const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
   const [live, setLive] = useState(() => getLiveTimeParts(weather.timezone));
@@ -166,19 +176,12 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
     <section className="hero">
       <div className="hero-head">
         <div className="meta-row">
-          <span className="pin" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
-              <circle cx="12" cy="9" r="2.5" />
-            </svg>
+          <span className="pin">
+            <PinIcon strokeWidth={2} />
           </span>
           <span>{live.datePart}</span>
           <span className="sep" aria-hidden="true" />
           <span>{live.timePart}</span>
-        </div>
-        <div className="live">
-          <span className="pulse" aria-hidden="true" />
-          <span>Live</span>
         </div>
       </div>
 
@@ -198,7 +201,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
           </div>
           <div className="temp">
             <span>{Math.round(weather.temp)}</span>
-            <span className="deg">°{units === "metric" ? "C" : "F"}</span>
+            <span className="deg">{tempSymbol(units)}</span>
           </div>
           <div className="temp-sub">
             <span className="kv"><span className="k">Feels</span><span className="v">{formatted.feels}</span></span>
@@ -256,7 +259,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
           </div>
           <div className="stat">
             <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-              <path d="M7 18a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 18H7Z" />
+              <path d={cloud(18)} />
             </svg>
             <div className="info">
               <span className="label">Cloud cover</span>
@@ -308,18 +311,18 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
                 />
               </clipPath>
             </defs>
-            <path className="arc-bg" d="M4 36 Q 100 -12 196 36" />
+            <path className="arc-bg" d={ARC_PATH} />
             <path
               className="arc-done"
-              d="M4 36 Q 100 -12 196 36"
+              d={ARC_PATH}
               clipPath={`url(#${arcClipId})`}
             />
           </svg>
           <div
             className="sun-marker"
             style={{
-              left: `${(arcPt.x / 200) * 100}%`,
-              top: `${(arcPt.y / 40) * 100}%`,
+              left: `${(arcPt.x / ARC_VB_W) * 100}%`,
+              top: `${(arcPt.y / ARC_VB_H) * 100}%`,
             }}
           >
             {arc.mode === "day" ? (

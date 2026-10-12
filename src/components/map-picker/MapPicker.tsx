@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LoaderPill } from "../loader/Loader";
+import { PIN_PATH, PinIcon } from "../icons";
 import "./MapPicker.scss";
 
 const DRAWER_WIDTH_MIN = 385;
@@ -24,7 +25,7 @@ function createMarkerIcon(pinSvgHtml: string): L.DivIcon {
 const PinSvg = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path
-      d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z"
+      d={PIN_PATH}
       fill="oklch(0.82 0.14 62)"
       stroke="oklch(0.34 0.06 240)"
     />
@@ -138,7 +139,6 @@ export function MapPicker({
     if (picked) {
       onPickLocation(picked.lat, picked.lon);
       onClose();
-      setPicked(null);
     }
   }, [picked, onPickLocation, onClose]);
 
@@ -224,11 +224,8 @@ export function MapPicker({
           </span>
         </div>
         <header className="map-picker-header">
-          <span className="map-picker-header__pin" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
-              <circle cx="12" cy="9" r="2.5" />
-            </svg>
+          <span className="map-picker-header__pin">
+            <PinIcon />
           </span>
           <h2>Pick location</h2>
           <button

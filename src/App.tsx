@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,12 +10,14 @@ import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
 import DebugMenu, { type DebugTools } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
 import { LoaderPanel, LoaderPill } from "./components/loader/Loader";
+import { useGlassSpotlight } from "./styles/useGlassSpotlight";
 import {
   isOverridesDirty,
   mapToSceneParams,
   type SceneOverrides,
 } from "./weather/sceneParams";
 import getFormattedWeatherData from "./services/weatherService";
+import { tempSymbol } from "./services/weatherFormatter";
 import { WeatherError } from "./services/errors";
 import {
   type LoadSource,
@@ -25,6 +27,9 @@ import {
 } from "./weather/types";
 
 const MIN_LOADING_MS = 500;
+/** Phones have no F7: this many quick taps on the footer status toggle the debug menu. */
+const DEBUG_TAPS = 5;
+const DEBUG_TAP_GAP_MS = 600;
 
 const describeQuery = (query: WeatherQuery): string =>
   query.q
@@ -34,7 +39,7 @@ const describeQuery = (query: WeatherQuery): string =>
 const loadingLabel = (source: LoadSource, query: WeatherQuery, units: Units): string => {
   switch (source) {
     case "units":
-      return `Switching to ${units === "metric" ? "°C" : "°F"}`;
+      return `Switching to ${tempSymbol(units)}`;
     case "location":
       return "Loading your location";
     default:
@@ -50,13 +55,14 @@ const formatGmtOffset = (timezone?: string): string => {
       timeZoneName: "shortOffset",
     }).formatToParts(new Date());
     const offset = parts.find((p) => p.type === "timeZoneName")?.value;
-    return offset ? offset.replace("GMT", "GMT") : "";
+    return offset ?? "";
   } catch {
     return "";
   }
 };
 
 const App = (): React.ReactElement => {
+  useGlassSpotlight();
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
   const [units, setUnits] = useState<Units>("metric");
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -86,6 +92,18 @@ const App = (): React.ReactElement => {
     [weather, weatherUnits, debugOverrides],
   );
 
+  const statusTaps = useRef({ count: 0, last: 0 });
+  const handleStatusTap = () => {
+    const taps = statusTaps.current;
+    const now = performance.now();
+    taps.count = now - taps.last < DEBUG_TAP_GAP_MS ? taps.count + 1 : 1;
+    taps.last = now;
+    if (taps.count >= DEBUG_TAPS) {
+      taps.count = 0;
+      setDebugOpen((prev) => !prev);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "F7") {
@@ -103,7 +121,7 @@ const App = (): React.ReactElement => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [debugOpen]);
+  }, []);
 
   useEffect(() => {
     // A newer request supersedes this one: its late result and its
@@ -164,7 +182,7 @@ const App = (): React.ReactElement => {
   const label = loadingLabel(loadSource, query, units);
 
   return (
-    <div className="App" id="App">
+    <div className="App">
       <WeatherScene
         params={effectiveParams}
         freeCamera={freeCamera}
@@ -194,17 +212,15 @@ const App = (): React.ReactElement => {
             {weather && (
               <>
                 <CurrentWeather weather={weather} units={weatherUnits} />
-                {weather.hourly?.length > 1 && (
-                  <HourlyChart
-                    hourly={weather.hourly}
-                    timezone={weather.timezone}
-                    units={weatherUnits}
-                  />
-                )}
+                <HourlyChart
+                  hourly={weather.hourly}
+                  timezone={weather.timezone}
+                  units={weatherUnits}
+                />
                 <WeeklyForecast items={weather.daily} units={weatherUnits} />
                 <div className="footer">
                   <div className="footer-row">
-                    <div className="status">
+                    <div className="status" onClick={handleStatusTap}>
                       <span className="dot" aria-hidden="true" />
                       <span>Open-Meteo · Live data</span>
                     </div>
@@ -241,10 +257,7 @@ const App = (): React.ReactElement => {
       <MapPicker
         open={mapPanelOpen}
         onClose={() => setMapPanelOpen(false)}
-        onPickLocation={(lat, lon) => {
-          requestQuery({ lat, lon }, "map");
-          setMapPanelOpen(false);
-        }}
+        onPickLocation={(lat, lon) => requestQuery({ lat, lon }, "map")}
         initialCenter={
           weather?.lat != null && weather?.lon != null
             ? [weather.lat, weather.lon]

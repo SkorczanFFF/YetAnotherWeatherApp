@@ -5,6 +5,7 @@ import type {
   AtmosphereData,
   AtmosphereLevel,
   HourlyForecast,
+  Units,
   WeatherData,
 } from "../weather/types";
 import { type OpenMeteoResponse, PRESSURE_LEVELS } from "./weatherApi";
@@ -40,14 +41,8 @@ const weatherCodeMap: Record<number, { description: string; icon: string }> = {
   99: { description: "Thunderstorm with heavy hail", icon: "11d" },
 };
 
-const getIconCode = (weatherCode: number, is_day: number): string => {
-  const weather = weatherCodeMap[weatherCode] || {
-    description: "Unknown",
-    icon: "01d",
-  };
-  if (is_day === 0) return weather.icon.replace("d", "n");
-  return weather.icon;
-};
+const describeCode = (code: number) =>
+  weatherCodeMap[code] ?? { description: "Unknown", icon: "01d" };
 
 export const formatCurrentWeather = (
   data: OpenMeteoResponse,
@@ -63,7 +58,6 @@ export const formatCurrentWeather = (
     weather_code,
     wind_speed_10m: speed,
     wind_direction_10m: wind_direction,
-    time: dt_str,
     is_day,
     cloud_cover,
     visibility,
@@ -79,10 +73,7 @@ export const formatCurrentWeather = (
     snowfall,
   } = current;
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
-  const { description: details } =
-    weatherCodeMap[weather_code] || { description: "Unknown" };
-  const icon = getIconCode(weather_code, is_day);
-  const dt = DateTime.fromISO(dt_str).toSeconds();
+  const { description: details } = describeCode(weather_code);
   const sunrise_time = DateTime.fromISO(sunrise[0]).toSeconds();
   const sunset_time = DateTime.fromISO(sunset[0]).toSeconds();
   const next_sunrise = sunrise[1] ? DateTime.fromISO(sunrise[1]).toSeconds() : undefined;
@@ -102,13 +93,11 @@ export const formatCurrentWeather = (
     pressure,
     humidity,
     name,
-    dt,
     country,
     sunrise: sunrise_time,
     sunset: sunset_time,
     next_sunrise,
     details,
-    icon,
     speed,
     weather_code,
     is_day,
@@ -163,10 +152,10 @@ export const formatWeeklyWeather = (
   const weeklyData = daily.time.slice(1, 8).map((date, index) => {
     const i = index + 1;
     const code = daily.weather_code[i];
-    const meta = weatherCodeMap[code] || { description: "Unknown", icon: "01d" };
+    const meta = describeCode(code);
     const dtSec = DateTime.fromISO(date).toSeconds();
     return {
-      title: formatToLocalTime(dtSec, timezone, "cccc"),
+      title: formatToLocalTime(dtSec, timezone, "ccc"),
       date: formatToLocalTime(dtSec, timezone, "dd LLL"),
       temp: daily.temperature_2m_max[i],
       temp_min: daily.temperature_2m_min[i],
@@ -189,19 +178,18 @@ export const formatWeeklyWeather = (
   return { timezone, daily: weeklyData, hourly: hourlyData };
 };
 
-export const formatToLocalTime = (
-  secs: number,
-  zone: string,
-  format: string = "cccc, dd LLLL yyyy', 'HH:mm",
-): string => DateTime.fromSeconds(secs).setZone(zone).toFormat(format);
+export const formatToLocalTime = (secs: number, zone: string, format: string): string =>
+  DateTime.fromSeconds(secs).setZone(zone).toFormat(format);
 
 export const iconUrlFromCode = (code: string): string =>
   `https://openweathermap.org/img/wn/${code}@4x.png`;
 
-export const formatTemperature = (value: number, units: string): string =>
-  `${value.toFixed()}°${units === "metric" ? "C" : "F"}`;
+export const tempSymbol = (units: Units): string => (units === "metric" ? "°C" : "°F");
 
-export const formatSpeed = (value: number, units: string): string =>
+export const formatTemperature = (value: number, units: Units): string =>
+  `${value.toFixed()}${tempSymbol(units)}`;
+
+export const formatSpeed = (value: number, units: Units): string =>
   `${value.toFixed()} ${units === "metric" ? "km/h" : "mph"}`;
 
 const CARDINALS = [

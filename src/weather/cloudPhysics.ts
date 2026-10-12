@@ -41,7 +41,7 @@ export interface CloudPhysics {
   opticalDepth: number;
   /** τ came from measured-in-model radiation (true) or was estimated. */
   opticalDepthMeasured: boolean;
-  /** Direct / global shortwave — how visible the sun disc is through clouds; null at night. */
+  /** Direct / global shortwave (debug readout: how much sun gets through); null at night. */
   directFraction: number | null;
   /** 0 stable … 1 deep convection. */
   convection: number;

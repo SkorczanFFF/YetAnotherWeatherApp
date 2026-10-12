@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { DateTime } from "luxon";
 import { HourlyForecast, Units } from "../../../weather/types";
+import { tempSymbol } from "../../../services/weatherFormatter";
 import "./HourlyChart.scss";
 
 interface HourlyChartProps {
@@ -19,11 +20,11 @@ const POINTS = 12;
 
 const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) => {
   const slice = useMemo(() => {
-    const nowSec = DateTime.now().setZone(timezone).toSeconds();
+    const nowSec = Date.now() / 1000;
     let startIdx = hourly.findIndex((h) => h.time >= nowSec);
     if (startIdx < 0) startIdx = 0;
     return hourly.slice(startIdx, startIdx + POINTS);
-  }, [hourly, timezone]);
+  }, [hourly]);
 
   const chart = useMemo(() => {
     if (slice.length < 2) return null;
@@ -50,7 +51,7 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
       yPct: (ys(p.temp) / H) * 100,
     }));
 
-    return { linePath, areaPath, grid, points, innerH };
+    return { linePath, areaPath, grid, points };
   }, [slice]);
 
   if (!chart) return null;
@@ -59,7 +60,7 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
     <section className="hourly">
       <div className="section-head">
         <span className="section-title">Next 12 hours</span>
-        <span className="section-hint">Temperature · {units === "metric" ? "°C" : "°F"}</span>
+        <span className="section-hint">Temperature · {tempSymbol(units)}</span>
       </div>
       <div className="chart">
         <svg

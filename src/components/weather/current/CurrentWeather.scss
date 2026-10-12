@@ -1,28 +1,20 @@
 @use "../../../styles/glass" as *;
 
 .hero {
-  position: relative;
   padding: var(--pad);
   border-radius: var(--radius);
   @include liquid-glass;
   overflow: hidden;
   isolation: isolate;
 
+  // Top highlight line + soft overhead light (::after belongs to liquid-glass).
   &::before {
     content: "";
     position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.4), transparent);
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
     inset: 0;
-    background: radial-gradient(120% 100% at 50% 0%, oklch(1 0 0 / 0.06), transparent 60%);
+    background:
+      linear-gradient(90deg, transparent, oklch(1 0 0 / 0.4), transparent) top / 100% 1px no-repeat,
+      radial-gradient(120% 100% at 50% 0%, oklch(1 0 0 / 0.06), transparent 60%);
     pointer-events: none;
     z-index: 0;
   }
@@ -32,8 +24,6 @@
   .hero-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
     margin-bottom: calc(var(--pad) * 0.5);
   }
 
@@ -62,31 +52,6 @@
       background: var(--fg-faint);
       border-radius: 50%;
     }
-  }
-
-  .live {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    color: var(--fg-mute);
-    text-transform: uppercase;
-
-    .pulse {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent-good);
-      box-shadow: 0 0 0 0 oklch(0.80 0.14 145 / 0.6);
-      animation: pulse 2s ease-out infinite;
-    }
-  }
-
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 oklch(0.80 0.14 145 / 0.6); }
-    100% { box-shadow: 0 0 0 8px oklch(0.80 0.14 145 / 0); }
   }
 
   .hero-core {
@@ -323,9 +288,7 @@
       padding-top: 14px;
       margin-top: 6px;
     }
-    .stat:first-child,
-    .stat:nth-child(2) { border-top: 0; padding-top: 0; }
-    .stat:nth-child(n+3) { border-top: 1px solid var(--stroke); padding-top: 7px; }
+    .stat:nth-child(n+3) { padding-top: 7px; }
   }
 }
 
@@ -344,8 +307,4 @@
     .sun-end--start { grid-area: start; }
     .sun-end--end { grid-area: end; }
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero .live .pulse { animation: none; }
 }

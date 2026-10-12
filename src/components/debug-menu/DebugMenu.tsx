@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { VscClose } from "react-icons/vsc";
-import { MdRestartAlt } from "react-icons/md";
 import * as SunCalc from "suncalc";
 import { DateTime } from "luxon";
 import {
@@ -199,10 +197,15 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           <h2>Debug panel</h2>
           <div className="debug-menu-header-actions">
             <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto" aria-label="Reset all to auto">
-              <MdRestartAlt />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12a8 8 0 1 0 2.3-5.6" />
+                <path d="M4 4v4h4" />
+              </svg>
             </button>
             <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close" aria-label="Close debug menu">
-              <VscClose />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
             </button>
           </div>
         </div>

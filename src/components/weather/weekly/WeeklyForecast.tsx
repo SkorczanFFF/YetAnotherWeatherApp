@@ -12,11 +12,6 @@ interface WeeklyForecastProps {
   units: Units;
 }
 
-const SHORT: Record<string, string> = {
-  Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu",
-  Friday: "Fri", Saturday: "Sat", Sunday: "Sun",
-};
-
 const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
   return (
     <section className="forecast" aria-label="6-day forecast">
@@ -26,7 +21,7 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
         return (
           <article key={i} className={`day${i === 0 ? " active" : ""}`}>
             <div className="day-head">
-              <span className="day-name">{SHORT[d.title] || d.title.slice(0, 3)}</span>
+              <span className="day-name">{d.title}</span>
               <span className="day-date">{d.date}</span>
             </div>
             <div className="day-body">

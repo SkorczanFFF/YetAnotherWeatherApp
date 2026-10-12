@@ -1,4 +1,4 @@
-import { type ComponentRef, useRef } from "react";
+import { type ComponentRef, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { MathUtils, type ShaderMaterial, type Vector3 } from "three";
@@ -14,10 +14,14 @@ export function SkyLayer() {
   const s = useSceneSignals();
   const ref = useRef<ComponentRef<typeof Sky>>(null);
 
+  // drei <Sky> has no renderOrder prop in its types; set it once.
+  useEffect(() => {
+    if (ref.current) ref.current.renderOrder = -2;
+  }, []);
+
   useFrame(() => {
     const sky = ref.current;
     if (!sky) return;
-    sky.renderOrder = -2;
     sky.visible = s.night < 0.995;
     if (!sky.visible) return;
     const u = (sky.material as ShaderMaterial).uniforms;

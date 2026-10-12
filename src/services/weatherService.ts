@@ -1,9 +1,10 @@
 /** Orchestrator: geocode → fetch → format → WeatherData. */
 
-import type { WeatherData } from "../weather/types";
+import type { Units, WeatherData, WeatherQuery } from "../weather/types";
 import { WeatherError } from "./errors";
 import { geocodeCity, reverseGeocode } from "./geocoder";
 import { getWeatherData, PRESSURE_LEVELS } from "./weatherApi";
+import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
 
 /** Upper-air, stability and radiation fields for the scene's cloud physics. */
 const ATMOSPHERE_FIELDS = [
@@ -20,25 +21,16 @@ const ATMOSPHERE_FIELDS = [
   "wind_direction_300hPa",
   ...PRESSURE_LEVELS.flatMap((p) => [`cloud_cover_${p}hPa`, `geopotential_height_${p}hPa`]),
 ].join(",");
-import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
-
-interface WeatherParams {
-  q?: string;
-  lat?: number;
-  lon?: number;
-  units?: string;
-  timezone?: string;
-}
 
 const getFormattedWeatherData = async (
-  searchParams: WeatherParams,
+  searchParams: WeatherQuery & { units: Units },
 ): Promise<WeatherData> => {
   let lat = searchParams.lat;
   let lon = searchParams.lon;
   let locationName: string | undefined;
   let countryCode: string | undefined;
 
-  if (searchParams.q && (!lat || !lon)) {
+  if (searchParams.q && (lat == null || lon == null)) {
     const geocodingResult = await geocodeCity(searchParams.q);
     if (!geocodingResult) {
       throw new WeatherError(
@@ -52,7 +44,7 @@ const getFormattedWeatherData = async (
     countryCode = geocodingResult.country_code;
   }
 
-  if (!lat || !lon) {
+  if (lat == null || lon == null) {
     throw new WeatherError("Latitude and longitude are required", "GEOCODE_FAILED");
   }
 
@@ -78,7 +70,7 @@ const getFormattedWeatherData = async (
   const data = await getWeatherData("forecast", {
     latitude: lat,
     longitude: lon,
-    timezone: searchParams.timezone || "auto",
+    timezone: "auto",
     temperature_unit,
     wind_speed_unit,
     current:

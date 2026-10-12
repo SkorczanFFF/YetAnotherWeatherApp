@@ -36,13 +36,13 @@ WeatherQuery {q | lat,lon}
     every layer reads params (React props) + signals (inside useFrame)
 ```
 
-`App.tsx` owns all top-level state (query, units, weather, overrides, debug tools, freeCamera, map drawer) and the `.shell` layout. `units` goes to the scene because Open-Meteo returns mph/°F in imperial mode.
+`App.tsx` owns all top-level state (query, units, weather, overrides, debug tools, map drawer) and the `.shell` layout. `units` goes to the scene because Open-Meteo returns mph/°F in imperial mode.
 
 ## Directory map
 
 ```
 src/
-  App.tsx                       top-level state + keybinds (F7 debug, C free cam)
+  App.tsx                       top-level state + debug entry (F7, or 5 taps on the footer status)
   services/                     weatherService, weatherApi, geocoder, weatherFormatter
   weather/
     sceneParams.ts              WeatherData + units + SceneOverrides → SceneParams; getFrostAmount
@@ -55,13 +55,13 @@ src/
     WeatherScene.tsx            <Canvas>, quality tier + PerformanceMonitor, SceneRoot (mount order!)
     core/
       worldFrame.ts             world convention: facing S/N, compassToWorld, windVelocity, heights, scales
-      viewVolume.ts             frustum-derived spawn volumes (ViewFrame, halfWidthAt, elevatedBand, …)
+      viewVolume.ts             frustum-derived spawn volumes (ViewFrame, halfWidthAt, topAt/bottomAt, skyPatch, …)
       sceneSignals.tsx          per-frame shared state (context; mutable — never React state)
       SceneDriver.tsx           clock, suncalc (real + display directions), light/fog colours, gusts
       UiBacklight.tsx           scene brightness → `--scene-light` CSS var on <html> (drives the glass UI)
       quality.ts                low / medium / high budgets
       CameraRig.tsx             static camera + subtle parallax (gyro / pointer); LOOK_TARGET
-      FreeCameraWASD.tsx, FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
+      FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
       noiseTexture.ts           module-scoped tileable FBM 256×256 singleton
     layers/
       SkyLayer.tsx              drei <Sky> (Preetham) driven by the displayed sun
@@ -74,39 +74,39 @@ src/
       Thunder.tsx               strike scheduler + drei <Line> bolts, drives signals.flash
       DiamondDust.tsx           drei <Sparkles> at ≤ −10 °C, clear and humid
       FrostGlass.tsx            procedural frosted pane (shaders/frost), grows 0 → −20 °C
-      FogLayer.tsx              scene FogExp2 (only the potato-tier deck opts in)
+      FogLayer.tsx              scene FogExp2, mounted only with the potato-tier deck (its one user)
     shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck, cloudNoise, volumetricClouds)
-    debug/                      PerfProbe + perfStats (renderer.info), VolumeHelpers (spawn wireframes)
+    debug/                      PerfProbe + perfStats (renderer.info)
 ```
 
 ## World convention & "only where the camera looks"
 
 - Camera at the origin, looking down **-Z**, pitched up 16°, FOV 50. **-Z = south** on the northern hemisphere and **north** on the southern one (`facingFor(lat)`), so the sun always crosses the frame. +X is the viewer's right (west when facing south). Azimuths follow suncalc (radians from south, + towards west). `compassToWorld` / `windVelocity` in `core/worldFrame.ts` are the only places bearings become vectors — wind FROM the west drifts clouds **leftwards**, from the north **away towards the horizon**.
 - Sun and moon use the real altitude for light and colour (`signals.sunAlt`, `day`, `night`, `warmth`) but a **display direction** squeezed into the frame (azimuth ±135° → 80 % of the half-frame, altitude scaled under the top edge). Sky glow, sun disc, key light and moon all use the display direction so they agree. The volumetric clouds are lit from the display azimuth but the **real** altitude — the squeezed altitude lit every cloud nearly horizontally.
-- Every layer spawns only inside volumes from `core/viewVolume.ts`, derived from the BASE camera frustum plus a margin covering the parallax range. Drifting things wrap at volume edges that are off-screen or deep in the horizon fog. Precipitation particles get a life that ends exactly when they leave the frame (`ViewVolumeEmitter`). The volumetric clouds need no volume: they are raymarched per pixel of the view, so their cost follows the cloud target size, not the sky. Check it with the debug "spawn volumes" toggle + free camera.
+- Every layer spawns only inside volumes from `core/viewVolume.ts`, derived from the BASE camera frustum plus a margin covering the parallax range. Drifting things wrap at volume edges that are off-screen or deep in the horizon fog. Precipitation particles get a life that ends exactly when they leave the frame (`ViewVolumeEmitter`). The volumetric clouds need no volume: they are raymarched per pixel of the view, so their cost follows the cloud target size, not the sky.
 
 ## Scene rendering pipeline
 
-No EffectComposer, no post-process. The only offscreen work is the volumetric cloud pass (one full-screen draw into a low-res target per frame, plus the one-off 3D noise generation). Typically 4–7 draw calls including it.
+No EffectComposer, no post-process. The only offscreen work is the volumetric clouds: two small full-screen draws per frame (march into a half × half target, resolve into the low-res cloud target), plus the one-off 3D noise generation. Typically 5–8 draw calls including them.
 
 **Volumetric clouds** (`layers/VolumetricClouds.tsx`, `shaders/volumetricClouds.glsl.ts`):
 - A spherical shell over a curved Earth, in metres; shell base/thickness/coverage/type (stratus → cumulus → cumulonimbus) come from `params.cloudPhysics` (`shellTargets()`). Cirrus is a 2D layer at the 250–300 hPa cloud height (default 8.5 km) in the same pass; detail erosion goes wispier above the freezing level.
 - **Cloud physics** (`weather/cloudPhysics.ts`): base = LCL ≈ 125 m × (T − Td); top = boundary-layer height, grown by CAPE (≈ 4.2 m per J/kg, ≤ 11.5 km); mid/high layer altitudes from pressure-level `cloud_cover` × `geopotential_height` (minus elevation); optical depth τ inverted from the clearness index (shortwave / top-of-atmosphere, two-stream T = 1/(1 + 0.1125τ)) in daylight, otherwise estimated from thickness and precipitation; density = τ / (thickness × SHELL_FILL). Every input has a fallback (no atmosphere block, night, debug overrides) — see `deriveCloudPhysics`. Overriding sky inputs in the debug menu drops the measured radiation (`trustRadiation`), overriding wind drops the winds aloft.
 - Density: Perlin-Worley base shape × height gradient, remapped by a scrolling weather-coverage noise, eroded by Worley detail; closed decks keep a lumpy base. Noise is a tileable RGBA 3D texture rendered slice by slice on the GPU at first mount (`getCloudNoise3D`, cached per size).
 - Lighting: light march towards the sun (or moon), Beer + direction-aware powder, 3-lobe HG phase, depth-weighted multiple-scattering octaves, density-dependent height ambient, aerial perspective to the horizon colour, lightning glow from `signals.flashPosition`. The sun keeps lighting cloud bases ~6° below the horizon (red undersides at dusk).
-- Cost control: render target at `budget.volumetric.scale` of the canvas; each frame re-marches one pixel of every 2×2 block and blends with history (reprojected by view direction, so parallax doesn't smear). Any weather/debug change resets history. Low/mid clouds drift with the 850 hPa wind (`signals.windOffsetLow`), cirrus with 300 hPa (`windOffsetHigh`), both × `CLOUD_TIMELAPSE` (4, a pure time-lapse of the real speed).
+- Cost control: cloud target at `budget.volumetric.scale` of the canvas. The march pass covers one pixel of every 2×2 block per frame (half × half target; jitter = interleaved gradient noise rotated by the golden ratio per turn). The march is adaptive: cheap 3× steps through empty air (no detail, no lighting) until a hit, then back up one step and march fine; the fine step is ~2 % of the distance (≥ thickness / `steps`, ≤ 900 m), and `budget.steps` caps the *lit* samples per ray. The resolve pass reprojects history by view direction (so parallax doesn't smear), clips it to the mean ± 1.5σ of the 3×3 fresh march texels (no ghosts from drift or morphing) and blends (0.3 on the marched pixel, 0.06 on the upsampled rest). Weather/debug changes don't reset history: the shell parameters ease towards the new weather (`SHELL_EASE`, ~1 s). Low/mid clouds drift with the 850 hPa wind (`signals.windOffsetLow`), cirrus with 300 hPa (`windOffsetHigh`), both × `CLOUD_TIMELAPSE` (4, a pure time-lapse of the real speed).
 - Composite: full-screen quad, renderOrder 2 (over sky/stars/moon, under precipitation). It **un-premultiplies before tone mapping and sRGB encoding** — see gotchas.
 
 Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subscription order):
 
 1. **`<FrameRateGate fps={budget.fps}>`** — pairs with `frameloop="demand"`; caps at 60 fps (30 on tier `low`).
-2. **`<CameraRig>`**, or **`<OrbitControls maxDistance={600}>` + `<FreeCameraWASD>`** in free-cam mode.
+2. **`<CameraRig>`** (static camera + parallax).
 3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated surface wind, accumulated 850/300 hPa cloud drift). Then **`<UiBacklight>`** turns them into `--scene-light` for the DOM.
-4. `<FogLayer>` (scene `FogExp2`). There are no three.js lights: every material is a custom shader or unlit, and the clouds take light colour/ambient straight from `SceneSignals`.
+4. There are no three.js lights: every material is a custom shader or unlit, and the clouds take light colour/ambient straight from `SceneSignals`.
 5. **`<SkyLayer>`** (renderOrder −2) → **`<SkyGrade>`** (−1) → **`<StarField>`** (0) → **`<Moon>`** (1).
-6. **`<VolumetricClouds>`** composite (2) — or **`<CloudDeck>`** (2) on tier `potato`.
+6. **`<VolumetricClouds>`** composite (2) — or `<FogLayer>` (scene `FogExp2`) + **`<CloudDeck>`** (2) on tier `potato`.
 7. **`<Precipitation>`** (4) → **`<Thunder>`** bolt (5, top at the cloud base) → **`<DiamondDust>`** (6) → **`<FrostGlass>`** (30).
-8. Debug: `<VolumeHelpers>` (10), `<PerfProbe>` + three drei `<Stats>`.
+8. Debug: `<PerfProbe>` + three drei `<Stats>`.
 
 `<Canvas>`: `camera={{ position: [0, 0, 0], fov: 50, near: 0.5, far: 4000 }}`, `dpr={[1, budget.dprMax]}`, `gl={{ alpha: false, antialias: !isMobile }}`, `toneMappingExposure = 0.5` (set in `onCreated`, tuned for Preetham).
 
@@ -131,7 +131,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **quarks particle textures are DataTextures with white RGB + alpha.** Canvas-backed textures came out premultiplied (grey edges) on some GPU paths. quarks' particle shader has no colour-space conversion, so those textures stay in "no colour space".
 - **quarks emitters must hang under a `Scene`** (they're added to the `BatchedRenderer`, which is a scene child) or the system disposes itself. quarks clamps delta to 0.1 s. There's no `maxParticle` — visible count = emission rate × mean life (`ViewVolumeEmitter.meanLife` tracks it).
 - **Stretched billboards:** streak length = |velocity| × `speedFactor` × size. `speedFactor: 0` makes rain invisible.
-- **drei `<Sky>` is a box** (`distance` 3000) pinned to the far plane via `z = w`; leaving it in free cam shows black — hence `OrbitControls maxDistance`.
+- **drei `<Sky>` is a box** (`distance` 3000) pinned to the far plane via `z = w`; a camera that leaves it sees black.
 - **Cloud noise is generated once.** The volumetric 3D noise (`getCloudNoise3D`) renders into a `WebGL3DRenderTarget` slice by slice via `setRenderTarget(target, layer)` and is cached per size. The fallback deck's 2D FBM (`getCloudNoiseTexture()`, ~30 ms CPU) is a module singleton — assign it after `UniformsUtils.merge`, which would clone it.
 - **`frameloop="demand"` + `FrameRateGate` is mandatory.** Without the pair the scene renders at monitor rate. The gate renders every N-th rAF tick (N from the measured display interval) — never gate on `elapsed >= 1000/fps`: rAF jitter makes that drop random frames (~39 fps with hitches on a 60 Hz screen), and `PerformanceMonitor` then lowers the tier.
 - **Frost is a scene layer, not DOM.** `getFrostAmount` eases from 0 at 0 °C to 1 at `FROST_FULL_AT_C` (−20 °C), scaled by humidity, with a 0.35 floor for freezing rain / rime; `FrostGlass` moves towards it at 0.12/s (melt 0.25/s) and both its reach (≤ 0.32 of the short side) and opacity (≤ ~0.55 at the frame) grow with the amount, so the scene always shows through and the middle stays clear. The noise is mip-biased (blurred) and domain-warped so the 256² FBM tile never repeats visibly.
@@ -145,6 +145,9 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 ## UI conventions
 
 - **Liquid glass** = `@include liquid-glass` from `src/styles/_glass.scss` (hero, hourly, forecast tiles, navbar controls, footer pill, loaders). It is adaptive: `--scene-light` (0 night … 1 white overcast/fog at noon, eased and written by `<UiBacklight>`, fallback 0.4 in `:root`) darkens the backdrop (`brightness()`), thickens a smoke tint, firms up `--fg-dim/mute/faint` + `--stroke`, and fades in a text halo on `.shell`. Hover/active raise `--glass-lift` (registered via `@property`, non-inherited) instead of replacing `background`, which would drop the tint. Blur is `--glass-blur` (16 px, 12 px ≤ 720 px).
+- **Cursor reveal** (Fluent-style) on every boxed UI element: `@include glass-reveal` (liquid glass includes it; buttons, the map drawer and its controls, debug buttons and the error box use it alone). It sets `--glass-spot: 1` (registered non-inherited); `styles/useGlassSpotlight.ts` (called in `App`) collects those elements across the page (skipping the canvas and Leaflet's map pane), and once per frame writes `--mx`/`--my` to every one within 160 px (`$glass-reveal`) of the cursor, hovered or not, parking the rest off-screen. The mixin's `::after` is a masked 1.5 px ring inside the border lit at that point — so edges light up even from the gap between two cards — and `:hover` fades `--glass-glow` in (liquid glass also gets an inner glow). The mixin owns `::after` and sets `position: relative` (pass `null` for elements that are already absolute/fixed); components use `::before` for their own decoration. A component with its own `transition` list must add `--glass-glow` to it. Replaced elements (input, select, img) can't carry it. Mouse only.
+- Full-height overlays (map drawer, debug menu) use `100dvh` after a `100vh` fallback: on mobile `100vh` is the height with the browser bars hidden, which put the map's confirm button off-screen. Under 440 px the map drawer is a full-width sheet. The brand is the v1 two-line logo everywhere (underlined `YET ANOTHER` over `WEATHER APP`; `DEBUG` / `MODE` in debug).
+- Shared SVG icons live in `components/icons.tsx` (`PinIcon`, `PIN_PATH`); the °C/°F symbol comes from `weatherFormatter.ts::tempSymbol()`. No icon library.
 - Small labels use `font-family: var(--font-mono)` uppercase 10–11 px with positive letter-spacing; body and temperatures use `var(--font-sans)` (Chakra Petch).
 - Footer is a 2-row block inside `.stack`: top row `[status] … [attrib]`, bottom row centres the SkorczanFFF GitHub pill.
 - Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke`. Progress via a `<clipPath>` rect, not `stroke-dasharray` (which doesn't normalise correctly under those settings).
@@ -154,13 +157,13 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 
 ## Debug menu & overrides
 
-- **F7** toggles the menu; **C** toggles free camera (only while the menu is open). Key handlers ignore inputs/textareas.
+- **F7** toggles the menu (on phones: 5 quick taps on the footer "Open-Meteo · Live data" status). Key handlers ignore inputs/textareas.
 - **Presets** (`weather/scenePresets.ts`) pin every weather key, one per catalogue row (clear → hailstorm, fog, rime, sleet, blizzard, diamond dust, heat, gale…). "auto" clears exactly those keys.
 - Time: local-hour slider (location timezone) + date; a pinned time stops the live clock. The readout shows sun altitude and moon phase.
 - Every override is a literal or `"auto"`. `isOverridesDirty()` (in `sceneParams.ts`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS` — add new keys there.
 - Auto-bumps in `applyOverrides`: precipitation raises low cloud (≥ 0.85; showers ≥ 0.6; thunder ≥ 0.95); thunder/hail without a rate bring 6 mm/h rain; rime caps visibility at 400 m.
 - Cloud physics row: base m / top m / CAPE / τ overrides (τ "auto" = estimated once the sky is pinned), plus a readout of the derived physics, winds aloft and frost %.
-- Tools: quality tier pin, "spawn volumes" wireframes, perf readout (fps, draw calls, triangles, points, tier), ⚡ force lightning (works without a storm).
+- Tools: quality tier pin, perf readout (fps, draw calls, triangles, points, tier), ⚡ force lightning (works without a storm).
 
 ## Conventions
 

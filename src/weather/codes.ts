@@ -112,6 +112,5 @@ export function getCloudCoverFromWeatherCode(weatherCode: number): number {
     (c >= 87 && c <= 99)
   )
     return 0.85;
-  if (c >= 58 && c <= 60) return 0.7;
   return 0.6;
 }

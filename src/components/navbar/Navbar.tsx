@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { LoadSource, WeatherQuery, Units } from "../../weather/types";
 import { Spinner } from "../loader/Loader";
+import { PinIcon } from "../icons";
 import "./Navbar.scss";
 
 interface NavbarProps {
@@ -82,7 +83,10 @@ const Navbar: React.FC<NavbarProps> = ({
           </svg>
         </span>
         <span className="brand-text">
-          {isDebugMode ? "DEBUG MODE" : "YET ANOTHER WEATHER APP"}
+          <span className="brand-line brand-line--top">
+            {isDebugMode ? "DEBUG" : "YET ANOTHER"}
+          </span>
+          <span className="brand-line">{isDebugMode ? "MODE" : "WEATHER APP"}</span>
         </span>
       </a>
 
@@ -98,10 +102,7 @@ const Navbar: React.FC<NavbarProps> = ({
           {locBusy ? (
             <Spinner />
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
-              <circle cx="12" cy="9" r="2.5" />
-            </svg>
+            <PinIcon strokeWidth={1.8} />
           )}
         </button>
         <div className="search">
