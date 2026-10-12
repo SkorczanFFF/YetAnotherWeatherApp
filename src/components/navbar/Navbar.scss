@@ -1,3 +1,5 @@
+@use "../../styles/glass" as *;
+
 .topbar {
   --search-h: 42px;
 
@@ -28,10 +30,7 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: var(--fill);
-    border: 1px solid var(--stroke);
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
+    @include liquid-glass;
     flex: none;
 
     svg {
@@ -62,17 +61,14 @@
     align-items: center;
     gap: 6px;
     padding: 0 6px 0 16px;
-    background: var(--fill);
-    border: 1px solid var(--stroke);
+    @include liquid-glass;
     border-radius: 999px;
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.2s, --glass-lift 0.2s;
     min-width: 0;
 
     &:focus-within {
       border-color: var(--stroke-strong);
-      background: var(--fill-strong);
+      --glass-lift: 0.05;
     }
 
     input {
@@ -124,14 +120,11 @@
     align-items: center;
     justify-content: center;
     padding: 0;
-    background: var(--fill);
-    border: 1px solid var(--stroke);
+    @include liquid-glass;
     border-radius: 50%;
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
     color: var(--fg);
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    transition: --glass-lift 0.2s, border-color 0.2s, color 0.2s;
 
     svg {
       width: 17px;
@@ -140,7 +133,7 @@
     }
 
     &:hover {
-      background: var(--fill-strong);
+      --glass-lift: 0.06;
       border-color: var(--stroke-strong);
     }
 
@@ -163,11 +156,8 @@
     display: flex;
     padding: 3px;
     gap: 2px;
-    background: var(--fill);
-    border: 1px solid var(--stroke);
+    @include liquid-glass;
     border-radius: 999px;
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
 
     button {
       font-family: var(--font-mono);

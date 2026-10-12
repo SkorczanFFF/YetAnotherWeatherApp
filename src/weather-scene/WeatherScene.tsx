@@ -9,6 +9,7 @@ import { useIsMobile } from "./core/useIsMobile";
 import { initialTier, lowerTier, QUALITY, type QualityBudget } from "./core/quality";
 import { createSceneSignals, SceneSignalsProvider } from "./core/sceneSignals";
 import { SceneDriver } from "./core/SceneDriver";
+import { UiBacklight } from "./core/UiBacklight";
 import { createViewFrame } from "./core/viewVolume";
 import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR } from "./core/worldFrame";
 import { SkyLayer } from "./layers/SkyLayer";
@@ -113,6 +114,7 @@ function SceneRoot({
         <CameraRig parallaxAmount={params.parallaxAmount} />
       )}
       <SceneDriver params={params} frame={frame} />
+      <UiBacklight thunder={params.thunder} />
       <FogLayer />
 
       {cloudEngine === "takram" ? (

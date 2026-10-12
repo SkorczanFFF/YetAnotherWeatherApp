@@ -1,0 +1,26 @@
+// Liquid glass: a blurred, saturated backdrop under a thin smoke tint, a
+// specular rim and a soft drop shadow. `--scene-light` (0 at night … 1 for a
+// white overcast or fog at noon, written by the scene's <UiBacklight>) darkens
+// the backdrop and thickens the tint, so white text keeps its contrast over a
+// bright sky while a dark sky still shows through untouched.
+//
+// Hover/active states raise `--glass-lift` instead of replacing `background`,
+// which would drop the tint.
+@mixin liquid-glass($blur: var(--glass-blur)) {
+  background:
+    linear-gradient(
+      135deg,
+      oklch(1 0 0 / calc(0.13 + var(--glass-lift, 0))),
+      oklch(1 0 0 / calc(0.03 + var(--glass-lift, 0) * 0.5)) 50%,
+      oklch(1 0 0 / calc(0.07 + var(--glass-lift, 0)))
+    ),
+    oklch(0.24 0.025 250 / calc(0.08 + var(--scene-light) * 0.26));
+  border: 1px solid oklch(1 0 0 / 0.18);
+  backdrop-filter: blur($blur) saturate(1.7) brightness(calc(1 - var(--scene-light) * 0.28));
+  -webkit-backdrop-filter: blur($blur) saturate(1.7) brightness(calc(1 - var(--scene-light) * 0.28));
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.35),
+    inset 0 -1px 1px oklch(1 0 0 / 0.06),
+    inset 0 0 16px oklch(1 0 0 / 0.05),
+    0 14px 36px -16px oklch(0 0 0 / calc(0.4 + var(--scene-light) * 0.2));
+}

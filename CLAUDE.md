@@ -58,6 +58,7 @@ src/
       viewVolume.ts             frustum-derived spawn volumes (ViewFrame, halfWidthAt, elevatedBand, …)
       sceneSignals.tsx          per-frame shared state (context; mutable — never React state)
       SceneDriver.tsx           clock, suncalc (real + display directions), light/fog colours, gusts
+      UiBacklight.tsx           scene brightness → `--scene-light` CSS var on <html> (drives the glass UI)
       quality.ts                low / medium / high budgets
       CameraRig.tsx             static camera + subtle parallax (gyro / pointer); LOOK_TARGET
       FreeCameraWASD.tsx, FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
@@ -100,7 +101,7 @@ Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subsc
 
 1. **`<FrameRateGate fps={budget.fps}>`** — pairs with `frameloop="demand"`; caps at 60 fps (30 on tier `low`).
 2. **`<CameraRig>`**, or **`<OrbitControls maxDistance={600}>` + `<FreeCameraWASD>`** in free-cam mode.
-3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated surface wind, accumulated 850/300 hPa cloud drift).
+3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated surface wind, accumulated 850/300 hPa cloud drift). Then **`<UiBacklight>`** turns them into `--scene-light` for the DOM.
 4. `<FogLayer>` (scene `FogExp2`). There are no three.js lights: every material is a custom shader or unlit, and the clouds take light colour/ambient straight from `SceneSignals`.
 5. **`<SkyLayer>`** (renderOrder −2) → **`<SkyGrade>`** (−1) → **`<StarField>`** (0) → **`<Moon>`** (1).
 6. **`<VolumetricClouds>`** composite (2) — or **`<CloudDeck>`** (2) on tier `potato`.
@@ -143,12 +144,12 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 
 ## UI conventions
 
-- Glass cards use `backdrop-filter: blur(var(--blur)) saturate(1.3)`. The weekly forecast tiles override to `blur(32px) saturate(1.6)` for a stronger frosted effect over bright sky pixels.
+- **Liquid glass** = `@include liquid-glass` from `src/styles/_glass.scss` (hero, hourly, forecast tiles, navbar controls, footer pill, loaders). It is adaptive: `--scene-light` (0 night … 1 white overcast/fog at noon, eased and written by `<UiBacklight>`, fallback 0.4 in `:root`) darkens the backdrop (`brightness()`), thickens a smoke tint, firms up `--fg-dim/mute/faint` + `--stroke`, and fades in a text halo on `.shell`. Hover/active raise `--glass-lift` (registered via `@property`, non-inherited) instead of replacing `background`, which would drop the tint. Blur is `--glass-blur` (16 px, 12 px ≤ 720 px).
 - Small labels use `font-family: var(--font-mono)` uppercase 10–11 px with positive letter-spacing; body and temperatures use `var(--font-sans)` (Chakra Petch).
 - Footer is a 2-row block inside `.stack`: top row `[status] … [attrib]`, bottom row centres the SkorczanFFF GitHub pill.
 - Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke`. Progress via a `<clipPath>` rect, not `stroke-dasharray` (which doesn't normalise correctly under those settings).
 - Hourly chart: SVG path + area + grid with `non-scaling-stroke`, HTML overlay for data points and hour labels so they aren't horizontally stretched.
-- **Loading** (`components/loader/`, liquid glass): `Spinner` (inside buttons), `LoaderPill` (floating status capsule, stays mounted and fades), `LoaderPanel` (first load, no data yet). `App` tracks a `LoadSource` (initial/search/location/map/units) for the labels and passes it to `Navbar` as `pending`. Refetches never blur the data: the glass cards dim to 0.72 and a fixed pill at the bottom says what is loading. Dim the cards themselves — opacity/filter on an ancestor cuts their backdrop blur — and keep `.stack > *` entrance animations on `backwards` fill so they don't pin opacity at 1. The map picker shows a pill only for tile loads slower than 250 ms.
+- **Loading** (`components/loader/`, liquid glass): `Spinner` (inside buttons), `LoaderPill` (floating status capsule, stays mounted and fades), `LoaderPanel` (first load, no data yet). `App` tracks a `LoadSource` (initial/search/location/map/units) for the labels and passes it to `Navbar` as `pending`. On a refetch the old data stays on screen but goes soft: the cards' *contents* (`.hero > *`, `.hourly > *`, `.forecast .day > *`) get `blur(3px)` + fade while the glass stays intact, and a pill centred in the viewport says what is loading. Loaders use a deeper tint + warm rim and breathing glow so they never read as the cards' grey. Never put filter/opacity on a card or its ancestors — it cuts the backdrop blur — and keep `.stack > *` entrance animations on `backwards` fill so they don't pin opacity at 1. The map picker shows a pill only for tile loads slower than 250 ms.
 - Shown data is rendered with `weatherUnits` (the units it was fetched in), not the toggle's `units`, so a °C/°F switch never mislabels stale numbers or feeds them to the scene. Superseded fetches are cancelled in the effect cleanup.
 
 ## Debug menu & overrides

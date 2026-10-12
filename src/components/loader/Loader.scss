@@ -1,17 +1,28 @@
+@use "../../styles/glass" as *;
+
 // Liquid-glass loaders: one spinner, a floating pill for work that happens
 // while data is on screen, and a panel for the first load.
 
-@mixin liquid-glass {
+@mixin loader-glass {
+  @include liquid-glass(18px);
+  // Loaders float over the (blurred) cards, so they must never read as the
+  // same grey: a deeper tint, a warm rim and a slowly breathing warm glow.
   background:
-    linear-gradient(135deg, oklch(1 0 0 / 0.18), oklch(1 0 0 / 0.05) 55%, oklch(1 0 0 / 0.1));
-  border: 1px solid oklch(1 0 0 / 0.2);
-  backdrop-filter: blur(18px) saturate(1.8);
-  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+    linear-gradient(
+      135deg,
+      oklch(0.82 0.14 62 / 0.22),
+      oklch(1 0 0 / 0.04) 45%,
+      oklch(0.82 0.14 62 / 0.1)
+    ),
+    oklch(0.2 0.03 250 / calc(0.42 + var(--scene-light) * 0.2));
+  border-color: oklch(0.82 0.14 62 / 0.5);
   box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.45),
-    inset 0 -1px 1px oklch(1 0 0 / 0.08),
-    inset 0 0 12px oklch(1 0 0 / 0.06),
-    0 12px 32px -12px oklch(0 0 0 / 0.5);
+    inset 0 1px 0 oklch(1 0 0 / 0.4),
+    inset 0 0 14px oklch(0.82 0.14 62 / 0.12),
+    0 0 0 4px oklch(0.82 0.14 62 / 0.08),
+    0 0 28px -6px oklch(0.82 0.14 62 / 0.5),
+    0 16px 36px -14px oklch(0 0 0 / 0.6);
+  animation: loader-glow 1.8s ease-in-out infinite;
   isolation: isolate;
   overflow: hidden;
 
@@ -68,7 +79,7 @@
 }
 
 .loader-pill {
-  @include liquid-glass;
+  @include loader-glass;
 
   position: relative;
   display: inline-flex;
@@ -98,6 +109,7 @@
       opacity 0.25s ease,
       transform 0.25s ease,
       visibility 0s linear 0.25s;
+    animation-play-state: paused;
 
     .loader-spinner { animation-play-state: paused; }
   }
@@ -110,7 +122,7 @@
 }
 
 .loader-panel {
-  @include liquid-glass;
+  @include loader-glass;
 
   position: relative;
   align-self: center;
@@ -168,8 +180,22 @@
   50% { opacity: 0.45; }
 }
 
+// Swells the warm ring and halo of loader-glass; the other shadows stay put.
+@keyframes loader-glow {
+  50% {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.4),
+      inset 0 0 14px oklch(0.82 0.14 62 / 0.18),
+      0 0 0 6px oklch(0.82 0.14 62 / 0.14),
+      0 0 36px -4px oklch(0.82 0.14 62 / 0.7),
+      0 16px 36px -14px oklch(0 0 0 / 0.6);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loader-spinner { animation: loader-breathe 1.6s ease-in-out infinite; }
+  .loader-pill,
+  .loader-panel,
   .loader-pill::before,
   .loader-panel::before { animation: none; }
   .loader-pill,

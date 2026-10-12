@@ -1,10 +1,9 @@
+@use "../../../styles/glass" as *;
+
 .hourly {
   padding: calc(var(--pad) * 0.8) var(--pad);
   border-radius: var(--radius);
-  background: var(--fill);
-  border: 1px solid var(--stroke);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
+  @include liquid-glass;
 
   .section-head {
     display: flex;

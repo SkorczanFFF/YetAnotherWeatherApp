@@ -1,12 +1,19 @@
+@use "./styles/glass" as *;
+
 :root {
   --font-sans: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
+  // 0 at night … 1 for a white overcast/fog at noon. <UiBacklight> overrides
+  // it inline from the scene; this is the fallback without a scene.
+  --scene-light: 0.4;
+
+  // Secondary text and hairlines firm up as the sky behind them brightens.
   --fg: oklch(0.985 0.005 95);
-  --fg-dim: oklch(0.985 0.005 95 / 0.72);
-  --fg-mute: oklch(0.985 0.005 95 / 0.52);
-  --fg-faint: oklch(0.985 0.005 95 / 0.28);
-  --stroke: oklch(1 0 0 / 0.14);
+  --fg-dim: oklch(0.985 0.005 95 / calc(0.72 + var(--scene-light) * 0.1));
+  --fg-mute: oklch(0.985 0.005 95 / calc(0.52 + var(--scene-light) * 0.16));
+  --fg-faint: oklch(0.985 0.005 95 / calc(0.28 + var(--scene-light) * 0.2));
+  --stroke: oklch(1 0 0 / calc(0.14 + var(--scene-light) * 0.06));
   --stroke-strong: oklch(1 0 0 / 0.22);
   --fill: oklch(1 0 0 / 0.06);
   --fill-strong: oklch(1 0 0 / 0.10);
@@ -22,6 +29,20 @@
   --radius-sm: 14px;
   --hero-temp-size: clamp(88px, 14vw, 168px);
   --blur: 6px;
+  --glass-blur: 16px;
+}
+
+// Registered so hover lifts on liquid glass (styles/_glass.scss) can
+// transition, and so a lifted card never lifts glass nested inside it.
+@property --glass-lift {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@media (max-width: 720px) {
+  // Every glass card re-blurs the live canvas each frame; keep it cheaper on phones.
+  :root { --glass-blur: 12px; }
 }
 
 *,
@@ -62,6 +83,10 @@ body {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  // A soft dark halo under all text, only as strong as the sky is bright.
+  text-shadow:
+    0 1px 2px oklch(0 0 0 / calc(var(--scene-light) * 0.35)),
+    0 0 14px oklch(0.2 0.02 250 / calc(var(--scene-light) * 0.4));
   display: flex;
   flex-direction: column;
   padding: clamp(16px, 3vw, 12px);
@@ -84,31 +109,45 @@ body {
   flex-direction: column;
   gap: var(--gap);
 
-  // Data stays readable while a new location loads; only a light dim marks
-  // it as stale. Applied to the glass cards themselves — opacity on their
-  // ancestors would cut their backdrop blur.
-  &.is-refreshing {
-    .hero,
-    .hourly,
-    .forecast .day {
-      opacity: 0.72;
-    }
+  // While another place loads, the old numbers go soft and faded under
+  // intact glass, so the crisp loader pill is the one thing in focus.
+  // Blur the cards' contents, never the cards or their ancestors — a filter
+  // or opacity there would cut the glass's own backdrop blur.
+  .hero > *,
+  .hourly > *,
+  .forecast .day > * {
+    transition:
+      filter 0.35s ease,
+      opacity 0.35s ease;
   }
 
-  .hero,
-  .hourly {
-    transition: opacity 0.3s ease;
+  &.is-refreshing {
+    .hero > *,
+    .hourly > *,
+    .forecast .day > * {
+      filter: blur(3px) saturate(0.7);
+      opacity: 0.55;
+    }
   }
 }
 
-// Floating status pill for refetches — always in view, whatever the scroll.
+// Status pill for refetches, centred in the viewport over the blurred data —
+// always in view, whatever the scroll.
 .refresh-indicator {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 50;
   pointer-events: none;
+
+  .loader-pill {
+    gap: 12px;
+    padding: 12px 22px 12px 15px;
+    font-size: 12px;
+
+    .loader-spinner { --spinner-size: 19px; }
+  }
 }
 
 .error {
@@ -160,22 +199,18 @@ body {
     align-items: center;
     gap: 8px;
     padding: 7px 14px;
-    background: var(--fill);
-    border: 1px solid var(--stroke);
+    @include liquid-glass;
     border-radius: 999px;
-    backdrop-filter: blur(var(--blur));
-    -webkit-backdrop-filter: blur(var(--blur));
     color: var(--fg-dim);
     text-decoration: none;
     letter-spacing: 0.06em;
-    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    transition: color 0.2s, --glass-lift 0.2s;
 
     svg { width: 14px; height: 14px; }
 
     &:hover {
       color: var(--fg);
-      background: var(--fill-strong);
-      border-color: var(--stroke-strong);
+      --glass-lift: 0.06;
     }
   }
 
@@ -213,8 +248,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .stack > * { animation: none; }
-  .stack .hero,
-  .stack .hourly { transition: none; }
+  .stack .hero > *,
+  .stack .hourly > *,
+  .stack .forecast .day > * { transition: none; }
 }
 
 .react-tooltip,

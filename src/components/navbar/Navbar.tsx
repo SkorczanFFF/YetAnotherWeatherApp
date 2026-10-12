@@ -74,7 +74,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="topbar">
-      <a className="brand" href="https://mskorus.pl/" aria-label="Yet Another Weather App">
+      <a className="brand" href="https://skoftware.pl/" aria-label="Yet Another Weather App">
         <span className="logo-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none" />

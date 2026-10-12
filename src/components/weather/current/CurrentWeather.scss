@@ -1,11 +1,10 @@
+@use "../../../styles/glass" as *;
+
 .hero {
   position: relative;
   padding: var(--pad);
   border-radius: var(--radius);
-  background: var(--fill);
-  border: 1px solid var(--stroke);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
+  @include liquid-glass;
   overflow: hidden;
   isolation: isolate;
 
@@ -246,6 +245,11 @@
     color: var(--fg-dim);
     font-variant-numeric: tabular-nums;
 
+    &--end {
+      justify-content: flex-end;
+      text-align: right;
+    }
+
     .sun-label {
       font-size: 10px;
       letter-spacing: 0.08em;
@@ -328,8 +332,17 @@
 @media (max-width: 440px) {
   .hero {
     .temp-sub { flex-wrap: wrap; gap: 12px; }
-    .sun-bar { grid-template-columns: 1fr; gap: 10px; }
-    .sun-track { order: 3; height: 44px; }
+    // Arc on its own row, both times under its ends.
+    .sun-bar {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "track track"
+        "start end";
+      gap: 4px 12px;
+    }
+    .sun-track { grid-area: track; height: 44px; }
+    .sun-end--start { grid-area: start; }
+    .sun-end--end { grid-area: end; }
   }
 }
 

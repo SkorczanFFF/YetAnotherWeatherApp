@@ -286,7 +286,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
       </div>
 
       <div className={`sun-bar ${arcColorClass}`}>
-        <div className="sun-end">
+        <div className="sun-end sun-end--start">
           <div>
             <div className="sun-label">{arc.leftLabel}</div>
             <div>{formatted.leftTime}</div>
@@ -334,7 +334,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
             )}
           </div>
         </div>
-        <div className="sun-end" style={{ textAlign: "right" }}>
+        <div className="sun-end sun-end--end">
           <div>
             <div className="sun-label">{arc.rightLabel}</div>
             <div>{formatted.rightTime}</div>
