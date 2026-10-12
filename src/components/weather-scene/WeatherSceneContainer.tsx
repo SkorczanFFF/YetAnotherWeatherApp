@@ -1,7 +1,6 @@
-import React, { Component, useMemo } from "react";
+import React, { Component } from "react";
 import type { ReactNode } from "react";
-import type { Units, WeatherData } from "../../weather/types";
-import { mapToSceneParams, type SceneOverrides } from "../../weather/sceneParams";
+import type { SceneParams } from "../../weather/sceneParams";
 import {
   WeatherScene as Scene3D,
   type WeatherSceneDebugProps,
@@ -22,21 +21,13 @@ class SceneErrorBoundary extends Component<
 }
 
 interface WeatherSceneContainerProps extends WeatherSceneDebugProps {
-  weather: WeatherData | null;
-  units: Units;
-  overrides?: SceneOverrides | null;
+  params: SceneParams;
 }
 
 const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
-  weather,
-  units,
-  overrides,
+  params,
   ...debug
 }) => {
-  const params = useMemo(
-    () => mapToSceneParams(weather, units, overrides),
-    [weather, units, overrides],
-  );
   return (
     <div className="weather-scene-container" aria-hidden="true">
       <SceneErrorBoundary>

@@ -107,6 +107,7 @@
       transition: color 0.2s, background 0.2s;
 
       svg { width: 15px; height: 15px; }
+      .loader-spinner { --spinner-size: 15px; }
 
       &:hover {
         color: var(--fg);
@@ -142,6 +143,10 @@
       background: var(--fill-strong);
       border-color: var(--stroke-strong);
     }
+
+    .loader-spinner { --spinner-size: 17px; }
+
+    &:disabled { cursor: progress; }
 
     &.loc-btn svg { color: var(--accent-warm); }
     &.map-btn svg { color: var(--accent-warm); }
@@ -179,7 +184,19 @@
       &:hover { color: var(--fg-dim); }
       &.on { color: var(--fg); background: var(--fill-strong); }
     }
+
+    &[aria-busy="true"] button.on {
+      animation: unit-pending 1.1s ease-in-out infinite;
+    }
   }
+}
+
+@keyframes unit-pending {
+  50% { background: var(--fill-hover); color: var(--fg-dim); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar .unit-toggle[aria-busy="true"] button.on { animation: none; }
 }
 
 @media (max-width: 720px) {

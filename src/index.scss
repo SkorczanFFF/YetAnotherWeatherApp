@@ -84,13 +84,31 @@ body {
   flex-direction: column;
   gap: var(--gap);
 
-  &.is-loading {
+  // Data stays readable while a new location loads; only a light dim marks
+  // it as stale. Applied to the glass cards themselves — opacity on their
+  // ancestors would cut their backdrop blur.
+  &.is-refreshing {
     .hero,
     .hourly,
     .forecast .day {
-      filter: blur(8px);
+      opacity: 0.72;
     }
   }
+
+  .hero,
+  .hourly {
+    transition: opacity 0.3s ease;
+  }
+}
+
+// Floating status pill for refetches — always in view, whatever the scroll.
+.refresh-indicator {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  pointer-events: none;
 }
 
 .error {
@@ -103,26 +121,6 @@ body {
   border-radius: var(--radius-sm);
   letter-spacing: 0.02em;
   text-align: center;
-}
-
-.loading {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-
-  .loader {
-    width: 45px;
-    aspect-ratio: 0.75;
-    --c: no-repeat linear-gradient(var(--accent-warm) 0 0);
-    background:
-      var(--c) 0% 50%,
-      var(--c) 50% 50%,
-      var(--c) 100% 50%;
-    background-size: 20% 60%;
-    animation: l9 1s infinite;
-  }
 }
 
 .footer {
@@ -194,17 +192,12 @@ body {
 }
 
 .stack > * {
-  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 }
 .stack > *:nth-child(1) { animation-delay: 0.05s; }
 .stack > *:nth-child(2) { animation-delay: 0.15s; }
 .stack > *:nth-child(3) { animation-delay: 0.22s; }
 .stack > *:nth-child(4) { animation-delay: 0.30s; }
-
-@keyframes l9 {
-  33% { background-position: 0% 0%, 50% 100%, 100% 0%; }
-  66% { background-position: 0% 100%, 50% 0%, 100% 100%; }
-}
 
 @media (max-width: 720px) {
   .footer {
@@ -220,10 +213,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .stack > * { animation: none; }
-  .App .stack.is-loading .hero,
-  .App .stack.is-loading .hourly,
-  .App .stack.is-loading .forecast .day { filter: none; }
-  .loading .loader { animation: none; }
+  .stack .hero,
+  .stack .hourly { transition: none; }
 }
 
 .react-tooltip,

@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { WeatherQuery, Units } from "../../weather/types";
+import { LoadSource, WeatherQuery, Units } from "../../weather/types";
+import { Spinner } from "../loader/Loader";
 import "./Navbar.scss";
 
 interface NavbarProps {
-  setQuery: (query: WeatherQuery) => void;
+  setQuery: (query: WeatherQuery, source: LoadSource) => void;
   isDebugMode?: boolean;
   onOpenMapPicker?: () => void;
   units: Units;
   setUnits: (units: Units) => void;
+  /** Source of the weather fetch in flight, if any. */
+  pending?: LoadSource | null;
 }
 
 const isValidCityName = (name: string): boolean => {
@@ -23,8 +26,12 @@ const Navbar: React.FC<NavbarProps> = ({
   onOpenMapPicker,
   units,
   setUnits,
+  pending = null,
 }) => {
   const [city, setCity] = useState<string>("");
+  const [locating, setLocating] = useState(false);
+  const locBusy = locating || pending === "location";
+  const searchBusy = pending === "search";
 
   const handleSearch = (): void => {
     const trimmedCity = city.trim();
@@ -33,7 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({
       toast.error("Please enter a valid city name.");
       return;
     }
-    setQuery({ q: trimmedCity });
+    setQuery({ q: trimmedCity }, "search");
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
@@ -46,9 +53,14 @@ const Navbar: React.FC<NavbarProps> = ({
       toast.error("Geolocation is not supported by your browser.");
       return;
     }
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => setQuery({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      (pos) => {
+        setLocating(false);
+        setQuery({ lat: pos.coords.latitude, lon: pos.coords.longitude }, "location");
+      },
       (err) => {
+        setLocating(false);
         const messages: Record<number, string> = {
           1: "Location permission denied. Please enable it in browser settings.",
           2: "Location unavailable. Please try again.",
@@ -79,12 +91,18 @@ const Navbar: React.FC<NavbarProps> = ({
           type="button"
           className="icon-btn loc-btn"
           onClick={handleLocation}
-          aria-label="Use my location"
+          disabled={locBusy}
+          aria-busy={locBusy}
+          aria-label={locBusy ? "Locating…" : "Use my location"}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
-            <circle cx="12" cy="9" r="2.5" />
-          </svg>
+          {locBusy ? (
+            <Spinner />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z" />
+              <circle cx="12" cy="9" r="2.5" />
+            </svg>
+          )}
         </button>
         <div className="search">
           <input
@@ -94,11 +112,20 @@ const Navbar: React.FC<NavbarProps> = ({
             placeholder="Search city…"
             aria-label="Search city"
           />
-          <button type="submit" className="search-submit" aria-label="Search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
+          <button
+            type="submit"
+            className="search-submit"
+            aria-label={searchBusy ? "Searching…" : "Search"}
+            aria-busy={searchBusy}
+          >
+            {searchBusy ? (
+              <Spinner />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            )}
           </button>
         </div>
         {onOpenMapPicker && (
@@ -118,7 +145,7 @@ const Navbar: React.FC<NavbarProps> = ({
       </form>
 
       <div className="tools">
-        <div className="unit-toggle" role="group" aria-label="Units">
+        <div className="unit-toggle" role="group" aria-label="Units" aria-busy={pending === "units"}>
           <button
             type="button"
             className={units === "metric" ? "on" : ""}

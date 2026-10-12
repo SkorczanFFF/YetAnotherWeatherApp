@@ -4,7 +4,7 @@
 
 ## Chmury z danych API + szron proceduralny (2026-10-12)
 
-- Open-Meteo `current` dostaje też: `boundary_layer_height`, `cape`, `lifted_index`, `convective_inhibition`, `freezing_level_height`, promieniowanie (shortwave/direct/diffuse/terrestrial), wiatr 850 i 300 hPa, `cloud_cover` + `geopotential_height` na 1000…250 hPa → `WeatherData.atmosphere`.
+- Open-Meteo `current` dostaje też: `boundary_layer_height`, `cape`, `lifted_index`, `freezing_level_height`, promieniowanie (shortwave/direct/terrestrial), wiatr 850 i 300 hPa, `cloud_cover` + `geopotential_height` na 1000…250 hPa → `WeatherData.atmosphere`.
 - `weather/cloudPhysics.ts`: podstawa z LCL (125 m × (T − Td)), wierzchołek z warstwy granicznej + CAPE, wysokości warstw średnich/wysokich z poziomów ciśnienia, grubość optyczna τ z indeksu przejrzystości (promieniowanie / TOA), konwekcja z CAPE/LI, wiatr chmur 850 hPa, cirrusów 300 hPa. Każde pole ma fallback (noc → τ szacowane z grubości i opadu).
 - `shellTargets()` bierze podstawę/grubość/typ/gęstość z fizyki; niebo zdominowane przez warstwę średnią (altocumulus) przenosi powłokę na wysokość warstwy średniej.
 - Debug: pola Base / Top / CAPE / τ, readout fizyki i wiatrów na wysokości; presety pinują base/top/CAPE; nowe presety Altocumulus, Frosty (−8 °C), Hard frost (−20 °C).

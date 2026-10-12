@@ -9,6 +9,7 @@ import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
 import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
 import DebugMenu, { type DebugTools } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
+import { LoaderPanel, LoaderPill } from "./components/loader/Loader";
 import {
   isOverridesDirty,
   mapToSceneParams,
@@ -16,9 +17,30 @@ import {
 } from "./weather/sceneParams";
 import getFormattedWeatherData from "./services/weatherService";
 import { WeatherError } from "./services/errors";
-import { type WeatherQuery, type Units, type WeatherData } from "./weather/types";
+import {
+  type LoadSource,
+  type WeatherQuery,
+  type Units,
+  type WeatherData,
+} from "./weather/types";
 
 const MIN_LOADING_MS = 500;
+
+const describeQuery = (query: WeatherQuery): string =>
+  query.q
+    ? query.q.charAt(0).toUpperCase() + query.q.slice(1)
+    : `${query.lat?.toFixed(2)}, ${query.lon?.toFixed(2)}`;
+
+const loadingLabel = (source: LoadSource, query: WeatherQuery, units: Units): string => {
+  switch (source) {
+    case "units":
+      return `Switching to ${units === "metric" ? "°C" : "°F"}`;
+    case "location":
+      return "Loading your location";
+    default:
+      return `Loading ${describeQuery(query)}`;
+  }
+};
 
 const formatGmtOffset = (timezone?: string): string => {
   if (!timezone) return "";
@@ -38,7 +60,11 @@ const App = (): React.ReactElement => {
   const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
   const [units, setUnits] = useState<Units>("metric");
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  // Units the shown data was fetched in — the toggle flips `units` before the
+  // new data arrives, and Open-Meteo returns °F/mph in imperial mode.
+  const [weatherUnits, setWeatherUnits] = useState<Units>(units);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadSource, setLoadSource] = useState<LoadSource>("initial");
   const [error, setError] = useState<string | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugOverrides, setDebugOverrides] = useState<SceneOverrides | null>(null);
@@ -52,12 +78,12 @@ const App = (): React.ReactElement => {
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
   const currentParams = useMemo(
-    () => mapToSceneParams(weather, units, null),
-    [weather, units],
+    () => mapToSceneParams(weather, weatherUnits, null),
+    [weather, weatherUnits],
   );
   const effectiveParams = useMemo(
-    () => mapToSceneParams(weather, units, debugOverrides),
-    [weather, units, debugOverrides],
+    () => mapToSceneParams(weather, weatherUnits, debugOverrides),
+    [weather, weatherUnits, debugOverrides],
   );
 
   useEffect(() => {
@@ -80,14 +106,20 @@ const App = (): React.ReactElement => {
   }, [debugOpen]);
 
   useEffect(() => {
+    // A newer request supersedes this one: its late result and its
+    // loading-finished must not touch the state.
+    let cancelled = false;
     const fetchWeather = async () => {
       setLoading(true);
       setError(null);
       const startedAt = Date.now();
       try {
         const data = await getFormattedWeatherData({ ...query, units });
+        if (cancelled) return;
         setWeather(data);
+        setWeatherUnits(units);
       } catch (err: unknown) {
+        if (cancelled) return;
         const code = err instanceof WeatherError ? err.code : null;
         const message =
           code === "GEOCODE_FAILED"
@@ -97,26 +129,44 @@ const App = (): React.ReactElement => {
               : "Network error. Please check your connection.";
         setError(message);
       } finally {
-        const elapsed = Date.now() - startedAt;
-        const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-        if (remaining > 0) {
-          setTimeout(() => setLoading(false), remaining);
-        } else {
-          setLoading(false);
+        if (!cancelled) {
+          const elapsed = Date.now() - startedAt;
+          const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+          if (remaining > 0) {
+            setTimeout(() => {
+              if (!cancelled) setLoading(false);
+            }, remaining);
+          } else {
+            setLoading(false);
+          }
         }
       }
     };
     fetchWeather();
+    return () => {
+      cancelled = true;
+    };
   }, [query, units]);
 
   const gmtOffset = formatGmtOffset(weather?.timezone);
+  const requestQuery = (next: WeatherQuery, source: LoadSource): void => {
+    setLoadSource(source);
+    setQuery(next);
+  };
+  const changeUnits = (next: Units): void => {
+    if (next === units) return;
+    setLoadSource("units");
+    setUnits(next);
+  };
+  // First load has nothing to show yet; later loads keep the data on screen.
+  const initialLoading = loading && !weather;
+  const refreshing = loading && !!weather;
+  const label = loadingLabel(loadSource, query, units);
 
   return (
     <div className="App" id="App">
       <WeatherScene
-        weather={weather}
-        units={units}
-        overrides={debugOverrides}
+        params={effectiveParams}
         freeCamera={freeCamera}
         showVolumes={debugOpen && debugTools.showVolumes}
         showPerf={debugOpen && debugTools.showPerf}
@@ -125,26 +175,33 @@ const App = (): React.ReactElement => {
       />
       <div className="shell">
         <Navbar
-          setQuery={setQuery}
+          setQuery={requestQuery}
           isDebugMode={isDebugMode}
           onOpenMapPicker={() => setMapPanelOpen(true)}
           units={units}
-          setUnits={setUnits}
+          setUnits={changeUnits}
+          pending={loading ? loadSource : null}
         />
         <main className="main">
-          <div className={`stack${loading ? " is-loading" : ""}`}>
+          <div className={`stack${refreshing ? " is-refreshing" : ""}`} aria-busy={loading}>
+            {initialLoading && (
+              <LoaderPanel
+                label="Fetching weather"
+                detail={describeQuery(query)}
+              />
+            )}
             {error && <p className="error">{error}</p>}
             {weather && (
               <>
-                <CurrentWeather weather={weather} units={units} />
+                <CurrentWeather weather={weather} units={weatherUnits} />
                 {weather.hourly?.length > 1 && (
                   <HourlyChart
                     hourly={weather.hourly}
                     timezone={weather.timezone}
-                    units={units}
+                    units={weatherUnits}
                   />
                 )}
-                <WeeklyForecast items={weather.daily} units={units} />
+                <WeeklyForecast items={weather.daily} units={weatherUnits} />
                 <div className="footer">
                   <div className="footer-row">
                     <div className="status">
@@ -175,19 +232,17 @@ const App = (): React.ReactElement => {
                 </div>
               </>
             )}
-            {loading && (
-              <div className="loading" aria-live="polite" aria-busy="true">
-                <div className="loader" aria-hidden="true" />
-              </div>
-            )}
           </div>
         </main>
+      </div>
+      <div className="refresh-indicator">
+        <LoaderPill label={label} visible={refreshing} />
       </div>
       <MapPicker
         open={mapPanelOpen}
         onClose={() => setMapPanelOpen(false)}
         onPickLocation={(lat, lon) => {
-          setQuery({ lat, lon });
+          requestQuery({ lat, lon }, "map");
           setMapPanelOpen(false);
         }}
         initialCenter={

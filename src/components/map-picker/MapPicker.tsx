@@ -3,12 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { LoaderPill } from "../loader/Loader";
 import "./MapPicker.scss";
 
 const DRAWER_WIDTH_MIN = 385;
 const DRAWER_WIDTH_MAX = 800;
 
 const PIN_SIZE = 36;
+const TILES_LOADER_DELAY_MS = 250;
 
 function createMarkerIcon(pinSvgHtml: string): L.DivIcon {
   return L.divIcon({
@@ -69,6 +71,23 @@ export function MapPicker({
 }: MapPickerProps) {
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(DRAWER_WIDTH_MIN);
+  const [tilesLoading, setTilesLoading] = useState(false);
+  const tilesTimer = useRef<number | undefined>(undefined);
+  // Leaflet fires "loading" on every pan/zoom; only slow loads show the pill.
+  const tileEvents = useMemo(
+    () => ({
+      loading: () => {
+        window.clearTimeout(tilesTimer.current);
+        tilesTimer.current = window.setTimeout(() => setTilesLoading(true), TILES_LOADER_DELAY_MS);
+      },
+      load: () => {
+        window.clearTimeout(tilesTimer.current);
+        setTilesLoading(false);
+      },
+    }),
+    [],
+  );
+  useEffect(() => () => window.clearTimeout(tilesTimer.current), []);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const center = initialCenter ?? DEFAULT_CENTER;
@@ -126,6 +145,8 @@ export function MapPicker({
   useEffect(() => {
     if (!open) {
       setPicked(null);
+      window.clearTimeout(tilesTimer.current);
+      setTilesLoading(false);
       if (triggerRef.current) {
         triggerRef.current.focus();
         triggerRef.current = null;
@@ -235,6 +256,7 @@ export function MapPicker({
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  eventHandlers={tileEvents}
                 />
                 <MapClickHandler onPick={handlePick} />
                 {picked && (
@@ -249,6 +271,9 @@ export function MapPicker({
                   </Marker>
                 )}
               </MapContainer>
+              <div className="map-picker-loading">
+                <LoaderPill label="Loading map" visible={tilesLoading} />
+              </div>
             </div>
           )}
           <div className="map-picker-actions">

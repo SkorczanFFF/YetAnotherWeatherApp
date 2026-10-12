@@ -31,7 +31,7 @@ WeatherQuery {q | lat,lon}
       continuous values only — no time-of-day phases; merges SceneOverrides ("auto" = pass through)
       → weather/cloudPhysics.ts: deriveCloudPhysics() → params.cloudPhysics
         (base, top, layer heights, optical depth, convection, winds aloft)
-  → <WeatherSceneContainer> → <WeatherScene params={…}/>  (+ CSS night vars)
+  → <WeatherSceneContainer> → <WeatherScene params={…}/>  (App passes its effectiveParams)
   → SceneRoot: <SceneDriver> turns params + clock into per-frame SceneSignals;
     every layer reads params (React props) + signals (inside useFrame)
 ```
@@ -45,12 +45,12 @@ src/
   App.tsx                       top-level state + keybinds (F7 debug, C free cam)
   services/                     weatherService, weatherApi, geocoder, weatherFormatter
   weather/
-    sceneParams.ts              WeatherData + units + SceneOverrides → SceneParams; isNightAt, getFrostAmount
+    sceneParams.ts              WeatherData + units + SceneOverrides → SceneParams; getFrostAmount
     cloudPhysics.ts             API atmosphere → cloud base/top/τ/convection/winds aloft (with fallbacks)
     scenePresets.ts             debug presets — one per weather-catalogue row
     codes.ts                    WMO → EffectType/intensity, cloud cover fallback
     types.ts                    API/domain types
-  components/                   UI (navbar, map-picker, cards, debug-menu, weather-scene container)
+  components/                   UI (navbar, map-picker, cards, loader, debug-menu, weather-scene container)
   weather-scene/
     WeatherScene.tsx            <Canvas>, quality tier + PerformanceMonitor, SceneRoot (mount order!)
     core/
@@ -60,7 +60,7 @@ src/
       SceneDriver.tsx           clock, suncalc (real + display directions), light/fog colours, gusts
       quality.ts                low / medium / high budgets
       CameraRig.tsx             static camera + subtle parallax (gyro / pointer); LOOK_TARGET
-      FreeCameraWASD.tsx, FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts, useNow.ts
+      FreeCameraWASD.tsx, FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
       noiseTexture.ts           module-scoped tileable FBM 256×256 singleton
     layers/
       SkyLayer.tsx              drei <Sky> (Preetham) driven by the displayed sun
@@ -73,7 +73,7 @@ src/
       Thunder.tsx               strike scheduler + drei <Line> bolts, drives signals.flash
       DiamondDust.tsx           drei <Sparkles> at ≤ −10 °C, clear and humid
       FrostGlass.tsx            procedural frosted pane (shaders/frost), grows 0 → −20 °C
-      Lighting.tsx, FogLayer.tsx
+      FogLayer.tsx              scene FogExp2 (only the potato-tier deck opts in)
     shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck, cloudNoise, volumetricClouds)
     debug/                      PerfProbe + perfStats (renderer.info), VolumeHelpers (spawn wireframes)
 ```
@@ -100,8 +100,8 @@ Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subsc
 
 1. **`<FrameRateGate fps={budget.fps}>`** — pairs with `frameloop="demand"`; caps at 60 fps (30 on tier `low`).
 2. **`<CameraRig>`**, or **`<OrbitControls maxDistance={600}>` + `<FreeCameraWASD>`** in free-cam mode.
-3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated wind, accumulated wind offset).
-4. `<FogLayer>` (scene `FogExp2`) and `<Lighting>` (sun + moon directional, hemisphere, bolt point light — always mounted, only intensities change, so lit materials never recompile).
+3. **`<SceneDriver>`** — writes this frame's `SceneSignals` (clock, celestial, colours, fog density from visibility, gust-modulated surface wind, accumulated 850/300 hPa cloud drift).
+4. `<FogLayer>` (scene `FogExp2`). There are no three.js lights: every material is a custom shader or unlit, and the clouds take light colour/ambient straight from `SceneSignals`.
 5. **`<SkyLayer>`** (renderOrder −2) → **`<SkyGrade>`** (−1) → **`<StarField>`** (0) → **`<Moon>`** (1).
 6. **`<VolumetricClouds>`** composite (2) — or **`<CloudDeck>`** (2) on tier `potato`.
 7. **`<Precipitation>`** (4) → **`<Thunder>`** bolt (5, top at the cloud base) → **`<DiamondDust>`** (6) → **`<FrostGlass>`** (30).
@@ -148,13 +148,15 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - Footer is a 2-row block inside `.stack`: top row `[status] … [attrib]`, bottom row centres the SkorczanFFF GitHub pill.
 - Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke`. Progress via a `<clipPath>` rect, not `stroke-dasharray` (which doesn't normalise correctly under those settings).
 - Hourly chart: SVG path + area + grid with `non-scaling-stroke`, HTML overlay for data points and hour labels so they aren't horizontally stretched.
+- **Loading** (`components/loader/`, liquid glass): `Spinner` (inside buttons), `LoaderPill` (floating status capsule, stays mounted and fades), `LoaderPanel` (first load, no data yet). `App` tracks a `LoadSource` (initial/search/location/map/units) for the labels and passes it to `Navbar` as `pending`. Refetches never blur the data: the glass cards dim to 0.72 and a fixed pill at the bottom says what is loading. Dim the cards themselves — opacity/filter on an ancestor cuts their backdrop blur — and keep `.stack > *` entrance animations on `backwards` fill so they don't pin opacity at 1. The map picker shows a pill only for tile loads slower than 250 ms.
+- Shown data is rendered with `weatherUnits` (the units it was fetched in), not the toggle's `units`, so a °C/°F switch never mislabels stale numbers or feeds them to the scene. Superseded fetches are cancelled in the effect cleanup.
 
 ## Debug menu & overrides
 
 - **F7** toggles the menu; **C** toggles free camera (only while the menu is open). Key handlers ignore inputs/textareas.
 - **Presets** (`weather/scenePresets.ts`) pin every weather key, one per catalogue row (clear → hailstorm, fog, rime, sleet, blizzard, diamond dust, heat, gale…). "auto" clears exactly those keys.
 - Time: local-hour slider (location timezone) + date; a pinned time stops the live clock. The readout shows sun altitude and moon phase.
-- Every override is a literal or `"auto"`. `isOverridesDirty()` (in `sceneParams.ts`, re-exported by `DebugMenu`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS` — add new keys there.
+- Every override is a literal or `"auto"`. `isOverridesDirty()` (in `sceneParams.ts`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS` — add new keys there.
 - Auto-bumps in `applyOverrides`: precipitation raises low cloud (≥ 0.85; showers ≥ 0.6; thunder ≥ 0.95); thunder/hail without a rate bring 6 mm/h rain; rime caps visibility at 400 m.
 - Cloud physics row: base m / top m / CAPE / τ overrides (τ "auto" = estimated once the sky is pinned), plus a readout of the derived physics, winds aloft and frost %.
 - Tools: quality tier pin, "spawn volumes" wireframes, perf readout (fps, draw calls, triangles, points, tier), ⚡ force lightning (works without a storm).

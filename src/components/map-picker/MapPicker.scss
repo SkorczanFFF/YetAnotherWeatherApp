@@ -172,6 +172,16 @@
   }
 }
 
+// Tile loading indicator, over Leaflet's panes and controls.
+.map-picker-loading {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  pointer-events: none;
+}
+
 .map-picker-body {
   flex: 1;
   min-height: 0;
