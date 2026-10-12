@@ -114,29 +114,53 @@ float heightGradient(float hf) {
     : mix(cumulus, cb, uType * 2.0 - 1.0);
 }
 
-// Local coverage from a slowly scrolling weather noise. Low global cover →
-// isolated cells; cover 1 → closed deck.
-float coverageAt(vec2 xz) {
+// The noise mixes below are close to normal and very narrow (90 % of the
+// cover mix lies within 0.54–0.71). Mean and spread were measured over the
+// generated 3D noise; the logistic CDF turns a value into its rank, an even
+// 0..1 share of the area, so a cover c can threshold off exactly c of it.
+const vec2 COVER_NOISE = vec2(0.624, 0.050);   // mean, standard deviation
+const vec2 CIRRUS_NOISE = vec2(0.490, 0.081);
+const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
+float noiseRank(float n, vec2 stats) {
+  return 1.0 / (1.0 + exp(-1.702 * (n - stats.x) / stats.y));
+}
+
+// Rank (0..1) of the slowly scrolling weather noise at a spot. The top
+// uCoverage share of the area is cloud, so isolated cells at low cover grow
+// into a closed deck at 1.
+float coverRank(vec2 xz, float hf) {
   vec2 q = xz * WEATHER_SCALE;
   // Perlin-Worley + Worley at two scales — irregular cells, not round blobs.
-  float n = texture(uNoise, vec3(q, 0.31 + uEvolve * 0.05)).r * 0.55
-          + texture(uNoise, vec3(q * 0.43 + 0.29, 0.52)).g * 0.25
-          + texture(uNoise, vec3(q * 2.3 + 0.17, 0.73)).g * 0.2;
-  // Threshold slides with cover so roughly that fraction of the sky is cloud;
-  // above ~0.8 the gaps close into a deck.
-  float c = uCoverage;
-  float th = mix(0.86, 0.22, c);
-  return clamp(smoothstep(th, th + 0.2, n) + smoothstep(0.8, 1.0, c), 0.0, 1.0);
+  // The field drifts through the noise's third axis with height (the fine
+  // scale fastest), so a cell's outline changes as it rises: rims lean and
+  // bulge instead of one footprint extruded into vertical curtains. Every
+  // slice has the same statistics, so the calibrated cover holds at all heights.
+  float n = texture(uNoise, vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
+          + texture(uNoise, vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25
+          + texture(uNoise, vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
+  return noiseRank(n, COVER_NOISE);
 }
 
 float density(vec3 p, float hf, bool detail) {
   if (hf < 0.0 || hf > 1.0) return 0.0;
   vec2 xz = p.xz - uWind;
-  float cov = coverageAt(xz);
+  float c = uCoverage;
+  float rank = coverRank(xz, hf);
+  // Cells over the top c of the ranks. The edge is deliberately wide: the
+  // cover falling off towards a cell's rim is what rounds its top (with the
+  // height gradient below) — a sharp mask extrudes into vertical walls.
+  float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, rank) * smoothstep(0.0, 0.05, c);
+  // Convective towers narrow with height (stacked, rounded tops), so even a
+  // tall cumulonimbus isn't its cell's footprint extruded into a column.
+  cov *= 1.0 - 0.45 * smoothstep(0.35, 0.9, uType) * smoothstep(0.15, 1.0, hf);
+  // Cumulonimbus anvil: near the top each cell spreads into a wider halo of
+  // its own — not into the clear air between cells.
+  if (uType > 0.9) {
+    float halo = smoothstep(1.0 - c - COVER_EDGE - 0.25, 1.0 - c, rank) * smoothstep(0.0, 0.05, c);
+    cov = max(cov, smoothstep(0.75, 0.95, hf) * 0.85 * halo);
+  }
+  cov = clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
   if (cov < 0.01) return 0.0;
-
-  // Cumulonimbus anvil: spread out near the top.
-  cov = mix(cov, max(cov, smoothstep(0.75, 0.95, hf) * 0.85), step(0.9, uType));
 
   vec3 uvw = vec3(xz.x, p.y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;
   vec4 n = texture(uNoise, uvw);
@@ -305,7 +329,12 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
       vec2 qw = vec2(dot(q, uHighWindDir), dot(q, vec2(-uHighWindDir.y, uHighWindDir.x)));
       float n = texture(uNoise, vec3(qw.x / 90000.0, qw.y / 14000.0, 0.57)).g;
       n = n * 0.7 + texture(uNoise, vec3(qw.x / 30000.0, qw.y / 5000.0, 0.11)).b * 0.3;
-      float a = smoothstep(0.5, 0.82, n) * uHigh * 0.55 * (1.0 - smoothstep(60000.0, 160000.0, tc));
+      // Streaks over the top uHigh share of the layer, denser as it fills;
+      // a closing high deck adds a milky cirrostratus veil between them.
+      float rank = noiseRank(n, CIRRUS_NOISE);
+      float streaks = smoothstep(1.0 - uHigh - 0.08, 1.0 - uHigh + 0.12, rank) * (0.35 + 0.3 * uHigh);
+      float veil = smoothstep(0.55, 1.0, uHigh) * 0.18;
+      float a = min(streaks + veil, 0.7) * (1.0 - smoothstep(60000.0, 160000.0, tc));
       vec3 col = uLightColor * mix(hg(cosTheta, 0.6), 1.0, 0.5) * 0.9 + uAmbientTop * 1.2;
       col = mix(col, uHazeColor, 1.0 - exp(-tc / (uHazeDist * 2.5)));
       scat += T * col * a;

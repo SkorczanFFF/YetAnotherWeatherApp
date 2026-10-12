@@ -134,8 +134,9 @@ function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
   const p = params.cloudPhysics;
   // One shell: when the mid band clearly dominates (altocumulus sky), lift
-  // the shell to the mid level instead of the boundary-layer clouds.
-  const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3);
+  // the shell to the mid level instead of the boundary-layer clouds — unless
+  // the air is convective, where the towers rise from the boundary layer.
+  const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3) && p.convection < 0.5;
   let base = midDominant ? p.midAltM - 350 : p.baseM;
   const top = midDominant ? p.midAltM + 450 : p.topM;
   if (params.fog.visibilityM < 800) base = Math.min(base, 150);
@@ -149,7 +150,13 @@ function shellTargets(params: SceneParams): ShellTargets {
         ? 0.06 + 0.2 * conv
         : MathUtils.clamp(0.35 + 0.65 * conv, 0, 1);
   return {
-    coverage: MathUtils.clamp(Math.max(low, mid * 0.85, total * 0.6), 0, 1),
+    // The shell is the low/mid cloud; high cover is the cirrus layer, not
+    // cumulus. Total cover only stands in when no layer explains it.
+    coverage: MathUtils.clamp(
+      Math.max(low, mid * 0.85, low + mid + high < 0.05 ? total : 0),
+      0,
+      1,
+    ),
     type,
     thickness,
     base,

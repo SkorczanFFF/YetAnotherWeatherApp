@@ -341,9 +341,13 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
       : getCloudCoverFromWeatherCode(weather.weather_code);
   const layer = (v: number | undefined, fallback: number) =>
     typeof v === "number" ? clamp01(v / 100) : fallback;
+  // Rain or a storm needs a few cells to fall from, even when the model's
+  // cloud fraction says scattered (it often does for showers).
+  const rainMinimum =
+    traits.thunder ? 0.35 : traits.liquid || traits.frozen ? 0.25 : 0;
   const clouds: CloudLayers = {
     total,
-    low: layer(weather.cloud_cover_low, total),
+    low: Math.max(layer(weather.cloud_cover_low, total), rainMinimum),
     mid: layer(weather.cloud_cover_mid, total),
     high: layer(weather.cloud_cover_high, total * 0.5),
   };
@@ -442,8 +446,10 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
   const precipitating = rainMmH > 0 || snowCmH > 0;
 
   let low = pick(o.cloudLow, base.clouds.low);
-  // Precipitation needs a cloud deck to fall from; bump it unless pinned.
-  if (!isSet(o.cloudLow)) {
+  // Precipitation pinned in the debug menu brings its deck to fall from.
+  // (Measured weather keeps the model's cover — see fromWeather.)
+  const precipPinned = [o.rain, o.snow, o.drizzle, o.showers, o.thunder, o.hail, o.freezing, o.grains].some(isSet);
+  if (!isSet(o.cloudLow) && precipPinned) {
     if (thunder) low = Math.max(low, 0.95);
     else if (precipitating) low = Math.max(low, showers ? 0.6 : 0.85);
   }

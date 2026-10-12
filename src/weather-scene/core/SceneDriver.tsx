@@ -108,9 +108,10 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     s.warmth = (1 - smoothstep(a, 2, 18)) * smoothstep(a, -8, 0);
 
     const { clouds, fog, temperatureC } = params;
+    // Low/mid decks grey the sky; cirrus (in the total) only veils it.
     s.overcast = Math.max(
       smoothstep(clouds.low, 0.55, 1.0),
-      smoothstep(clouds.total, 0.7, 1.0) * 0.8,
+      smoothstep(Math.max(clouds.low, clouds.mid), 0.7, 1.0) * 0.8,
     );
 
     // --- haze & fog: Koschmieder — 95 % extinction at the visibility distance ---

@@ -105,7 +105,9 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    mesh.visible = clouds.low > 0.3 || clouds.high > 0.02;
+    // Same deck cover as the volumetric shell: low, or mid when it dominates.
+    const deck = Math.max(clouds.low, clouds.mid * 0.85);
+    mesh.visible = deck > 0.01 || clouds.high > 0.02;
     if (!mesh.visible) return;
     const u = material.uniforms;
     // Same winds aloft and time-lapse as the volumetric clouds, in scene units.
@@ -114,7 +116,7 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     (u.uDriftHigh.value as Vector2).set(s.windOffsetHigh.x * k, s.windOffsetHigh.z * k);
     const wl = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
     (u.uWindDir.value as Vector2).set(s.windVelocityHigh.x / wl, s.windVelocityHigh.z / wl);
-    u.uLow.value = clouds.low;
+    u.uLow.value = deck;
     u.uHigh.value = clouds.high;
     u.uFlash.value = s.flash;
 

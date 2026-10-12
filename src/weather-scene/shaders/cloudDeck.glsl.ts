@@ -1,7 +1,8 @@
 // Cloud deck: one horizontal plane in world space (true perspective),
 // shaped to the frustum footprint at DECK_Y. Two layers in one pass:
-//   LOW  — stratocumulus → stratus. Broken patches that close into a
-//          textured blanket as low cover → 1.
+//   LOW  — stratocumulus → stratus. Broken patches over the top uLow share
+//          of the area (the low/mid deck cover) that close into a textured
+//          blanket as it → 1.
 //   HIGH — cirrus streaks, stretched along the wind direction, under the low
 //          layer.
 // The pre-baked tileable FBM (core/noiseTexture.ts) is sampled at world xz
@@ -30,7 +31,7 @@ uniform sampler2D uNoise;
 uniform vec2 uDrift;       // accumulated 850 hPa drift, world units (xz)
 uniform vec2 uDriftHigh;   // accumulated 300 hPa drift (cirrus), world units (xz)
 uniform vec2 uWindDir;     // unit, world xz — 300 hPa direction for the cirrus streaks
-uniform float uLow;        // 0..1 low cloud cover
+uniform float uLow;        // 0..1 deck cover (low, or mid when it dominates)
 uniform float uHigh;       // 0..1 high cloud cover
 uniform vec3 uLit;
 uniform vec3 uShade;
@@ -43,20 +44,27 @@ varying vec3 vWorld;
 const float LOW_SCALE = 1.0 / 220.0;
 const vec2 HIGH_SCALE = vec2(1.0 / 700.0, 1.0 / 160.0);
 
+// The FBM mixes are near-normal (measured: low mix μ 0.552 σ 0.081, single
+// sample μ 0.552 σ 0.111); their logistic CDF gives an even 0..1 rank, so a
+// cover c thresholds off exactly that share of the area.
+const vec2 DECK_NOISE = vec2(0.552, 0.081);
+const vec2 HIGH_NOISE = vec2(0.552, 0.111);
+float noiseRank(float n, vec2 stats) {
+  return 1.0 / (1.0 + exp(-1.702 * (n - stats.x) / stats.y));
+}
+
 void main() {
   vec2 p = vWorld.xz;
 
   // LOW
   vec2 uvL = (p - uDrift) * LOW_SCALE;
   float n = texture2D(uNoise, uvL).r * 0.62 + texture2D(uNoise, uvL * 2.7 + 0.31).r * 0.38;
-  float c = clamp((uLow - 0.3) / 0.7, 0.0, 1.0);
-  float thr = mix(0.78, 0.2, c);
-  float aLow = smoothstep(thr, thr + 0.16, n);
+  float rank = noiseRank(n, DECK_NOISE);
+  float aLow = smoothstep(1.0 - uLow - 0.1, 1.0 - uLow + 0.1, rank) * smoothstep(0.0, 0.05, uLow);
   // Overcast: the gaps close into a blanket that keeps some texture.
   float blanket = smoothstep(0.82, 0.98, uLow);
   aLow = mix(aLow, 0.88 + 0.12 * smoothstep(0.3, 0.7, n), blanket);
-  aLow *= smoothstep(0.3, 0.42, uLow);
-  float density = smoothstep(thr, thr + 0.45, n);
+  float density = smoothstep(1.0 - uLow, 1.0, rank);
   vec3 colLow = mix(uLit, uShade, clamp(density * 0.75 + blanket * 0.3, 0.0, 1.0));
 
   // HIGH — rotate into the wind frame and stretch along it.
@@ -64,7 +72,10 @@ void main() {
   vec2 w = uWindDir;
   vec2 qw = vec2(dot(q, w), dot(q, vec2(-w.y, w.x)));
   float nh = texture2D(uNoise, qw * HIGH_SCALE + 0.57).r;
-  float aHigh = smoothstep(0.55, 0.8, nh) * uHigh * 0.55;
+  float rankHigh = noiseRank(nh, HIGH_NOISE);
+  float aHigh = smoothstep(1.0 - uHigh - 0.08, 1.0 - uHigh + 0.12, rankHigh) * (0.35 + 0.3 * uHigh)
+              + smoothstep(0.55, 1.0, uHigh) * 0.18;
+  aHigh = min(aHigh, 0.7) * smoothstep(0.0, 0.05, uHigh);
 
   float a = aLow + aHigh * (1.0 - aLow);
   vec3 col = (colLow * aLow + uHighColor * aHigh * (1.0 - aLow)) / max(a, 1e-4);
