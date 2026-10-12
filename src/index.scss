@@ -22,9 +22,6 @@
   --radius-sm: 14px;
   --hero-temp-size: clamp(88px, 14vw, 168px);
   --blur: 6px;
-
-  --app-text-color: var(--fg);
-  --app-accent-color: var(--accent-warm);
 }
 
 *,
@@ -59,24 +56,6 @@ body {
     z-index: 0;
   }
 
-  .weather-scene-frost {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    transition: opacity 0.6s ease-out;
-    overflow: hidden;
-
-    .frost-edge {
-      position: absolute;
-      pointer-events: none;
-      opacity: 0.85;
-    }
-    .frost-left { top: 0; left: 0; }
-    .frost-right { top: 0; right: 0; }
-    .frost-top { top: 0; left: 0; }
-    .frost-bottom { bottom: 0; left: 0; }
-  }
 }
 
 .shell {
@@ -237,13 +216,10 @@ body {
     }
     .attrib { flex-wrap: wrap; justify-content: center; }
   }
-
-  .App .weather-scene-frost .frost-edge { opacity: 0.4; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stack > * { animation: none; }
-  .App .weather-scene-frost { transition: none; }
   .App .stack.is-loading .hero,
   .App .stack.is-loading .hourly,
   .App .stack.is-loading .forecast .day { filter: none; }

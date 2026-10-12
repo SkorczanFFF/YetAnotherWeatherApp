@@ -1,8 +1,13 @@
 /** Weather data formatting: API response → WeatherData, icon URLs, date formatting. */
 
 import { DateTime } from "luxon";
-import type { WeatherData, HourlyForecast } from "../weather/types";
-import type { OpenMeteoResponse } from "./weatherApi";
+import type {
+  AtmosphereData,
+  AtmosphereLevel,
+  HourlyForecast,
+  WeatherData,
+} from "../weather/types";
+import { type OpenMeteoResponse, PRESSURE_LEVELS } from "./weatherApi";
 
 const weatherCodeMap: Record<number, { description: string; icon: string }> = {
   0: { description: "Clear sky", icon: "01d" },
@@ -120,6 +125,34 @@ export const formatCurrentWeather = (
     rain,
     showers,
     snowfall,
+    atmosphere: formatAtmosphere(data),
+  };
+};
+
+const wind = (speed?: number, direction?: number) =>
+  speed != null && direction != null ? { speed, direction } : undefined;
+
+/** Upper-air column for the scene's cloud physics; every field optional (model gaps). */
+const formatAtmosphere = (data: OpenMeteoResponse): AtmosphereData => {
+  const c = data.current;
+  const levels: AtmosphereLevel[] = [];
+  for (const pressure of PRESSURE_LEVELS) {
+    const heightM = c[`geopotential_height_${pressure}hPa`];
+    const cover = c[`cloud_cover_${pressure}hPa`];
+    if (heightM != null && cover != null) levels.push({ heightM, cover });
+  }
+  return {
+    elevationM: data.elevation,
+    boundaryLayerM: c.boundary_layer_height,
+    cape: c.cape,
+    liftedIndex: c.lifted_index,
+    freezingLevelM: c.freezing_level_height,
+    shortwave: c.shortwave_radiation,
+    direct: c.direct_radiation,
+    topOfAtmosphere: c.terrestrial_radiation,
+    wind850: wind(c.wind_speed_850hPa, c.wind_direction_850hPa),
+    wind300: wind(c.wind_speed_300hPa, c.wind_direction_300hPa),
+    levels,
   };
 };
 

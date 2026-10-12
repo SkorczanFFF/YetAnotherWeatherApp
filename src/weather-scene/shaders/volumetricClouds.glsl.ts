@@ -1,9 +1,10 @@
 // Volumetric clouds — Nubis-style (Schneider, Horizon Zero Dawn) raymarch
 // through a spherical shell above a curved Earth, in metres.
 //
-// Rendered into a low-res target; the camera is static, so each frame only
-// one pixel of every 2×2 block is re-marched (with a fresh jitter) and blended
-// with history — the rest is copied. A pixel converges over a few frames and
+// Rendered into a low-res target; the camera barely moves (parallax only,
+// history is reprojected by view direction), so each frame only one pixel of
+// every 2×2 block is re-marched (with a fresh jitter) and blended with
+// history — the rest is copied. A pixel converges over a few frames and
 // the per-frame cost is ~1/4 of an already reduced resolution.
 //
 // Output is premultiplied: rgb = in-scattered radiance (pre-tonemap, "sky
@@ -21,7 +22,6 @@ export const VOLUMETRIC_FRAG = /* glsl */ `
 precision highp float;
 precision highp sampler3D;
 
-#define PI 3.14159265359
 
 uniform sampler3D uNoise;
 uniform sampler2D uHistory;
@@ -39,8 +39,11 @@ uniform float uThickness;    // shell thickness, m
 uniform float uCoverage;     // 0..1
 uniform float uType;         // 0 stratus · 0.5 cumulus · 1 cumulonimbus
 uniform float uDensity;      // extinction per metre at density 1
-uniform vec2 uWind;          // accumulated drift, m (xz)
-uniform vec2 uWindDir;       // unit, xz
+uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), m (xz)
+uniform vec2 uWindHigh;      // accumulated drift at cirrus level (300 hPa), m (xz)
+uniform vec2 uHighWindDir;   // unit, xz — cirrus streaks stretch along it
+uniform float uCirrusAlt;    // m above ground
+uniform float uFreezeAlt;    // 0 °C level above ground, m — ice above it
 uniform float uEvolve;       // slow morphing offset
 uniform float uHigh;         // cirrus cover 0..1
 
@@ -62,7 +65,6 @@ varying vec2 vUv;
 const float SHAPE_SCALE = 1.0 / 3200.0;   // one noise tile ≈ 3.2 km
 const float DETAIL_SCALE = 1.0 / 520.0;
 const float WEATHER_SCALE = 1.0 / 10000.0;
-const float CIRRUS_ALT = 8500.0;
 
 float remap(float v, float l0, float h0, float l1, float h1) {
   return l1 + (v - l0) * (h1 - l1) / (h0 - l0);
@@ -137,9 +139,12 @@ float density(vec3 p, float hf, bool detail) {
     vec3 duvw = vec3(xz.x, p.y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
     vec4 d = texture(uNoise, duvw);
     float hfFbm = d.g * 0.625 + d.b * 0.25 + d.a * 0.125;
-    // Wispy bottoms, billowy tops.
-    float modifier = mix(hfFbm, 1.0 - hfFbm, clamp(hf * 6.0, 0.0, 1.0));
-    base = remap(base, modifier * 0.5, 1.0, 0.0, 1.0);
+    // Wispy bottoms, billowy tops; above the freezing level the cloud is
+    // glaciated — softer, fibrous edges (anvils, ice tops).
+    float altitude = hf * uThickness + uBase;
+    float ice = smoothstep(uFreezeAlt, uFreezeAlt + 1500.0, altitude);
+    float modifier = mix(hfFbm, 1.0 - hfFbm, clamp(hf * 6.0, 0.0, 1.0) * (1.0 - ice * 0.7));
+    base = remap(base, modifier * (0.5 + 0.2 * ice), 1.0, 0.0, 1.0);
   }
   return clamp(base, 0.0, 1.0);
 }
@@ -239,10 +244,10 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
 
   // Cirrus: thin streaks on a high shell, stretched along the wind, behind the volume.
   if (uHigh > 0.01 && T > 0.02) {
-    float tc = raySphere(ro, rd, uEarthR + CIRRUS_ALT).y;
+    float tc = raySphere(ro, rd, uEarthR + uCirrusAlt).y;
     if (tc > 0.0 && tc < 160000.0) {
-      vec2 q = (ro + rd * tc).xz - uWind * 1.6;
-      vec2 qw = vec2(dot(q, uWindDir), dot(q, vec2(-uWindDir.y, uWindDir.x)));
+      vec2 q = (ro + rd * tc).xz - uWindHigh;
+      vec2 qw = vec2(dot(q, uHighWindDir), dot(q, vec2(-uHighWindDir.y, uHighWindDir.x)));
       float n = texture(uNoise, vec3(qw.x / 90000.0, qw.y / 14000.0, 0.57)).g;
       n = n * 0.7 + texture(uNoise, vec3(qw.x / 30000.0, qw.y / 5000.0, 0.11)).b * 0.3;
       float a = smoothstep(0.5, 0.82, n) * uHigh * 0.55 * (1.0 - smoothstep(60000.0, 160000.0, tc));

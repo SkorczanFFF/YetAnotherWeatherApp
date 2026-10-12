@@ -27,8 +27,9 @@ export const CLOUD_DECK_FRAG = /* glsl */ `
 #include <fog_pars_fragment>
 
 uniform sampler2D uNoise;
-uniform vec2 uDrift;       // accumulated wind drift, world units (xz)
-uniform vec2 uWindDir;     // unit, world xz
+uniform vec2 uDrift;       // accumulated 850 hPa drift, world units (xz)
+uniform vec2 uDriftHigh;   // accumulated 300 hPa drift (cirrus), world units (xz)
+uniform vec2 uWindDir;     // unit, world xz — 300 hPa direction for the cirrus streaks
 uniform float uLow;        // 0..1 low cloud cover
 uniform float uHigh;       // 0..1 high cloud cover
 uniform vec3 uLit;
@@ -59,7 +60,7 @@ void main() {
   vec3 colLow = mix(uLit, uShade, clamp(density * 0.75 + blanket * 0.3, 0.0, 1.0));
 
   // HIGH — rotate into the wind frame and stretch along it.
-  vec2 q = p - uDrift * 0.7;
+  vec2 q = p - uDriftHigh;
   vec2 w = uWindDir;
   vec2 qw = vec2(dot(q, w), dot(q, vec2(-w.y, w.x)));
   float nh = texture2D(uNoise, qw * HIGH_SCALE + 0.57).r;

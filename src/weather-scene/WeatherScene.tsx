@@ -21,6 +21,7 @@ import { VolumetricClouds } from "./layers/VolumetricClouds";
 import { Precipitation } from "./layers/precip/Precipitation";
 import { Thunder } from "./layers/Thunder";
 import { DiamondDust } from "./layers/DiamondDust";
+import { FrostGlass } from "./layers/FrostGlass";
 import { PerfProbe } from "./debug/PerfProbe";
 import { VolumeHelpers } from "./debug/VolumeHelpers";
 import { perfStats } from "./debug/perfStats";
@@ -89,11 +90,13 @@ function SceneRoot({
       <Precipitation params={params} frame={frame} budget={budget} />
       <Thunder
         enabled={params.thunder}
+        cloudBaseM={params.cloudPhysics.baseM}
         nonce={lightningNonce ?? 0}
         frame={frame}
         isMobile={isMobile}
       />
       <DiamondDust params={params} frame={frame} count={budget.sparkles} />
+      <FrostGlass params={params} />
     </>
   );
 

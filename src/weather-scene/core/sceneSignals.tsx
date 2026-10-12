@@ -3,12 +3,11 @@ import { Color, Vector3 } from "three";
 import type { Facing } from "./worldFrame";
 
 // Per-frame shared state. Written once per frame by <SceneDriver> (mounted
-// right after the camera rig), read by every layer inside its own useFrame.
+// right after the camera rig) — except `flash` / `flashPosition`, written by
+// <Thunder> — and read by every layer inside its own useFrame.
 // Plain mutable objects — never React state — so nothing re-renders at 60 fps.
 
 export interface SceneSignals {
-  /** Scene instant, unix ms. */
-  time: number;
   facing: Facing;
   /** Display directions (compressed into the frame), unit vectors. */
   sunDir: Vector3;
@@ -36,10 +35,14 @@ export interface SceneSignals {
   /** Sky / ground ambient colours (cloud ambient). */
   hemiSky: Color;
   hemiGround: Color;
-  /** Gust-modulated wind, m/s, world space (y = 0). */
+  /** Gust-modulated surface wind, m/s, world space (y = 0). */
   windVelocity: Vector3;
-  /** Accumulated air displacement, metres (y = 0). */
-  windOffset: Vector3;
+  /** Wind at low/mid cloud level (850 hPa) and at cirrus level (300 hPa), m/s, world. */
+  windVelocityLow: Vector3;
+  windVelocityHigh: Vector3;
+  /** Accumulated displacement of those air masses, metres. */
+  windOffsetLow: Vector3;
+  windOffsetHigh: Vector3;
   /** 0..~1.5 lightning flash envelope. */
   flash: number;
   /** World position of the current bolt (for lighting the right cloud), valid while flash > 0. */
@@ -48,7 +51,6 @@ export interface SceneSignals {
 
 export function createSceneSignals(): SceneSignals {
   return {
-    time: Date.now(),
     facing: "south",
     sunDir: new Vector3(0, 0.3, -1).normalize(),
     moonDir: new Vector3(0, 0.3, -1).normalize(),
@@ -68,7 +70,10 @@ export function createSceneSignals(): SceneSignals {
     hemiSky: new Color("#a9c6e8"),
     hemiGround: new Color("#5b5a55"),
     windVelocity: new Vector3(),
-    windOffset: new Vector3(),
+    windVelocityLow: new Vector3(),
+    windVelocityHigh: new Vector3(),
+    windOffsetLow: new Vector3(),
+    windOffsetHigh: new Vector3(),
     flash: 0,
     flashPosition: new Vector3(0, 40, -200),
   };

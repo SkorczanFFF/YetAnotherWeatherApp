@@ -22,7 +22,6 @@ export interface VolumetricBudget {
 export interface QualityBudget {
   dprMax: number;
   fps: number;
-  antialias: boolean;
   /** null → flat CloudDeck fallback. */
   volumetric: VolumetricBudget | null;
   rain: number;
@@ -36,7 +35,6 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   high: {
     dprMax: 1.5,
     fps: 60,
-    antialias: true,
     volumetric: { scale: 0.5, steps: 64, lightSteps: 6, noiseSize: 128, maxDistance: 60000 },
     rain: 1800,
     snow: 1100,
@@ -47,7 +45,6 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   medium: {
     dprMax: 1.25,
     fps: 60,
-    antialias: true,
     volumetric: { scale: 0.4, steps: 48, lightSteps: 5, noiseSize: 96, maxDistance: 50000 },
     rain: 1000,
     snow: 650,
@@ -58,7 +55,6 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   low: {
     dprMax: 1,
     fps: 30,
-    antialias: false,
     volumetric: { scale: 0.33, steps: 32, lightSteps: 4, noiseSize: 64, maxDistance: 40000 },
     rain: 450,
     snow: 300,
@@ -69,7 +65,6 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   potato: {
     dprMax: 1,
     fps: 30,
-    antialias: false,
     volumetric: null,
     rain: 300,
     snow: 200,

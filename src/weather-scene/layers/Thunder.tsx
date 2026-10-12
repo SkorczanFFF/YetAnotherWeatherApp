@@ -4,13 +4,15 @@ import { Line } from "@react-three/drei";
 import { type Group, MathUtils, Vector3 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
-import { METRES_PER_UNIT, STORM_CLOUD_BASE_M } from "../core/worldFrame";
+import { METRES_PER_UNIT } from "../core/worldFrame";
 
-/** Bolts start just inside the storm cloud base. */
-const BOLT_TOP_Y = (STORM_CLOUD_BASE_M * 1.05) / METRES_PER_UNIT;
+/** Bolt top in scene units: just inside the cloud base from the cloud physics. */
+const boltTopY = (cloudBaseM: number) => (Math.max(300, cloudBaseM) * 1.05) / METRES_PER_UNIT;
 
 interface ThunderProps {
   enabled: boolean;
+  /** Low-cloud base above ground, m (params.cloudPhysics.baseM). */
+  cloudBaseM: number;
   /** Increment to force a strike now (debug), even without a storm. */
   nonce: number;
   frame: ViewFrame;
@@ -43,12 +45,12 @@ function jagged(a: Vector3, b: Vector3, roughness: number, depth: number, out: V
   jagged(mid, b, roughness, depth - 1, out);
 }
 
-function makeBolt(frame: ViewFrame): Bolt {
+function makeBolt(frame: ViewFrame, topY: number): Bolt {
   const d = MathUtils.lerp(STRIKE_NEAR, STRIKE_FAR, Math.random());
-  const hw = halfWidthAt(frame, d, BOLT_TOP_Y) * 0.8;
+  const hw = halfWidthAt(frame, d, topY) * 0.8;
   const x = (Math.random() * 2 - 1) * hw;
   // From the cloud base to just below the horizon line at that distance.
-  const top = new Vector3(x, BOLT_TOP_Y, -d);
+  const top = new Vector3(x, topY, -d);
   const bottom = new Vector3(x + (Math.random() - 0.5) * 40, -d * 0.02, -d);
   const main: Vector3[] = [top.clone()];
   jagged(top, bottom, 0.22, 6, main);
@@ -77,7 +79,7 @@ function makeBolt(frame: ViewFrame): Bolt {
  * brightens the sky grade and the clouds (from the bolt) and dims the stars. Sharp attack,
  * exponential decay, optional second pulse.
  */
-export function Thunder({ enabled, nonce, frame, isMobile }: ThunderProps) {
+export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: ThunderProps) {
   const s = useSceneSignals();
   const [bolt, setBolt] = useState<Bolt | null>(null);
   const group = useRef<Group>(null);
@@ -97,7 +99,7 @@ export function Thunder({ enabled, nonce, frame, isMobile }: ThunderProps) {
 
     if (forced.current || (enabled && t >= next.current)) {
       forced.current = false;
-      const b = makeBolt(frame);
+      const b = makeBolt(frame, boltTopY(cloudBaseM));
       setBolt(b);
       start.current = t;
       secondAt.current = Math.random() < SECOND_BUMP_CHANCE ? t + 0.09 : -1;

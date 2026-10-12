@@ -8,14 +8,12 @@ import {
 } from "three";
 
 // Tileable FBM noise generated once at module scope. The resulting
-// 256×256 single-channel texture is reused by the cloud shader (sampled
-// with two offsets and blended). Tileability means we can offset UVs by
-// arbitrary wind amounts without a seam ever showing.
+// 256×256 single-channel texture is shared by the potato-tier cloud deck and
+// the frosted glass. Tileability means we can offset UVs by arbitrary wind
+// amounts without a seam ever showing.
 //
 // Baking cost: ~30 ms on a warm CPU. Sampling cost in shader: one texture
-// lookup per invocation. This beats an in-shader FBM (30-50 ALU ops per
-// pixel) by an order of magnitude, which matters on mobile where the
-// cloud plane covers a big chunk of the viewport.
+// lookup per invocation, an order of magnitude cheaper than in-shader FBM.
 
 const TEX_SIZE = 256;
 const OCTAVES = 5;

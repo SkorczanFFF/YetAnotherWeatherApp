@@ -3,7 +3,23 @@
 import type { WeatherData } from "../weather/types";
 import { WeatherError } from "./errors";
 import { geocodeCity, reverseGeocode } from "./geocoder";
-import { getWeatherData } from "./weatherApi";
+import { getWeatherData, PRESSURE_LEVELS } from "./weatherApi";
+
+/** Upper-air, stability and radiation fields for the scene's cloud physics. */
+const ATMOSPHERE_FIELDS = [
+  "boundary_layer_height",
+  "cape",
+  "lifted_index",
+  "freezing_level_height",
+  "shortwave_radiation",
+  "direct_radiation",
+  "terrestrial_radiation",
+  "wind_speed_850hPa",
+  "wind_direction_850hPa",
+  "wind_speed_300hPa",
+  "wind_direction_300hPa",
+  ...PRESSURE_LEVELS.flatMap((p) => [`cloud_cover_${p}hPa`, `geopotential_height_${p}hPa`]),
+].join(",");
 import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
 
 interface WeatherParams {
@@ -66,7 +82,8 @@ const getFormattedWeatherData = async (
     temperature_unit,
     wind_speed_unit,
     current:
-      "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation,rain,showers,snowfall,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_gusts_10m",
+      "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation,rain,showers,snowfall,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_gusts_10m," +
+      ATMOSPHERE_FIELDS,
     hourly: "temperature_2m,precipitation_probability,weather_code",
     daily:
       "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max",

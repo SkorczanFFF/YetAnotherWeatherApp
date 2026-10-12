@@ -28,7 +28,6 @@ import {
   CLOUD_TIMELAPSE,
   EARTH_RADIUS_M,
   METRES_PER_UNIT,
-  STORM_CLOUD_BASE_M,
 } from "../core/worldFrame";
 import { CLOUD_NOISE_FRAG, CLOUD_NOISE_VERT } from "../shaders/cloudNoise.glsl";
 import {
@@ -88,47 +87,52 @@ function getCloudNoise3D(gl: WebGLRenderer, size: number): Data3DTexture {
 }
 
 // ---------------------------------------------------------------------------
-// Weather → shell parameters. Smoothed towards every frame, so preset
-// switches morph instead of popping.
+// Weather → shell parameters, from the cloud physics (weather/cloudPhysics.ts):
+// base/top from dew point, boundary layer and CAPE; density from the optical
+// depth (radiation-derived by day); cirrus height from the pressure levels.
 export interface ShellTargets {
   coverage: number;
+  /** 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1 cumulonimbus. */
   type: number;
   thickness: number;
   base: number;
+  /** Extinction per metre at noise density 1. */
   density: number;
   high: number;
+  cirrusAlt: number;
+  freezeAlt: number;
 }
+
+/** Mean fill of the shaped noise inside the shell — converts τ into extinction. */
+const SHELL_FILL = 0.35;
 
 export function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
-  const { precip, thunder, fog } = params;
-  const wet = precip.rainMmH > 0 || precip.snowCmH > 0;
-  const type = thunder
+  const p = params.cloudPhysics;
+  // One shell: when the mid band clearly dominates (altocumulus sky), lift
+  // the shell to the mid level instead of the boundary-layer clouds.
+  const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3);
+  let base = midDominant ? p.midAltM - 350 : p.baseM;
+  const top = midDominant ? p.midAltM + 450 : p.topM;
+  if (params.fog.visibilityM < 800) base = Math.min(base, 150);
+  const thickness = MathUtils.clamp(top - base, 200, 12000);
+  const conv = p.convection;
+  const type = params.thunder
     ? 1
-    : precip.showers
-      ? 0.75
-      : low > 0.85
-        ? wet
-          ? 0.14
-          : 0.06
-        : 0.5;
-  const thickness =
-    type < 0.5
-      ? MathUtils.lerp(650, 1800, type * 2)
-      : MathUtils.lerp(1800, 8000, type * 2 - 1);
-  const base =
-    fog.visibilityM < 800
-      ? 250
-      : thunder
-        ? STORM_CLOUD_BASE_M
-        : MathUtils.lerp(700, 1300, Math.min(1, type * 2));
+    : midDominant
+      ? 0.3
+      : low >= 0.85 && conv < 0.25
+        ? 0.06 + 0.2 * conv
+        : MathUtils.clamp(0.35 + 0.65 * conv, 0, 1);
   return {
     coverage: MathUtils.clamp(Math.max(low, mid * 0.85, total * 0.6), 0, 1),
     type,
     thickness,
     base,
-    density: 0.03 + (wet ? 0.02 : 0) + (thunder ? 0.02 : 0),
+    density: MathUtils.clamp(p.opticalDepth / (thickness * SHELL_FILL), 0.004, 0.15),
     high,
+    cirrusAlt: p.highAltM,
+    freezeAlt: p.freezingLevelM ?? 3000,
   };
 }
 
@@ -192,7 +196,10 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
         uType: { value: 0.45 },
         uDensity: { value: 0.03 },
         uWind: { value: new Vector2() },
-        uWindDir: { value: new Vector2(1, 0) },
+        uWindHigh: { value: new Vector2() },
+        uHighWindDir: { value: new Vector2(1, 0) },
+        uCirrusAlt: { value: 8500 },
+        uFreezeAlt: { value: 3000 },
         uEvolve: { value: 0 },
         uHigh: { value: 0 },
         uLightDir: { value: new Vector3(0, 1, 0) },
@@ -244,7 +251,6 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     frame: 0,
     read: 0,
     historyValid: false,
-    shell: null as ShellTargets | null,
     prevViewProj: new Matrix4(),
   });
 
@@ -252,16 +258,15 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   useEffect(() => {
     state.current.historyValid = false;
   }, [targets]);
-  // Weather/debug changes snap the shell and restart accumulation — blending
-  // towards a different cloud field would leave ghosts for a second.
+  // Weather/debug changes switch the shell at once and restart accumulation —
+  // blending towards a different cloud field would leave ghosts for a second.
   useEffect(() => {
-    state.current.shell = null;
     state.current.historyValid = false;
   }, [targetsWanted]);
 
   const meshRef = useRef<Mesh>(null);
 
-  useFrame((frameState, delta) => {
+  useFrame((frameState) => {
     const st = state.current;
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -271,17 +276,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     }
     const u = pass.material.uniforms;
 
-    // Smooth the shell towards the weather.
-    const want = targetsWanted;
-    if (!st.shell) st.shell = { ...want };
-    const k = 1 - Math.exp(-Math.min(delta, 0.1) * 1.5);
-    const sh = st.shell;
-    sh.coverage += (want.coverage - sh.coverage) * k;
-    sh.type += (want.type - sh.type) * k;
-    sh.thickness += (want.thickness - sh.thickness) * k;
-    sh.base += (want.base - sh.base) * k;
-    sh.density += (want.density - sh.density) * k;
-    sh.high += (want.high - sh.high) * k;
+    const sh = targetsWanted;
 
     const empty = sh.coverage < 0.015 && sh.high < 0.01;
     mesh.visible = !empty;
@@ -306,16 +301,23 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uType.value = sh.type;
     u.uDensity.value = sh.density;
     u.uHigh.value = sh.high;
+    u.uCirrusAlt.value = sh.cirrusAlt;
+    u.uFreezeAlt.value = sh.freezeAlt;
     u.uSteps.value = budget.steps;
     u.uLightSteps.value = budget.lightSteps;
     u.uMaxDist.value = budget.maxDistance;
 
+    // Low/mid clouds ride the 850 hPa wind, cirrus the 300 hPa wind.
     (u.uWind.value as Vector2).set(
-      s.windOffset.x * CLOUD_TIMELAPSE,
-      s.windOffset.z * CLOUD_TIMELAPSE,
+      s.windOffsetLow.x * CLOUD_TIMELAPSE,
+      s.windOffsetLow.z * CLOUD_TIMELAPSE,
     );
-    const wl = Math.hypot(s.windVelocity.x, s.windVelocity.z) || 1;
-    (u.uWindDir.value as Vector2).set(s.windVelocity.x / wl, s.windVelocity.z / wl);
+    (u.uWindHigh.value as Vector2).set(
+      s.windOffsetHigh.x * CLOUD_TIMELAPSE,
+      s.windOffsetHigh.z * CLOUD_TIMELAPSE,
+    );
+    const wh = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
+    (u.uHighWindDir.value as Vector2).set(s.windVelocityHigh.x / wh, s.windVelocityHigh.z / wh);
     u.uEvolve.value = frameState.clock.elapsedTime * 0.002;
 
     // Key light: the sun keeps lighting cloud bases ~6° after it sets

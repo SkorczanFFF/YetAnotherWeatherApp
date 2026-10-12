@@ -66,7 +66,6 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
 
   useFrame((state, delta) => {
     const time = params.time ?? Date.now();
-    s.time = time;
     s.facing = facingFor(params.lat);
 
     // --- celestial (throttled; params/frame changes force a recompute) ---
@@ -152,7 +151,14 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       speedMs + (gustMs - speedMs) * Math.min(1, gustEnvelope(t)),
     );
     windVelocity(fromDeg, speed, s.facing, s.windVelocity);
-    s.windOffset.addScaledVector(s.windVelocity, Math.min(delta, 0.1));
+    const dt = Math.min(delta, 0.1);
+
+    // Clouds ride the winds aloft, not the surface wind (cloudPhysics.ts).
+    const { windLow, windHigh } = params.cloudPhysics;
+    windVelocity(windLow.fromDeg, Math.max(MIN_DRIFT_MS, windLow.speedMs), s.facing, s.windVelocityLow);
+    windVelocity(windHigh.fromDeg, Math.max(MIN_DRIFT_MS, windHigh.speedMs), s.facing, s.windVelocityHigh);
+    s.windOffsetLow.addScaledVector(s.windVelocityLow, dt);
+    s.windOffsetHigh.addScaledVector(s.windVelocityHigh, dt);
   });
 
   return null;

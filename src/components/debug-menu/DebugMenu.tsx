@@ -8,6 +8,7 @@ import {
   type QualityTier,
   type SceneOverrides,
   type SceneParams,
+  getFrostAmount,
   getSunAltitude,
 } from "../../weather/sceneParams";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
@@ -275,6 +276,23 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
             <NumericField label="mid" field="cloudMid" step={0.05} min={0} max={1} current={fmt(c.clouds.mid, 2)} overrides={o} onSet={set} />
             <NumericField label="high" field="cloudHigh" step={0.05} min={0} max={1} current={fmt(c.clouds.high, 2)} overrides={o} onSet={set} />
           </div>
+          <div className="debug-menu-row">
+            <NumericField label="Base m" field="cloudBase" step={100} min={0} current={fmt(c.cloudPhysics.baseM, 0)} overrides={o} onSet={set} />
+            <NumericField label="Top m" field="cloudTop" step={250} min={0} current={fmt(c.cloudPhysics.topM, 0)} overrides={o} onSet={set} />
+            <NumericField label="CAPE J/kg" field="cape" step={100} min={0} current={fmt(c.cloudPhysics.cape, 0)} overrides={o} onSet={set} />
+            <NumericField label="τ" field="opticalDepth" step={2} min={0} current={fmt(c.cloudPhysics.opticalDepth)} overrides={o} onSet={set} />
+          </div>
+          <div className="debug-menu-group">
+            <div className="debug-menu-readout">
+              clouds {fmt(e.cloudPhysics.baseM, 0)}–{fmt(e.cloudPhysics.topM, 0)} m · τ {fmt(e.cloudPhysics.opticalDepth)}
+              {e.cloudPhysics.opticalDepthMeasured ? " (radiation)" : " (estimated)"} · convection {Math.round(e.cloudPhysics.convection * 100)}%
+              {e.cloudPhysics.liftedIndex != null && ` · LI ${fmt(e.cloudPhysics.liftedIndex)}`}
+              {e.cloudPhysics.boundaryLayerM != null && ` · BL ${fmt(e.cloudPhysics.boundaryLayerM, 0)} m`}
+              {e.cloudPhysics.freezingLevelM != null && ` · 0 °C at ${fmt(e.cloudPhysics.freezingLevelM, 0)} m`}
+              {e.cloudPhysics.directFraction != null && ` · sun through clouds ${Math.round(e.cloudPhysics.directFraction * 100)}%`}
+              {` · frost ${Math.round(getFrostAmount(e) * 100)}%`}
+            </div>
+          </div>
 
           <div className="debug-menu-row">
             <NumericField label="Wind m/s" field="windSpeed" step={1} min={0} current={fmt(c.wind.speedMs)} overrides={o} onSet={set} />
@@ -295,7 +313,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               ))}
             </div>
             <div className="debug-menu-readout">
-              from {toCardinal(e.wind.fromDeg)} → clouds drift {describeScreenDrift(e.wind.fromDeg, facing)} (facing {facing})
+              surface from {toCardinal(e.wind.fromDeg)} · 850 hPa {fmt(e.cloudPhysics.windLow.speedMs)} m/s from {toCardinal(e.cloudPhysics.windLow.fromDeg)} → clouds drift {describeScreenDrift(e.cloudPhysics.windLow.fromDeg, facing)} · 300 hPa (cirrus) {fmt(e.cloudPhysics.windHigh.speedMs)} m/s from {toCardinal(e.cloudPhysics.windHigh.fromDeg)} (facing {facing})
             </div>
           </div>
 

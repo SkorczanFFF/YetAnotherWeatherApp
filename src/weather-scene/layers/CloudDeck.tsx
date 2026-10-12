@@ -14,7 +14,7 @@ import type { SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, nearestVisibleDistance, type ViewFrame } from "../core/viewVolume";
-import { CLOUD_WIND_SCALE, DECK_FAR, DECK_Y } from "../core/worldFrame";
+import { CLOUD_TIMELAPSE, DECK_FAR, DECK_Y, METRES_PER_UNIT } from "../core/worldFrame";
 import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
 
 interface CloudDeckProps {
@@ -74,6 +74,7 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
           {
             uNoise: { value: null },
             uDrift: { value: new Vector2() },
+            uDriftHigh: { value: new Vector2() },
             uWindDir: { value: new Vector2(1, 0) },
             uLow: { value: 0 },
             uHigh: { value: 0 },
@@ -107,12 +108,12 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     mesh.visible = clouds.low > 0.3 || clouds.high > 0.02;
     if (!mesh.visible) return;
     const u = material.uniforms;
-    (u.uDrift.value as Vector2).set(
-      s.windOffset.x * CLOUD_WIND_SCALE,
-      s.windOffset.z * CLOUD_WIND_SCALE,
-    );
-    const wl = Math.hypot(s.windVelocity.x, s.windVelocity.z) || 1;
-    (u.uWindDir.value as Vector2).set(s.windVelocity.x / wl, s.windVelocity.z / wl);
+    // Same winds aloft and time-lapse as the volumetric clouds, in scene units.
+    const k = CLOUD_TIMELAPSE / METRES_PER_UNIT;
+    (u.uDrift.value as Vector2).set(s.windOffsetLow.x * k, s.windOffsetLow.z * k);
+    (u.uDriftHigh.value as Vector2).set(s.windOffsetHigh.x * k, s.windOffsetHigh.z * k);
+    const wl = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
+    (u.uWindDir.value as Vector2).set(s.windVelocityHigh.x / wl, s.windVelocityHigh.z / wl);
     u.uLow.value = clouds.low;
     u.uHigh.value = clouds.high;
     u.uFlash.value = s.flash;

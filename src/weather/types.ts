@@ -77,6 +77,38 @@ export interface WeatherData {
   showers?: number;
   /** Snowfall, cm (preceding hour). */
   snowfall?: number;
+  /** Vertical structure of the atmosphere — drives the cloud physics in the scene. */
+  atmosphere?: AtmosphereData;
+}
+
+/** One pressure level of the model column. */
+export interface AtmosphereLevel {
+  /** Geopotential height above sea level, m. */
+  heightM: number;
+  /** Cloud cover at this level, %, 0–100. */
+  cover: number;
+}
+
+/** Raw upper-air / radiation readings from Open-Meteo (model values, not observations). */
+export interface AtmosphereData {
+  /** Grid-cell elevation above sea level, m. */
+  elevationM?: number;
+  /** Boundary layer height above ground, m. */
+  boundaryLayerM?: number;
+  /** Convective available potential energy, J/kg. */
+  cape?: number;
+  /** Lifted index (negative = unstable). */
+  liftedIndex?: number;
+  /** 0 °C level above sea level, m. */
+  freezingLevelM?: number;
+  /** Global and direct shortwave on a horizontal surface, and top-of-atmosphere, W/m². */
+  shortwave?: number;
+  direct?: number;
+  topOfAtmosphere?: number;
+  /** Winds aloft in the same speed unit as `speed`; direction = from, degrees. */
+  wind850?: { speed: number; direction: number };
+  wind300?: { speed: number; direction: number };
+  levels: AtmosphereLevel[];
 }
 
 export type EffectType =

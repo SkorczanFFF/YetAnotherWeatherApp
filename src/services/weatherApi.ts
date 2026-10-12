@@ -26,7 +26,23 @@ export interface OpenMeteoCurrentData {
   uv_index: number;
   dew_point_2m: number;
   precipitation: number;
+  boundary_layer_height?: number;
+  cape?: number;
+  lifted_index?: number;
+  freezing_level_height?: number;
+  shortwave_radiation?: number;
+  direct_radiation?: number;
+  terrestrial_radiation?: number;
+  wind_speed_850hPa?: number;
+  wind_direction_850hPa?: number;
+  wind_speed_300hPa?: number;
+  wind_direction_300hPa?: number;
+  /** cloud_cover_{p}hPa / geopotential_height_{p}hPa for every p in PRESSURE_LEVELS. */
+  [pressureLevelField: `${"cloud_cover" | "geopotential_height"}_${number}hPa`]: number | undefined;
 }
+
+/** Pressure levels requested for the cloud column, hPa (surface → upper troposphere). */
+export const PRESSURE_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250] as const;
 
 export interface OpenMeteoHourlyData {
   time: string[];

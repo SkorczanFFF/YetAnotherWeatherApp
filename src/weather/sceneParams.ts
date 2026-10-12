@@ -7,6 +7,14 @@ import {
   getCloudCoverFromWeatherCode,
   getEffectTypeAndIntensity,
 } from "./codes";
+import {
+  type AtmosphereSI,
+  type CloudPhysics,
+  deriveCloudPhysics,
+  dewPointFromHumidity,
+  speedToMs,
+  toAtmosphereSI,
+} from "./cloudPhysics";
 
 export type QualityTier = "potato" | "low" | "medium" | "high";
 export type Auto<T> = T | "auto";
@@ -28,7 +36,7 @@ export interface PrecipState {
   drizzle: boolean;
   /** WMO 56/57/66/67, or liquid below 0 °C — glaze. */
   freezing: boolean;
-  /** Convective (80–86, 95–99) — towering cumulus, pulsing intensity. */
+  /** Convective (80–90, 95–99) — towering cumulus, pulsing intensity. */
   showers: boolean;
   /** WMO 87–90, 96, 99. */
   hail: boolean;
@@ -57,8 +65,13 @@ export interface SceneParams {
     rime: boolean;
   };
   temperatureC: number;
+  dewPointC: number;
   /** 0..1 */
   humidity: number;
+  /** Base/top/optical depth/convection/winds aloft — see weather/cloudPhysics.ts. */
+  cloudPhysics: CloudPhysics;
+  /** Upper-air column the physics was derived from (kept to re-derive under overrides). */
+  atmosphere: AtmosphereSI | null;
   parallaxAmount: number;
   /** null = auto (device + PerformanceMonitor decide). */
   quality: QualityTier | null;
@@ -95,6 +108,13 @@ export interface SceneOverrides {
   temperature?: Auto<number>;
   /** 0..1 */
   humidity?: Auto<number>;
+  /** Low-cloud base / top above ground, m. */
+  cloudBase?: Auto<number>;
+  cloudTop?: Auto<number>;
+  /** J/kg */
+  cape?: Auto<number>;
+  /** Optical depth of the low layer. */
+  opticalDepth?: Auto<number>;
   parallax?: Auto<number>;
   quality?: Auto<QualityTier>;
 }
@@ -121,6 +141,10 @@ const OVERRIDE_KEYS: (keyof SceneOverrides)[] = [
   "rime",
   "temperature",
   "humidity",
+  "cloudBase",
+  "cloudTop",
+  "cape",
+  "opticalDepth",
   "parallax",
   "quality",
 ];
@@ -189,18 +213,35 @@ const DRY: PrecipState = {
   grains: false,
 };
 
+const DEFAULT_CLOUDS: CloudLayers = { total: 0.3, low: 0.2, mid: 0.3, high: 0.2 };
+const DEFAULT_WIND = { speedMs: 3, gustMs: 5, fromDeg: 270 };
+
 const DEFAULT_PARAMS: SceneParams = {
   time: null,
   lat: DEFAULT_LOCATION.lat,
   lon: DEFAULT_LOCATION.lon,
   timezone: browserTimezone(),
-  clouds: { total: 0.3, low: 0.2, mid: 0.3, high: 0.2 },
-  wind: { speedMs: 3, gustMs: 5, fromDeg: 270 },
+  clouds: DEFAULT_CLOUDS,
+  wind: DEFAULT_WIND,
   precip: DRY,
   thunder: false,
   fog: { visibilityM: CLEAR_VISIBILITY_M, rime: false },
   temperatureC: 12,
+  dewPointC: 4,
   humidity: 0.6,
+  cloudPhysics: deriveCloudPhysics({
+    atmosphere: null,
+    temperatureC: 12,
+    dewPointC: 4,
+    clouds: DEFAULT_CLOUDS,
+    surfaceWind: DEFAULT_WIND,
+    thunder: false,
+    showers: false,
+    precipitating: false,
+    fog: false,
+    trustRadiation: false,
+  }),
+  atmosphere: null,
   parallaxAmount: 0.15,
   quality: null,
 };
@@ -236,10 +277,6 @@ function getCodeTraits(code: number): CodeTraits {
     grains: c === 77,
     rime: c === 48,
   };
-}
-
-function toMetresPerSecond(speed: number, units: Units): number {
-  return units === "imperial" ? speed * 0.44704 : speed / 3.6;
 }
 
 function toCelsius(temp: number, units: Units): number {
@@ -311,10 +348,10 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
     high: layer(weather.cloud_cover_high, total * 0.5),
   };
 
-  const speedMs = toMetresPerSecond(weather.speed ?? 0, units);
+  const speedMs = speedToMs(weather.speed ?? 0, units);
   const gustMs = Math.max(
     speedMs,
-    toMetresPerSecond(weather.wind_gusts ?? weather.speed ?? 0, units),
+    speedToMs(weather.wind_gusts ?? weather.speed ?? 0, units),
   );
 
   let visibilityM = weather.visibility ?? CLEAR_VISIBILITY_M;
@@ -322,21 +359,44 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
     visibilityM = Math.min(visibilityM, FOG_MAX_VISIBILITY_M[traits.intensity]);
   }
 
+  const humidity = clamp01((weather.humidity ?? 60) / 100);
+  const dewPointC =
+    weather.dew_point != null
+      ? toCelsius(weather.dew_point, units)
+      : dewPointFromHumidity(temperatureC, humidity);
+  const precip = precipFromWeather(weather, traits, temperatureC);
+  const wind = { speedMs, gustMs, fromDeg: weather.wind_direction ?? 0 };
+  const atmosphere = toAtmosphereSI(weather.atmosphere, units);
+
   return {
     time: null,
     lat: weather.lat ?? DEFAULT_LOCATION.lat,
     lon: weather.lon ?? DEFAULT_LOCATION.lon,
     timezone: weather.timezone || browserTimezone(),
     clouds,
-    wind: { speedMs, gustMs, fromDeg: weather.wind_direction ?? 0 },
-    precip: precipFromWeather(weather, traits, temperatureC),
+    wind,
+    precip,
     thunder: traits.thunder,
     fog: {
       visibilityM,
       rime: traits.rime || (traits.fog && temperatureC < 0),
     },
     temperatureC,
-    humidity: clamp01((weather.humidity ?? 60) / 100),
+    dewPointC,
+    humidity,
+    cloudPhysics: deriveCloudPhysics({
+      atmosphere,
+      temperatureC,
+      dewPointC,
+      clouds,
+      surfaceWind: wind,
+      thunder: traits.thunder,
+      showers: traits.showers,
+      precipitating: precip.rainMmH > 0 || precip.snowCmH > 0,
+      fog: traits.fog || visibilityM < 1000,
+      trustRadiation: true,
+    }),
+    atmosphere,
     parallaxAmount: DEFAULT_PARAMS.parallaxAmount,
     quality: null,
   };
@@ -394,24 +454,65 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
   const total = layersTouched
     ? clamp01(1 - (1 - low) * (1 - mid * 0.8) * (1 - high * 0.4))
     : base.clouds.total;
+  const clouds: CloudLayers = { total, low, mid, high };
 
   const rime = pick(o.rime, base.fog.rime);
   let visibilityM = pick(o.visibility, base.fog.visibilityM);
   if (rime && !isSet(o.visibility)) visibilityM = Math.min(visibilityM, 400);
 
   const speedMs = Math.max(0, pick(o.windSpeed, base.wind.speedMs));
+  const wind = {
+    speedMs,
+    gustMs: Math.max(speedMs, pick(o.windGust, base.wind.gustMs)),
+    fromDeg: pick(o.windFrom, base.wind.fromDeg),
+  };
+  const humidity = clamp01(pick(o.humidity, base.humidity));
+  // Keep the dew-point spread consistent when temperature/humidity are pinned.
+  const dewPointC =
+    isSet(o.temperature) || isSet(o.humidity)
+      ? dewPointFromHumidity(temperatureC, humidity)
+      : base.dewPointC;
+
+  // The model's radiation and winds aloft describe the REAL sky — drop them
+  // when the debug menu reshapes the weather, so the physics stays coherent.
+  const skyTouched =
+    layersTouched ||
+    isSet(o.rain) ||
+    isSet(o.snow) ||
+    isSet(o.thunder) ||
+    isSet(o.showers) ||
+    isSet(o.visibility);
+  const windTouched = isSet(o.windSpeed) || isSet(o.windFrom);
+  const atmosphere =
+    base.atmosphere && windTouched
+      ? { ...base.atmosphere, windLow: undefined, windHigh: undefined }
+      : base.atmosphere;
+  const cloudPhysics = deriveCloudPhysics({
+    atmosphere,
+    temperatureC,
+    dewPointC,
+    clouds,
+    surfaceWind: wind,
+    thunder,
+    showers,
+    precipitating,
+    fog: visibilityM < 1000 || rime,
+    trustRadiation: !skyTouched,
+    override: {
+      baseM: isSet(o.cloudBase) ? o.cloudBase : undefined,
+      topM: isSet(o.cloudTop) ? o.cloudTop : undefined,
+      cape: isSet(o.cape) ? o.cape : undefined,
+      opticalDepth: isSet(o.opticalDepth) ? o.opticalDepth : undefined,
+    },
+  });
 
   return {
     time: resolveTime(o, base.timezone),
     lat: base.lat,
     lon: base.lon,
     timezone: base.timezone,
-    clouds: { total, low, mid, high },
-    wind: {
-      speedMs,
-      gustMs: Math.max(speedMs, pick(o.windGust, base.wind.gustMs)),
-      fromDeg: pick(o.windFrom, base.wind.fromDeg),
-    },
+    clouds,
+    wind,
     precip: {
       rainMmH,
       snowCmH,
@@ -426,7 +527,10 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
     thunder,
     fog: { visibilityM, rime },
     temperatureC,
-    humidity: clamp01(pick(o.humidity, base.humidity)),
+    dewPointC,
+    humidity,
+    cloudPhysics,
+    atmosphere,
     parallaxAmount: pick(o.parallax, base.parallaxAmount),
     quality: pick<QualityTier | null>(o.quality, base.quality),
   };
@@ -446,15 +550,18 @@ export function getSunAltitude(timeMs: number, lat: number, lon: number): number
   return SunCalc.getPosition(new Date(timeMs), lat, lon).altitude;
 }
 
-/** Night = sun more than ~2° below the horizon (civil twilight has mostly faded). */
-export function isNightAt(timeMs: number, lat: number, lon: number): boolean {
-  return getSunAltitude(timeMs, lat, lon) < -0.035;
-}
+/** Temperature at which the frosted-glass effect reaches full strength, °C. */
+const FROST_FULL_AT_C = -20;
 
-/** Frost overlay strength: 0 at ≥ 0 °C, 0.25 just below, 1 at −15 °C; glaze/rime force a visible minimum. */
+/**
+ * Frosted-glass strength, 0..1. Grows gradually from 0 °C to −20 °C (eased,
+ * so −1 °C is only a hint in the corners), scaled by humidity — dry air
+ * frosts the glass less. Freezing rain/drizzle and rime fog glaze the glass
+ * even near 0 °C.
+ */
 export function getFrostAmount(params: SceneParams): number {
-  const t = params.temperatureC;
-  const cold = t < 0 ? 0.25 + 0.75 * clamp01(-t / 15) : 0;
-  const glaze = params.precip.freezing || params.fog.rime ? 0.45 : 0;
-  return Math.max(cold, glaze);
+  const cold = Math.pow(clamp01(params.temperatureC / FROST_FULL_AT_C), 1.6);
+  const moisture = 0.55 + 0.45 * params.humidity;
+  const glaze = params.precip.freezing || params.fog.rime ? 0.35 : 0;
+  return clamp01(Math.max(cold * moisture, glaze));
 }

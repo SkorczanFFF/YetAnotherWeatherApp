@@ -25,8 +25,7 @@ export function SkyLayer() {
     u.turbidity.value = 1.6 + 6 * s.haze + 4 * s.overcast;
     u.rayleigh.value = MathUtils.lerp(1.6, 3.0, s.warmth);
     u.mieCoefficient.value = 0.0025 + 0.02 * s.haze;
-    u.mieDirectionalG.value = 0.86;
   });
 
-  return <Sky ref={ref} distance={3000} />;
+  return <Sky ref={ref} distance={3000} mieDirectionalG={0.86} />;
 }

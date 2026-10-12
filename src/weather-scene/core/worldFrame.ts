@@ -32,17 +32,13 @@ export const DECK_FAR = 2400;
 export const EARTH_RADIUS_M = 6371000;
 /** Eye height above ground for the volumetric raymarch. */
 export const CAMERA_ALTITUDE_M = 2;
-/** Cloud base under a storm — the raymarch shell and the lightning bolts share it. */
-export const STORM_CLOUD_BASE_M = 1300;
 
 /**
- * Time-lapse factor: scene units per second of drift per m/s of surface wind.
- * Includes the "wind is stronger aloft" bump and a ×4 speed-up so drift is
- * visible within a few seconds of looking.
+ * Time-lapse for clouds driven by the real winds aloft (850 / 300 hPa):
+ * metres of cloud drift per metre of air. Pure speed-up — the "stronger
+ * aloft" part now comes from the data.
  */
-export const CLOUD_WIND_SCALE = 0.35;
-/** Same time-lapse in metres of cloud drift per metre of air (volumetric clouds). */
-export const CLOUD_TIMELAPSE = CLOUD_WIND_SCALE * METRES_PER_UNIT;
+export const CLOUD_TIMELAPSE = 4;
 /** Clouds never stop completely — dead calm still reads as a frozen frame. */
 export const MIN_DRIFT_MS = 0.6;
 

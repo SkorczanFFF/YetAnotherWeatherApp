@@ -138,7 +138,7 @@ export function TakramSky({ params, tier, overlay }: TakramSkyProps) {
     if (!api) return;
     api.worldToECEFMatrix.copy(toECEF);
     // Real date for the star field / Earth rotation, then our directions.
-    api.updateByDate(s.time);
+    api.updateByDate(params.time ?? Date.now());
     const sunRelAz = Math.atan2(s.sunDir.x, -s.sunDir.z);
     directionFromRelative(sunRelAz, s.sunAlt, scratch);
     api.sunDirection.copy(scratch).applyMatrix3(toECEFLinear).normalize();
@@ -149,12 +149,14 @@ export function TakramSky({ params, tier, overlay }: TakramSkyProps) {
 
   // Weather → takram parameters (static per params; gusts aren't animated).
   const shell = useMemo(() => shellTargets(params), [params]);
+  // Clouds drift with the 850 hPa wind from the cloud physics.
+  const { windLow } = params.cloudPhysics;
   const motion = useMemo(() => {
     const facing = facingFor(params.lat);
-    const drift = windVelocity(params.wind.fromDeg, params.wind.speedMs, facing)
+    const drift = windVelocity(windLow.fromDeg, windLow.speedMs, facing)
       .multiplyScalar(CLOUD_TIMELAPSE);
     const driftECEF = drift.clone().applyMatrix3(toECEFLinear);
-    const towards = ((params.wind.fromDeg + 180) * Math.PI) / 180;
+    const towards = ((windLow.fromDeg + 180) * Math.PI) / 180;
     const speed = drift.length();
     return {
       shape: driftECEF.clone().multiplyScalar(SHAPE_REPEAT),
@@ -163,12 +165,13 @@ export function TakramSky({ params, tier, overlay }: TakramSkyProps) {
         speed / LOCAL_WEATHER_TILE_M,
       ),
     };
-  }, [params.lat, params.wind.fromDeg, params.wind.speedMs, toECEFLinear]);
+  }, [params.lat, windLow.fromDeg, windLow.speedMs, toECEFLinear]);
 
   const { clouds } = params;
   const quality = PRESETS[tier];
   const storm = params.thunder ? 2 : params.precip.rainMmH > 0 ? 1.4 : 1;
-  const towerHeight = params.thunder ? 6000 : params.precip.showers ? 3000 : 1200;
+  // Second layer's thickness follows the derived cloud depth (CAPE towers).
+  const towerHeight = Math.min(9000, Math.max(800, shell.thickness));
   // Near-total cover breaks the cloud shadow cascades here (clouds vanish
   // inside a frustum-shaped band), so overcast skies render without BSM.
   const castShadows = shell.coverage < 0.8;
