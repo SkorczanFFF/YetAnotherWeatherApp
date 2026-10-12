@@ -12,21 +12,12 @@ import {
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
-import type { CloudEngine } from "../../weather-scene/WeatherScene";
 import { toCardinal } from "../../services/weatherFormatter";
 import "./DebugMenu.scss";
 
 export interface DebugTools {
-  showVolumes: boolean;
   showPerf: boolean;
-  /** TEST ONLY: our volumetric clouds vs @takram/three-clouds. */
-  cloudEngine: CloudEngine;
 }
-
-const CLOUD_ENGINES: { id: CloudEngine; label: string }[] = [
-  { id: "ours", label: "ours" },
-  { id: "takram", label: "takram (test)" },
-];
 
 interface DebugMenuProps {
   open: boolean;
@@ -40,7 +31,6 @@ interface DebugMenuProps {
   tools: DebugTools;
   onToolsChange: (tools: DebugTools) => void;
   onForceLightning: () => void;
-  freeCamera?: boolean;
 }
 
 const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -153,7 +143,6 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   tools,
   onToolsChange,
   onForceLightning,
-  freeCamera = false,
 }) => {
   const o = overrides ?? {};
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -187,8 +176,8 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
 
   return (
     <div
-      className={`debug-menu-backdrop${freeCamera ? " debug-menu-backdrop--freecam" : ""}`}
-      onClick={freeCamera ? undefined : onClose}
+      className="debug-menu-backdrop"
+      onClick={onClose}
       role="dialog"
       aria-label="Debug menu"
     >
@@ -370,32 +359,8 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           </div>
 
           <div className="debug-menu-group">
-            <label>Cloud renderer</label>
-            <div className="debug-menu-button-group">
-              {CLOUD_ENGINES.map((engine) => (
-                <button
-                  key={engine.id}
-                  type="button"
-                  className={`debug-menu-option-btn${tools.cloudEngine === engine.id ? " debug-menu-option-btn--active" : ""}`}
-                  onClick={() => onToolsChange({ ...tools, cloudEngine: engine.id })}
-                >
-                  {engine.label}
-                </button>
-              ))}
-            </div>
-            <p className="debug-menu-readout">takram loads ~9 MB of atmosphere/noise data on first use.</p>
-          </div>
-
-          <div className="debug-menu-group">
             <label>Tools</label>
             <div className="debug-menu-button-group">
-              <button
-                type="button"
-                className={`debug-menu-option-btn${tools.showVolumes ? " debug-menu-option-btn--active" : ""}`}
-                onClick={() => onToolsChange({ ...tools, showVolumes: !tools.showVolumes })}
-              >
-                spawn volumes
-              </button>
               <button
                 type="button"
                 className={`debug-menu-option-btn${tools.showPerf ? " debug-menu-option-btn--active" : ""}`}
@@ -405,9 +370,6 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               </button>
             </div>
             {tools.showPerf && <PerfReadout />}
-            <p className="debug-menu-readout">
-              <kbd>C</kbd> free camera — WASD move, mouse orbit
-            </p>
           </div>
         </div>
       </div>

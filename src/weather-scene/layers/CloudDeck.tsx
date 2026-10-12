@@ -28,7 +28,7 @@ const SHADE_TINT = new Color("#7d8796");
 const STORM = new Color("#3c4049");
 
 /** The trapezoid the frustum cuts out of the plane y = DECK_Y. */
-export function deckFootprint(frame: ViewFrame) {
+function deckFootprint(frame: ViewFrame) {
   const dNear = Math.max(1, nearestVisibleDistance(frame, DECK_Y) * 0.9);
   const dFar = DECK_FAR;
   return {

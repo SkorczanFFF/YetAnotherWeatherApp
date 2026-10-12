@@ -69,7 +69,7 @@ export function directionFromRelative(
 }
 
 /** Compass bearing (degrees, 0 = N, clockwise) → horizontal world unit vector pointing that way. */
-export function compassToWorld(
+function compassToWorld(
   bearingDeg: number,
   facing: Facing,
   target = new Vector3(),

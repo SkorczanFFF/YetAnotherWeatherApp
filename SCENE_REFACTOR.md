@@ -11,18 +11,9 @@
 - Szron: DOM-owe `frost-*.png` usunięte, zamiast nich `layers/FrostGlass.tsx` (shader, zero assetów) — narasta od rogów i krawędzi, 0 przy 0 °C → pełny przy −20 °C, rośnie/topnieje w ciągu kilku sekund, w nocy przygaszony.
 - Usunięte stałe `CLOUD_WIND_SCALE`, `STORM_CLOUD_BASE_M`; `CLOUD_TIMELAPSE` = 4.
 
-## Test: @takram/three-clouds (branch `clouds-takram-test`, 2026-10-12)
+## Test: @takram/three-clouds (2026-10-12, usunięty)
 
-Tylko do porównania z naszymi chmurami — **nie do merge'a w obecnej formie** (łamie zakazy z `CLAUDE.md`: `postprocessing`, `@takram/*`).
-
-- Przełącznik w debugu (F7 → „Cloud renderer”: ours / takram (test)). Takram ładuje się leniwie (`weather-scene/takram/TakramSky.tsx`, osobny chunk ~446 KB / 120 KB gzip) plus ~9 MB danych z `public/takram/` (tekstury atmosfery `.exr`, STBN) przy pierwszym włączeniu.
-- Wersje (exact): `@takram/three-clouds` 0.7.6, `@takram/three-atmosphere` 0.19.1, `@takram/three-geospatial` 0.9.1, `postprocessing` 6.39.5, `@react-three/postprocessing` 3.0.4 (3.1+ wymaga fiber ≥ 9.7).
-- Nasz świat jest osadzony na elipsoidzie WGS84 w miejscu pogody (`worldToECEFMatrix`); słońce/księżyc: azymut ekranowy + prawdziwa wysokość (jak nasze chmury). Tekstury chmur proceduralne (LocalWeather/CloudShape/…), domyślne warstwy biblioteki łatane pogodą (gęstość, wypiętrzenie burzy, cirrus).
-- Opady, pioruny i pył diamentowy rysują się osobnym przebiegiem po EffectComposerze (inaczej `AerialPerspective(sky)` zamalowuje cząstki bez głębi).
-- Świadomie pominięte w teście: gwiazdy, błysk pioruna na niebie/chmurach, mapowanie widzialności/mgły.
-- Ruch chmur takram: wiatr 850 hPa z `cloudPhysics`; wysokość drugiej warstwy = grubość chmur z fizyki (800–9000 m).
-- Znany problem: przy pokryciu ≥ ~0,8 kaskady cieni chmur (BSM) psują obraz — chmury znikają w trapezie przed kamerą. Cienie są więc włączone tylko poniżej 0,8.
-- Wydajność wg autora biblioteki (README, Tokyo scene): iPhone 13 36–53 fps na `low`, M3 Max 92–95 fps na `high` w 4K z temporal upscalingiem. U nas niezmierzone na prawdziwym GPU.
+Porównanie z naszymi chmurami przez przełącznik w debugu. Po porównaniu test usunięty w całości (kod, `public/takram/` ~9 MB, `postprocessing` + `@takram/*`); zostaje w historii gita. Wnioski: Takram ma lepiej policzoną atmosferę (Bruneton, irradiancja nieba i słońca, perspektywa powietrzna, cienie i smugi światła z beer shadow maps), my — fizykę chmur z danych, ciągłe typy chmur, wiatry na wysokości, błyskawice i ułamek kosztu.
 
 ## Chmury wolumetryczne (2026-10-11)
 

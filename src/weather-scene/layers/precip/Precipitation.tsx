@@ -47,8 +47,8 @@ interface SystemSpec {
   stretch?: number;
 }
 
-export const RAIN_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 40, pad: 1.5 };
-export const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
+const RAIN_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 40, pad: 1.5 };
+const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 function buildSpecs(params: SceneParams, budget: QualityBudget): SystemSpec[] {

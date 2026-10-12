@@ -75,12 +75,9 @@ const App = (): React.ReactElement => {
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugOverrides, setDebugOverrides] = useState<SceneOverrides | null>(null);
   const [debugTools, setDebugTools] = useState<DebugTools>({
-    showVolumes: false,
     showPerf: true,
-    cloudEngine: "ours",
   });
   const [lightningNonce, setLightningNonce] = useState(0);
-  const [freeCamera, setFreeCamera] = useState(false);
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
   const currentParams = useMemo(
@@ -109,14 +106,6 @@ const App = (): React.ReactElement => {
       if (e.key === "F7") {
         e.preventDefault();
         setDebugOpen((prev) => !prev);
-      }
-      if ((e.key === "c" || e.key === "C") && !e.ctrlKey && !e.metaKey) {
-        const target = e.target as HTMLElement;
-        if (target?.closest("input, textarea, [contenteditable]")) return;
-        if (debugOpen) {
-          e.preventDefault();
-          setFreeCamera((prev) => !prev);
-        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -185,11 +174,8 @@ const App = (): React.ReactElement => {
     <div className="App">
       <WeatherScene
         params={effectiveParams}
-        freeCamera={freeCamera}
-        showVolumes={debugOpen && debugTools.showVolumes}
         showPerf={debugOpen && debugTools.showPerf}
         lightningNonce={lightningNonce}
-        cloudEngine={debugTools.cloudEngine}
       />
       <div className="shell">
         <Navbar
@@ -266,10 +252,7 @@ const App = (): React.ReactElement => {
       />
       <DebugMenu
         open={debugOpen}
-        onClose={() => {
-          setDebugOpen(false);
-          setFreeCamera(false);
-        }}
+        onClose={() => setDebugOpen(false)}
         overrides={debugOverrides}
         onOverridesChange={setDebugOverrides}
         currentParams={currentParams}
@@ -277,7 +260,6 @@ const App = (): React.ReactElement => {
         tools={debugTools}
         onToolsChange={setDebugTools}
         onForceLightning={() => setLightningNonce((n) => n + 1)}
-        freeCamera={freeCamera}
       />
       <Analytics />
       <ToastContainer

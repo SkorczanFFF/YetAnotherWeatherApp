@@ -1,9 +1,8 @@
-import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, PerformanceMonitor, Stats } from "@react-three/drei";
+import { PerformanceMonitor, Stats } from "@react-three/drei";
 import type { QualityTier, SceneParams } from "../weather/sceneParams";
-import { CameraRig, LOOK_TARGET } from "./core/CameraRig";
-import { FreeCameraWASD } from "./core/FreeCameraWASD";
+import { CameraRig } from "./core/CameraRig";
 import { FrameRateGate } from "./core/FrameRateGate";
 import { useIsMobile } from "./core/useIsMobile";
 import { initialTier, lowerTier, QUALITY, type QualityBudget } from "./core/quality";
@@ -24,27 +23,13 @@ import { Thunder } from "./layers/Thunder";
 import { DiamondDust } from "./layers/DiamondDust";
 import { FrostGlass } from "./layers/FrostGlass";
 import { PerfProbe } from "./debug/PerfProbe";
-import { VolumeHelpers } from "./debug/VolumeHelpers";
 import { perfStats } from "./debug/perfStats";
 
-export type CloudEngine = "ours" | "takram";
-
-// TEST ONLY: takram clouds + atmosphere, loaded on first use so the regular
-// bundle stays free of postprocessing/takram.
-const TakramSky = lazy(() =>
-  import("./takram/TakramSky").then((m) => ({ default: m.TakramSky })),
-);
-
 export interface WeatherSceneDebugProps {
-  freeCamera?: boolean;
-  /** Wireframes of every spawn volume — pair with the free camera. */
-  showVolumes?: boolean;
   /** fps graph + renderer.info probe. */
   showPerf?: boolean;
   /** Increment to force a lightning strike. */
   lightningNonce?: number;
-  /** TEST ONLY: which cloud/sky renderer to use. */
-  cloudEngine?: CloudEngine;
 }
 
 interface WeatherSceneProps extends WeatherSceneDebugProps {
@@ -56,7 +41,6 @@ interface WeatherSceneProps extends WeatherSceneDebugProps {
 interface SceneRootProps extends WeatherSceneDebugProps {
   params: SceneParams;
   budget: QualityBudget;
-  tier: QualityTier;
   isMobile: boolean;
 }
 
@@ -68,13 +52,9 @@ interface SceneRootProps extends WeatherSceneDebugProps {
 function SceneRoot({
   params,
   budget,
-  tier,
   isMobile,
-  freeCamera,
-  showVolumes,
   showPerf,
   lightningNonce,
-  cloudEngine = "ours",
 }: SceneRootProps) {
   const signals = useMemo(createSceneSignals, []);
   const size = useThree((s) => s.size);
@@ -84,10 +64,29 @@ function SceneRoot({
     [aspect, params.parallaxAmount],
   );
 
-  // Drawn over the sky/clouds in both engines (takram renders them in its own
-  // overlay pass after the composer).
-  const overlay = (
-    <>
+  return (
+    <SceneSignalsProvider value={signals}>
+      <FrameRateGate fps={budget.fps} />
+      <CameraRig parallaxAmount={params.parallaxAmount} />
+      <SceneDriver params={params} frame={frame} />
+      <UiBacklight thunder={params.thunder} />
+
+      <SkyLayer />
+      <SkyGrade />
+      <StarField frame={frame} count={budget.stars} />
+      <Suspense fallback={null}>
+        <Moon />
+      </Suspense>
+      {budget.volumetric ? (
+        <VolumetricClouds params={params} budget={budget.volumetric} />
+      ) : (
+        <>
+          {/* The deck is the only material that opts into scene fog. */}
+          <FogLayer />
+          <CloudDeck params={params} frame={frame} />
+        </>
+      )}
+
       <Precipitation params={params} frame={frame} budget={budget} />
       <Thunder
         enabled={params.thunder}
@@ -98,47 +97,7 @@ function SceneRoot({
       />
       <DiamondDust params={params} frame={frame} count={budget.sparkles} />
       <FrostGlass params={params} />
-    </>
-  );
 
-  return (
-    <SceneSignalsProvider value={signals}>
-      <FrameRateGate fps={budget.fps} />
-      {freeCamera ? (
-        <>
-          {/* Stay inside the <Sky> box (half-size 1500) so the debug view keeps its sky. */}
-          <OrbitControls target={LOOK_TARGET} maxDistance={600} />
-          <FreeCameraWASD />
-        </>
-      ) : (
-        <CameraRig parallaxAmount={params.parallaxAmount} />
-      )}
-      <SceneDriver params={params} frame={frame} />
-      <UiBacklight thunder={params.thunder} />
-      <FogLayer />
-
-      {cloudEngine === "takram" ? (
-        <Suspense fallback={null}>
-          <TakramSky params={params} tier={tier} overlay={overlay} />
-        </Suspense>
-      ) : (
-        <>
-          <SkyLayer />
-          <SkyGrade />
-          <StarField frame={frame} count={budget.stars} />
-          <Suspense fallback={null}>
-            <Moon />
-          </Suspense>
-          {budget.volumetric ? (
-            <VolumetricClouds params={params} budget={budget.volumetric} />
-          ) : (
-            <CloudDeck params={params} frame={frame} />
-          )}
-          {overlay}
-        </>
-      )}
-
-      {showVolumes && <VolumeHelpers frame={frame} />}
       {showPerf && (
         <>
           <PerfProbe />
@@ -155,7 +114,6 @@ export function WeatherScene({
   params,
   className,
   style,
-  freeCamera = false,
   ...debug
 }: WeatherSceneProps) {
   const eventSource =
@@ -180,7 +138,7 @@ export function WeatherScene({
         inset: 0,
         width: "100%",
         height: "100%",
-        pointerEvents: freeCamera ? "auto" : "none",
+        pointerEvents: "none",
         ...style,
       }}
     >
@@ -209,9 +167,7 @@ export function WeatherScene({
         <SceneRoot
           params={params}
           budget={budget}
-          tier={tier}
           isMobile={isMobile}
-          freeCamera={freeCamera}
           {...debug}
         />
       </Canvas>

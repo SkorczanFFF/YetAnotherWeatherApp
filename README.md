@@ -26,7 +26,7 @@ Don't get wet — check the weather first!
 - **Loading state** — animated loader with minimum 500 ms display time, content blur animation while loading
 - **Glassmorphism UI** — frosted-glass panels with backdrop blur
 - **Dynamic text color** — CSS variable (`--app-text-color`) switches between day/night palettes based on time of day
-- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover, fog density, wind, particles, thunderstorm flag, and more; free camera mode (**C**) with WASD + mouse orbit
+- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover, fog density, wind, particles, thunderstorm flag, and more
 
 ## How the Weather Scene Works
 

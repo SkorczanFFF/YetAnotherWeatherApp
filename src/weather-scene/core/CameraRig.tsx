@@ -7,7 +7,7 @@ import { CAMERA_PITCH, LOOK_DISTANCE, PARALLAX_RANGE } from "./worldFrame";
 const SMOOTH = 0.08;
 
 /** Fixed look target — the base view is static; parallax only nudges the eye. */
-export const LOOK_TARGET = new Vector3(
+const LOOK_TARGET = new Vector3(
   0,
   Math.tan(CAMERA_PITCH) * LOOK_DISTANCE,
   -LOOK_DISTANCE,

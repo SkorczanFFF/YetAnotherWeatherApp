@@ -102,7 +102,7 @@ function getCloudNoise3D(gl: WebGLRenderer, size: number): Data3DTexture {
 // Weather → shell parameters, from the cloud physics (weather/cloudPhysics.ts):
 // base/top from dew point, boundary layer and CAPE; density from the optical
 // depth (radiation-derived by day); cirrus height from the pressure levels.
-export interface ShellTargets {
+interface ShellTargets {
   coverage: number;
   /** 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1 cumulonimbus. */
   type: number;
@@ -130,7 +130,7 @@ const SHELL_KEYS = [
   "freezeAlt",
 ] as const satisfies readonly (keyof ShellTargets)[];
 
-export function shellTargets(params: SceneParams): ShellTargets {
+function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
   const p = params.cloudPhysics;
   // One shell: when the mid band clearly dominates (altocumulus sky), lift
