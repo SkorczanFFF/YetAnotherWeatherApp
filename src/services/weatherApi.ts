@@ -14,20 +14,54 @@ export interface OpenMeteoCurrentData {
   wind_speed_10m: number;
   wind_direction_10m: number;
   is_day: number;
+  cloud_cover: number;
+  cloud_cover_low?: number;
+  cloud_cover_mid?: number;
+  cloud_cover_high?: number;
+  wind_gusts_10m?: number;
+  rain?: number;
+  showers?: number;
+  snowfall?: number;
+  visibility: number;
+  uv_index: number;
+  dew_point_2m: number;
+  precipitation: number;
+  boundary_layer_height?: number;
+  cape?: number;
+  lifted_index?: number;
+  freezing_level_height?: number;
+  shortwave_radiation?: number;
+  direct_radiation?: number;
+  terrestrial_radiation?: number;
+  wind_speed_850hPa?: number;
+  wind_direction_850hPa?: number;
+  wind_speed_300hPa?: number;
+  wind_direction_300hPa?: number;
+  /** cloud_cover_{p}hPa / geopotential_height_{p}hPa for every p in PRESSURE_LEVELS. */
+  [pressureLevelField: `${"cloud_cover" | "geopotential_height"}_${number}hPa`]: number | undefined;
+}
+
+/** Pressure levels requested for the cloud column, hPa (surface → upper troposphere). */
+export const PRESSURE_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250] as const;
+
+export interface OpenMeteoHourlyData {
+  time: string[];
+  temperature_2m: number[];
+  precipitation_probability: number[];
+  weather_code: number[];
 }
 
 export interface OpenMeteoDailyData {
   time: string[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
-  apparent_temperature_max: number[];
-  apparent_temperature_min: number[];
   weather_code: number[];
   sunrise: string[];
   sunset: string[];
-  precipitation_sum: number[];
+  precipitation_probability_max: number[];
   wind_speed_10m_max: number[];
-  wind_gusts_10m_max: number[];
+  wind_direction_10m_dominant: number[];
+  uv_index_max: number[];
 }
 
 export interface OpenMeteoResponse {
@@ -37,6 +71,7 @@ export interface OpenMeteoResponse {
   timezone_abbreviation: string;
   elevation: number;
   current: OpenMeteoCurrentData;
+  hourly: OpenMeteoHourlyData;
   daily: OpenMeteoDailyData;
   current_units: Record<string, string>;
   daily_units: Record<string, string>;
@@ -49,7 +84,10 @@ export interface OpenMeteoQueryParams {
   temperature_unit: string;
   wind_speed_unit: string;
   current: string;
+  hourly: string;
   daily: string;
+  forecast_hours?: number;
+  forecast_days?: number;
 }
 
 export const getWeatherData = async (

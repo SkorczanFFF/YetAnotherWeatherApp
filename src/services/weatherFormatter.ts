@@ -1,8 +1,13 @@
 /** Weather data formatting: API response → WeatherData, icon URLs, date formatting. */
 
 import { DateTime } from "luxon";
-import type { WeatherData } from "../weather/types";
-import type { OpenMeteoResponse } from "./weatherApi";
+import type {
+  AtmosphereData,
+  AtmosphereLevel,
+  HourlyForecast,
+  WeatherData,
+} from "../weather/types";
+import { type OpenMeteoResponse, PRESSURE_LEVELS } from "./weatherApi";
 
 const weatherCodeMap: Record<number, { description: string; icon: string }> = {
   0: { description: "Clear sky", icon: "01d" },
@@ -48,7 +53,7 @@ export const formatCurrentWeather = (
   data: OpenMeteoResponse,
   locationName?: string,
   countryCode?: string,
-): Omit<WeatherData, "daily" | "timezone"> => {
+): Omit<WeatherData, "daily" | "hourly" | "timezone"> => {
   const { latitude: lat, longitude: lon, timezone, current, daily } = data;
   const {
     temperature_2m: temp,
@@ -60,6 +65,18 @@ export const formatCurrentWeather = (
     wind_direction_10m: wind_direction,
     time: dt_str,
     is_day,
+    cloud_cover,
+    visibility,
+    uv_index,
+    dew_point_2m,
+    precipitation,
+    cloud_cover_low,
+    cloud_cover_mid,
+    cloud_cover_high,
+    wind_gusts_10m,
+    rain,
+    showers,
+    snowfall,
   } = current;
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
   const { description: details } =
@@ -68,6 +85,7 @@ export const formatCurrentWeather = (
   const dt = DateTime.fromISO(dt_str).toSeconds();
   const sunrise_time = DateTime.fromISO(sunrise[0]).toSeconds();
   const sunset_time = DateTime.fromISO(sunset[0]).toSeconds();
+  const next_sunrise = sunrise[1] ? DateTime.fromISO(sunrise[1]).toSeconds() : undefined;
   const temp_max = temperature_2m_max[0];
   const temp_min = temperature_2m_min[0];
   const name =
@@ -88,34 +106,87 @@ export const formatCurrentWeather = (
     country,
     sunrise: sunrise_time,
     sunset: sunset_time,
+    next_sunrise,
     details,
     icon,
     speed,
     weather_code,
     is_day,
     wind_direction,
+    cloud_cover,
+    visibility,
+    uv_index,
+    dew_point: dew_point_2m,
+    precipitation,
+    cloud_cover_low,
+    cloud_cover_mid,
+    cloud_cover_high,
+    wind_gusts: wind_gusts_10m,
+    rain,
+    showers,
+    snowfall,
+    atmosphere: formatAtmosphere(data),
+  };
+};
+
+const wind = (speed?: number, direction?: number) =>
+  speed != null && direction != null ? { speed, direction } : undefined;
+
+/** Upper-air column for the scene's cloud physics; every field optional (model gaps). */
+const formatAtmosphere = (data: OpenMeteoResponse): AtmosphereData => {
+  const c = data.current;
+  const levels: AtmosphereLevel[] = [];
+  for (const pressure of PRESSURE_LEVELS) {
+    const heightM = c[`geopotential_height_${pressure}hPa`];
+    const cover = c[`cloud_cover_${pressure}hPa`];
+    if (heightM != null && cover != null) levels.push({ heightM, cover });
+  }
+  return {
+    elevationM: data.elevation,
+    boundaryLayerM: c.boundary_layer_height,
+    cape: c.cape,
+    liftedIndex: c.lifted_index,
+    freezingLevelM: c.freezing_level_height,
+    shortwave: c.shortwave_radiation,
+    direct: c.direct_radiation,
+    topOfAtmosphere: c.terrestrial_radiation,
+    wind850: wind(c.wind_speed_850hPa, c.wind_direction_850hPa),
+    wind300: wind(c.wind_speed_300hPa, c.wind_direction_300hPa),
+    levels,
   };
 };
 
 export const formatWeeklyWeather = (
   data: OpenMeteoResponse,
-): Pick<WeatherData, "timezone" | "daily"> => {
-  const { timezone, daily } = data;
+): Pick<WeatherData, "timezone" | "daily" | "hourly"> => {
+  const { timezone, daily, hourly } = data;
   const weeklyData = daily.time.slice(1, 8).map((date, index) => {
     const i = index + 1;
+    const code = daily.weather_code[i];
+    const meta = weatherCodeMap[code] || { description: "Unknown", icon: "01d" };
+    const dtSec = DateTime.fromISO(date).toSeconds();
     return {
-      title: formatToLocalTime(
-        DateTime.fromISO(date).toSeconds(),
-        timezone,
-        "cccc",
-      ),
+      title: formatToLocalTime(dtSec, timezone, "cccc"),
+      date: formatToLocalTime(dtSec, timezone, "dd LLL"),
       temp: daily.temperature_2m_max[i],
       temp_min: daily.temperature_2m_min[i],
-      icon: weatherCodeMap[daily.weather_code[i]]?.icon || "01d",
+      icon: meta.icon,
+      details: meta.description,
+      precip_prob: daily.precipitation_probability_max?.[i] ?? 0,
+      wind_max: daily.wind_speed_10m_max?.[i] ?? 0,
+      wind_dir: daily.wind_direction_10m_dominant?.[i],
+      uv_max: daily.uv_index_max?.[i] ?? 0,
     };
   });
 
-  return { timezone, daily: weeklyData };
+  const hourlyData: HourlyForecast[] = (hourly?.time || []).map((iso, i) => ({
+    time: DateTime.fromISO(iso).toSeconds(),
+    temp: hourly.temperature_2m[i],
+    precip_prob: hourly.precipitation_probability?.[i] ?? 0,
+    weather_code: hourly.weather_code?.[i] ?? 0,
+  }));
+
+  return { timezone, daily: weeklyData, hourly: hourlyData };
 };
 
 export const formatToLocalTime = (
@@ -132,3 +203,15 @@ export const formatTemperature = (value: number, units: string): string =>
 
 export const formatSpeed = (value: number, units: string): string =>
   `${value.toFixed()} ${units === "metric" ? "km/h" : "mph"}`;
+
+const CARDINALS = [
+  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+] as const;
+
+/** Degree bearing → 16-point compass label. `undefined`/`NaN` yields `""`. */
+export const toCardinal = (deg?: number): string => {
+  if (deg == null || Number.isNaN(deg)) return "";
+  const idx = Math.round((deg % 360) / 22.5) % 16;
+  return CARDINALS[idx];
+};

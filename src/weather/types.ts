@@ -1,4 +1,4 @@
-/** All weather types: API data, effect classification, time phases, simulation config. */
+/** Weather domain types: API data and WMO effect classification. Scene parameters live in sceneParams.ts. */
 
 export interface WeatherQuery {
   q?: string;
@@ -8,11 +8,28 @@ export interface WeatherQuery {
 
 export type Units = "metric" | "imperial";
 
+/** What started the current weather fetch — picks the loader and its label. */
+export type LoadSource = "initial" | "search" | "location" | "map" | "units";
+
 export interface DailyWeather {
   title: string;
+  date: string;
   temp: number;
   temp_min: number;
   icon: string;
+  details: string;
+  precip_prob: number;
+  wind_max: number;
+  wind_dir?: number;
+  uv_max: number;
+}
+
+export interface HourlyForecast {
+  /** Unix seconds */
+  time: number;
+  temp: number;
+  precip_prob: number;
+  weather_code: number;
 }
 
 export interface WeatherData {
@@ -29,14 +46,72 @@ export interface WeatherData {
   feels_like: number;
   sunrise: number;
   sunset: number;
+  /** Tomorrow's sunrise (Unix seconds) — used for night moon arc. */
+  next_sunrise?: number;
+  /** Yesterday/today's sunset before sunrise — for pre-dawn night phase. */
+  prev_sunset?: number;
   humidity: number;
   speed: number;
   details: string;
   icon: string;
   daily: DailyWeather[];
+  hourly: HourlyForecast[];
   weather_code: number;
   is_day: number;
   wind_direction?: number;
+  /** Cloud cover %, 0–100. */
+  cloud_cover?: number;
+  /** Visibility in metres. */
+  visibility?: number;
+  /** UV index (current). */
+  uv_index?: number;
+  /** Dew point in the same temp unit as `temp`. */
+  dew_point?: number;
+  /** Current precipitation rate (mm or in). */
+  precipitation?: number;
+  /** Cloud cover per altitude band, %, 0–100. */
+  cloud_cover_low?: number;
+  cloud_cover_mid?: number;
+  cloud_cover_high?: number;
+  /** Wind gusts in the same speed unit as `speed`. */
+  wind_gusts?: number;
+  /** Liquid precipitation split, mm (preceding hour). */
+  rain?: number;
+  showers?: number;
+  /** Snowfall, cm (preceding hour). */
+  snowfall?: number;
+  /** Vertical structure of the atmosphere — drives the cloud physics in the scene. */
+  atmosphere?: AtmosphereData;
+}
+
+/** One pressure level of the model column. */
+export interface AtmosphereLevel {
+  /** Geopotential height above sea level, m. */
+  heightM: number;
+  /** Cloud cover at this level, %, 0–100. */
+  cover: number;
+}
+
+/** Raw upper-air / radiation readings from Open-Meteo (model values, not observations). */
+export interface AtmosphereData {
+  /** Grid-cell elevation above sea level, m. */
+  elevationM?: number;
+  /** Boundary layer height above ground, m. */
+  boundaryLayerM?: number;
+  /** Convective available potential energy, J/kg. */
+  cape?: number;
+  /** Lifted index (negative = unstable). */
+  liftedIndex?: number;
+  /** 0 °C level above sea level, m. */
+  freezingLevelM?: number;
+  /** Global and direct shortwave on a horizontal surface, and top-of-atmosphere, W/m². */
+  shortwave?: number;
+  direct?: number;
+  topOfAtmosphere?: number;
+  /** Winds aloft in the same speed unit as `speed`; direction = from, degrees. */
+  wind850?: { speed: number; direction: number };
+  wind300?: { speed: number; direction: number };
+  levels: AtmosphereLevel[];
 }
 
 export type EffectType =
@@ -47,34 +122,3 @@ export type EffectType =
   | "thunderstorm";
 
 export type Intensity = "light" | "moderate" | "heavy";
-
-export type TimeOfDay = "night" | "dawn" | "day" | "dusk";
-
-export interface SimulationConfig {
-  effectType: EffectType;
-  intensity: Intensity;
-  particleCount: number;
-  fogDensity: number;
-  thunderstorm: boolean;
-  cloudCover: number;
-  cloudCount?: number;
-  windSpeed: number;
-  windDirection: number;
-  timeOfDay: TimeOfDay;
-  parallaxAmount: number;
-  sunrise: number;
-  sunset: number;
-  /** Current time (Unix seconds) for sun/moon position when not using real-time clock. */
-  dt?: number;
-  useRealtimeClock: boolean;
-  temperature?: number;
-  humidity?: number;
-  /** Drizzle (WMO 51–57): different fall speed and wind factor. */
-  isDrizzle?: boolean;
-  /** Debug override: cloud opacity multiplier (0–1). undefined = auto from cloud cover. */
-  cloudOpacity?: number;
-  /** Debug override: cloud color (0 = white, 1 = dark gray). undefined = auto from weather. */
-  cloudColorOverride?: number;
-  /** Height fog falloff rate. Higher = fog hugs ground more. Default 0.25. */
-  fogHeightFalloff?: number;
-}
