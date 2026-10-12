@@ -2,6 +2,15 @@
 
 > Branch `scene-rewrite` (od `volumetric-clouds`). Commity: tylko jednolinijkowe `feat: …`, bez pushowania.
 
+## Chmury z danych API + szron proceduralny (2026-10-12)
+
+- Open-Meteo `current` dostaje też: `boundary_layer_height`, `cape`, `lifted_index`, `convective_inhibition`, `freezing_level_height`, promieniowanie (shortwave/direct/diffuse/terrestrial), wiatr 850 i 300 hPa, `cloud_cover` + `geopotential_height` na 1000…250 hPa → `WeatherData.atmosphere`.
+- `weather/cloudPhysics.ts`: podstawa z LCL (125 m × (T − Td)), wierzchołek z warstwy granicznej + CAPE, wysokości warstw średnich/wysokich z poziomów ciśnienia, grubość optyczna τ z indeksu przejrzystości (promieniowanie / TOA), konwekcja z CAPE/LI, wiatr chmur 850 hPa, cirrusów 300 hPa. Każde pole ma fallback (noc → τ szacowane z grubości i opadu).
+- `shellTargets()` bierze podstawę/grubość/typ/gęstość z fizyki; niebo zdominowane przez warstwę średnią (altocumulus) przenosi powłokę na wysokość warstwy średniej.
+- Debug: pola Base / Top / CAPE / τ, readout fizyki i wiatrów na wysokości; presety pinują base/top/CAPE; nowe presety Altocumulus, Frosty (−8 °C), Hard frost (−20 °C).
+- Szron: DOM-owe `frost-*.png` usunięte, zamiast nich `layers/FrostGlass.tsx` (shader, zero assetów) — narasta od rogów i krawędzi, 0 przy 0 °C → pełny przy −20 °C, rośnie/topnieje w ciągu kilku sekund, w nocy przygaszony.
+- Usunięte stałe `CLOUD_WIND_SCALE`, `STORM_CLOUD_BASE_M`; `CLOUD_TIMELAPSE` = 4.
+
 ## Test: @takram/three-clouds (branch `clouds-takram-test`, 2026-10-12)
 
 Tylko do porównania z naszymi chmurami — **nie do merge'a w obecnej formie** (łamie zakazy z `CLAUDE.md`: `postprocessing`, `@takram/*`).
@@ -11,6 +20,7 @@ Tylko do porównania z naszymi chmurami — **nie do merge'a w obecnej formie** 
 - Nasz świat jest osadzony na elipsoidzie WGS84 w miejscu pogody (`worldToECEFMatrix`); słońce/księżyc: azymut ekranowy + prawdziwa wysokość (jak nasze chmury). Tekstury chmur proceduralne (LocalWeather/CloudShape/…), domyślne warstwy biblioteki łatane pogodą (gęstość, wypiętrzenie burzy, cirrus).
 - Opady, pioruny i pył diamentowy rysują się osobnym przebiegiem po EffectComposerze (inaczej `AerialPerspective(sky)` zamalowuje cząstki bez głębi).
 - Świadomie pominięte w teście: gwiazdy, błysk pioruna na niebie/chmurach, mapowanie widzialności/mgły.
+- Ruch chmur takram: wiatr 850 hPa z `cloudPhysics`; wysokość drugiej warstwy = grubość chmur z fizyki (800–9000 m).
 - Znany problem: przy pokryciu ≥ ~0,8 kaskady cieni chmur (BSM) psują obraz — chmury znikają w trapezie przed kamerą. Cienie są więc włączone tylko poniżej 0,8.
 - Wydajność wg autora biblioteki (README, Tokyo scene): iPhone 13 36–53 fps na `low`, M3 Max 92–95 fps na `high` w 4K z temporal upscalingiem. U nas niezmierzone na prawdziwym GPU.
 
@@ -147,7 +157,7 @@ Każdy kod WMO z Open-Meteo (oraz przypadki wynikające z temperatury, wiatru i 
 | Zamieć / zawieja | śnieg + wiatr ≥ ~10 m/s | płatki niemal poziomo, mocniejsze `Noise`, spadek widzialności (z danych) |
 | Burza (95) | kod | ciemny deck (cumulonimbus), silny deszcz, błyski (niebo + światło na chmurach) **i widoczne pioruny**: łamana linia z odgałęzieniami (drei `<Line>`) od decku do horyzontu, ~150 ms, losowo w kadrze |
 | Burza z gradem (96, 99) | kod | jak burza + trzeci system quarks: białe, szybkie kulki gradu |
-| Mróz | `temperatureC` < 0 | frost overlay z płynną siłą: 0 przy 0 °C → max przy −15 °C (dziś jest stałe 0.5) |
+| Mróz | `temperatureC` < 0 | `FrostGlass`: szron rośnie od krawędzi, 0 przy 0 °C → pełny przy −20 °C, × wilgotność |
 | Pył diamentowy | ≤ −10 °C, mało chmur, wilgotność ≥ 70 % | drei `<Sparkles>` w bliskiej objętości kadru (migoczące kryształki) |
 | Upał | ≥ 30 °C | cieplejszy, gęstszy haze przy horyzoncie (bez distortion — postprocess zbanowany) |
 | Silny wiatr / porywy | `wind_gusts_10m` | szybszy dryf chmur, mocniej pochylony opad, porywy modulują prędkość w czasie |
