@@ -11,6 +11,7 @@ Tylko do porównania z naszymi chmurami — **nie do merge'a w obecnej formie** 
 - Nasz świat jest osadzony na elipsoidzie WGS84 w miejscu pogody (`worldToECEFMatrix`); słońce/księżyc: azymut ekranowy + prawdziwa wysokość (jak nasze chmury). Tekstury chmur proceduralne (LocalWeather/CloudShape/…), domyślne warstwy biblioteki łatane pogodą (gęstość, wypiętrzenie burzy, cirrus).
 - Opady, pioruny i pył diamentowy rysują się osobnym przebiegiem po EffectComposerze (inaczej `AerialPerspective(sky)` zamalowuje cząstki bez głębi).
 - Świadomie pominięte w teście: gwiazdy, błysk pioruna na niebie/chmurach, mapowanie widzialności/mgły.
+- Znany problem: przy pokryciu ≥ ~0,8 kaskady cieni chmur (BSM) psują obraz — chmury znikają w trapezie przed kamerą. Cienie są więc włączone tylko poniżej 0,8.
 - Wydajność wg autora biblioteki (README, Tokyo scene): iPhone 13 36–53 fps na `low`, M3 Max 92–95 fps na `high` w 4K z temporal upscalingiem. U nas niezmierzone na prawdziwym GPU.
 
 ## Chmury wolumetryczne (2026-10-11)
