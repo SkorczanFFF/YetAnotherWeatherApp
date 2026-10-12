@@ -90,7 +90,7 @@ function getCloudNoise3D(gl: WebGLRenderer, size: number): Data3DTexture {
 // ---------------------------------------------------------------------------
 // Weather → shell parameters. Smoothed towards every frame, so preset
 // switches morph instead of popping.
-interface ShellTargets {
+export interface ShellTargets {
   coverage: number;
   type: number;
   thickness: number;
@@ -99,7 +99,7 @@ interface ShellTargets {
   high: number;
 }
 
-function shellTargets(params: SceneParams): ShellTargets {
+export function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
   const { precip, thunder, fog } = params;
   const wet = precip.rainMmH > 0 || precip.snowCmH > 0;

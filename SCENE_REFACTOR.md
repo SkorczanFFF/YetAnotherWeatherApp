@@ -2,6 +2,17 @@
 
 > Branch `scene-rewrite` (od `volumetric-clouds`). Commity: tylko jednolinijkowe `feat: …`, bez pushowania.
 
+## Test: @takram/three-clouds (branch `clouds-takram-test`, 2026-10-12)
+
+Tylko do porównania z naszymi chmurami — **nie do merge'a w obecnej formie** (łamie zakazy z `CLAUDE.md`: `postprocessing`, `@takram/*`).
+
+- Przełącznik w debugu (F7 → „Cloud renderer”: ours / takram (test)). Takram ładuje się leniwie (`weather-scene/takram/TakramSky.tsx`, osobny chunk ~446 KB / 120 KB gzip) plus ~9 MB danych z `public/takram/` (tekstury atmosfery `.exr`, STBN) przy pierwszym włączeniu.
+- Wersje (exact): `@takram/three-clouds` 0.7.6, `@takram/three-atmosphere` 0.19.1, `@takram/three-geospatial` 0.9.1, `postprocessing` 6.39.5, `@react-three/postprocessing` 3.0.4 (3.1+ wymaga fiber ≥ 9.7).
+- Nasz świat jest osadzony na elipsoidzie WGS84 w miejscu pogody (`worldToECEFMatrix`); słońce/księżyc: azymut ekranowy + prawdziwa wysokość (jak nasze chmury). Tekstury chmur proceduralne (LocalWeather/CloudShape/…), domyślne warstwy biblioteki łatane pogodą (gęstość, wypiętrzenie burzy, cirrus).
+- Opady, pioruny i pył diamentowy rysują się osobnym przebiegiem po EffectComposerze (inaczej `AerialPerspective(sky)` zamalowuje cząstki bez głębi).
+- Świadomie pominięte w teście: gwiazdy, błysk pioruna na niebie/chmurach, mapowanie widzialności/mgły.
+- Wydajność wg autora biblioteki (README, Tokyo scene): iPhone 13 36–53 fps na `low`, M3 Max 92–95 fps na `high` w 4K z temporal upscalingiem. U nas niezmierzone na prawdziwym GPU.
+
 ## Chmury wolumetryczne (2026-10-11)
 
 Deck + drei `<Clouds>` wyglądały płasko, więc zastąpił je własny raymarch w stylu Nubis (Horizon Zero Dawn):

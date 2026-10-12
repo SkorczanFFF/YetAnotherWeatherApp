@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, PerformanceMonitor, Stats } from "@react-three/drei";
 import type { QualityTier, SceneParams } from "../weather/sceneParams";
@@ -25,6 +25,14 @@ import { PerfProbe } from "./debug/PerfProbe";
 import { VolumeHelpers } from "./debug/VolumeHelpers";
 import { perfStats } from "./debug/perfStats";
 
+export type CloudEngine = "ours" | "takram";
+
+// TEST ONLY: takram clouds + atmosphere, loaded on first use so the regular
+// bundle stays free of postprocessing/takram.
+const TakramSky = lazy(() =>
+  import("./takram/TakramSky").then((m) => ({ default: m.TakramSky })),
+);
+
 export interface WeatherSceneDebugProps {
   freeCamera?: boolean;
   /** Wireframes of every spawn volume — pair with the free camera. */
@@ -33,6 +41,8 @@ export interface WeatherSceneDebugProps {
   showPerf?: boolean;
   /** Increment to force a lightning strike. */
   lightningNonce?: number;
+  /** TEST ONLY: which cloud/sky renderer to use. */
+  cloudEngine?: CloudEngine;
 }
 
 interface WeatherSceneProps extends WeatherSceneDebugProps {
@@ -44,6 +54,7 @@ interface WeatherSceneProps extends WeatherSceneDebugProps {
 interface SceneRootProps extends WeatherSceneDebugProps {
   params: SceneParams;
   budget: QualityBudget;
+  tier: QualityTier;
   isMobile: boolean;
 }
 
@@ -55,11 +66,13 @@ interface SceneRootProps extends WeatherSceneDebugProps {
 function SceneRoot({
   params,
   budget,
+  tier,
   isMobile,
   freeCamera,
   showVolumes,
   showPerf,
   lightningNonce,
+  cloudEngine = "ours",
 }: SceneRootProps) {
   const signals = useMemo(createSceneSignals, []);
   const size = useThree((s) => s.size);
@@ -67,6 +80,21 @@ function SceneRoot({
   const frame = useMemo(
     () => createViewFrame(aspect, params.parallaxAmount),
     [aspect, params.parallaxAmount],
+  );
+
+  // Drawn over the sky/clouds in both engines (takram renders them in its own
+  // overlay pass after the composer).
+  const overlay = (
+    <>
+      <Precipitation params={params} frame={frame} budget={budget} />
+      <Thunder
+        enabled={params.thunder}
+        nonce={lightningNonce ?? 0}
+        frame={frame}
+        isMobile={isMobile}
+      />
+      <DiamondDust params={params} frame={frame} count={budget.sparkles} />
+    </>
   );
 
   return (
@@ -84,25 +112,26 @@ function SceneRoot({
       <SceneDriver params={params} frame={frame} />
       <FogLayer />
 
-      <SkyLayer />
-      <SkyGrade />
-      <StarField frame={frame} count={budget.stars} />
-      <Suspense fallback={null}>
-        <Moon />
-      </Suspense>
-      {budget.volumetric ? (
-        <VolumetricClouds params={params} budget={budget.volumetric} />
+      {cloudEngine === "takram" ? (
+        <Suspense fallback={null}>
+          <TakramSky params={params} tier={tier} overlay={overlay} />
+        </Suspense>
       ) : (
-        <CloudDeck params={params} frame={frame} />
+        <>
+          <SkyLayer />
+          <SkyGrade />
+          <StarField frame={frame} count={budget.stars} />
+          <Suspense fallback={null}>
+            <Moon />
+          </Suspense>
+          {budget.volumetric ? (
+            <VolumetricClouds params={params} budget={budget.volumetric} />
+          ) : (
+            <CloudDeck params={params} frame={frame} />
+          )}
+          {overlay}
+        </>
       )}
-      <Precipitation params={params} frame={frame} budget={budget} />
-      <Thunder
-        enabled={params.thunder}
-        nonce={lightningNonce ?? 0}
-        frame={frame}
-        isMobile={isMobile}
-      />
-      <DiamondDust params={params} frame={frame} count={budget.sparkles} />
 
       {showVolumes && <VolumeHelpers frame={frame} />}
       {showPerf && (
@@ -175,6 +204,7 @@ export function WeatherScene({
         <SceneRoot
           params={params}
           budget={budget}
+          tier={tier}
           isMobile={isMobile}
           freeCamera={freeCamera}
           {...debug}

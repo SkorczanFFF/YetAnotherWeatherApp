@@ -45,6 +45,7 @@ const App = (): React.ReactElement => {
   const [debugTools, setDebugTools] = useState<DebugTools>({
     showVolumes: false,
     showPerf: true,
+    cloudEngine: "ours",
   });
   const [lightningNonce, setLightningNonce] = useState(0);
   const [freeCamera, setFreeCamera] = useState(false);
@@ -120,6 +121,7 @@ const App = (): React.ReactElement => {
         showVolumes={debugOpen && debugTools.showVolumes}
         showPerf={debugOpen && debugTools.showPerf}
         lightningNonce={lightningNonce}
+        cloudEngine={debugTools.cloudEngine}
       />
       <div className="shell">
         <Navbar

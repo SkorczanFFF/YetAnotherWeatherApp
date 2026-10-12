@@ -13,13 +13,21 @@ import {
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
+import type { CloudEngine } from "../../weather-scene/WeatherScene";
 import { toCardinal } from "../../services/weatherFormatter";
 import "./DebugMenu.scss";
 
 export interface DebugTools {
   showVolumes: boolean;
   showPerf: boolean;
+  /** TEST ONLY: our volumetric clouds vs @takram/three-clouds. */
+  cloudEngine: CloudEngine;
 }
+
+const CLOUD_ENGINES: { id: CloudEngine; label: string }[] = [
+  { id: "ours", label: "ours" },
+  { id: "takram", label: "takram (test)" },
+];
 
 interface DebugMenuProps {
   open: boolean;
@@ -338,6 +346,23 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="debug-menu-group">
+            <label>Cloud renderer</label>
+            <div className="debug-menu-button-group">
+              {CLOUD_ENGINES.map((engine) => (
+                <button
+                  key={engine.id}
+                  type="button"
+                  className={`debug-menu-option-btn${tools.cloudEngine === engine.id ? " debug-menu-option-btn--active" : ""}`}
+                  onClick={() => onToolsChange({ ...tools, cloudEngine: engine.id })}
+                >
+                  {engine.label}
+                </button>
+              ))}
+            </div>
+            <p className="debug-menu-readout">takram loads ~9 MB of atmosphere/noise data on first use.</p>
           </div>
 
           <div className="debug-menu-group">
