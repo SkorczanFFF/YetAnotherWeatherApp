@@ -6,14 +6,6 @@
 // texture, sampled with a mip bias for a soft, blurred look; a handful of
 // texture reads per pixel and nothing outside the frost.
 
-export const FROST_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
-}
-`;
-
 export const FROST_FRAG = /* glsl */ `
 uniform sampler2D uNoise;
 uniform float uAmount;

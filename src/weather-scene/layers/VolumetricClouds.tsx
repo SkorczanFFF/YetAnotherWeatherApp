@@ -29,12 +29,12 @@ import {
   EARTH_RADIUS_M,
   METRES_PER_UNIT,
 } from "../core/worldFrame";
-import { CLOUD_NOISE_FRAG, CLOUD_NOISE_VERT } from "../shaders/cloudNoise.glsl";
+import { CLOUD_NOISE_FRAG } from "../shaders/cloudNoise.glsl";
+import { fullscreenVert } from "../shaders/fullscreen.glsl";
 import {
   CLOUD_COMPOSITE_FRAG,
-  CLOUD_COMPOSITE_VERT,
+  CLOUD_RESOLVE_FRAG,
   VOLUMETRIC_FRAG,
-  VOLUMETRIC_VERT,
 } from "../shaders/volumetricClouds.glsl";
 
 interface VolumetricCloudsProps {
@@ -43,6 +43,21 @@ interface VolumetricCloudsProps {
 }
 
 const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
+
+/** An offscreen full-screen pass: one clip-space quad in its own scene. */
+function fullscreenPass(material: ShaderMaterial) {
+  const quad = new Mesh(new PlaneGeometry(2, 2), material);
+  quad.frustumCulled = false;
+  return {
+    material,
+    scene: new Scene().add(quad),
+    camera: new OrthographicCamera(),
+    dispose() {
+      material.dispose();
+      quad.geometry.dispose();
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // 3D noise: generated once per size on the GPU, slice by slice, then cached
@@ -62,26 +77,23 @@ function getCloudNoise3D(gl: WebGLRenderer, size: number): Data3DTexture {
   target.texture.wrapT = RepeatWrapping;
   target.texture.wrapR = RepeatWrapping;
 
-  const material = new ShaderMaterial({
-    uniforms: { uSlice: { value: 0 } },
-    vertexShader: CLOUD_NOISE_VERT,
-    fragmentShader: CLOUD_NOISE_FRAG,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const quad = new Mesh(new PlaneGeometry(2, 2), material);
-  quad.frustumCulled = false;
-  const scene = new Scene().add(quad);
-  const camera = new OrthographicCamera();
+  const pass = fullscreenPass(
+    new ShaderMaterial({
+      uniforms: { uSlice: { value: 0 } },
+      vertexShader: fullscreenVert(),
+      fragmentShader: CLOUD_NOISE_FRAG,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
   const previous = gl.getRenderTarget();
   for (let z = 0; z < size; z++) {
-    material.uniforms.uSlice.value = (z + 0.5) / size;
+    pass.material.uniforms.uSlice.value = (z + 0.5) / size;
     gl.setRenderTarget(target, z);
-    gl.render(scene, camera);
+    gl.render(pass.scene, pass.camera);
   }
   gl.setRenderTarget(previous);
-  material.dispose();
-  quad.geometry.dispose();
+  pass.dispose();
   noiseCache.set(size, target);
   return target.texture;
 }
@@ -105,6 +117,18 @@ export interface ShellTargets {
 
 /** Mean fill of the shaped noise inside the shell — converts τ into extinction. */
 const SHELL_FILL = 0.35;
+/** Shell fields eased between weathers (1/s): ~95 % of the way in a second. */
+const SHELL_EASE = 3;
+const SHELL_KEYS = [
+  "coverage",
+  "type",
+  "thickness",
+  "base",
+  "density",
+  "high",
+  "cirrusAlt",
+  "freezeAlt",
+] as const satisfies readonly (keyof ShellTargets)[];
 
 export function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
@@ -163,6 +187,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     setNoise(getCloudNoise3D(gl, budget.noiseSize));
   }, [gl, budget.noiseSize]);
 
+  // The march covers one pixel per 2×2 block per frame; the resolve keeps
+  // the full cloud target, ping-ponged so it can read last frame's.
   const targets = useMemo(() => {
     const options = {
       type: HalfFloatType,
@@ -171,72 +197,98 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       magFilter: LinearFilter,
       generateMipmaps: false,
     };
-    return [
-      new WebGLRenderTarget(width, height, options),
-      new WebGLRenderTarget(width, height, options),
-    ];
+    return {
+      march: new WebGLRenderTarget(Math.ceil(width / 2), Math.ceil(height / 2), options),
+      history: [
+        new WebGLRenderTarget(width, height, options),
+        new WebGLRenderTarget(width, height, options),
+      ],
+    };
   }, [width, height]);
-  useEffect(() => () => targets.forEach((t) => t.dispose()), [targets]);
-
-  const pass = useMemo(() => {
-    const material = new ShaderMaterial({
-      uniforms: {
-        uNoise: { value: null },
-        uHistory: { value: null },
-        uHistoryValid: { value: 0 },
-        uFrame: { value: 0 },
-        uInvProj: { value: new Matrix4() },
-        uCamWorld: { value: new Matrix4() },
-        uPrevViewProj: { value: new Matrix4() },
-        uCamPos: { value: new Vector3() },
-        uEarthR: { value: EARTH_RADIUS_M },
-        uBase: { value: 1200 },
-        uThickness: { value: 1500 },
-        uCoverage: { value: 0 },
-        uType: { value: 0.45 },
-        uDensity: { value: 0.03 },
-        uWind: { value: new Vector2() },
-        uWindHigh: { value: new Vector2() },
-        uHighWindDir: { value: new Vector2(1, 0) },
-        uCirrusAlt: { value: 8500 },
-        uFreezeAlt: { value: 3000 },
-        uEvolve: { value: 0 },
-        uHigh: { value: 0 },
-        uLightDir: { value: new Vector3(0, 1, 0) },
-        uLightColor: { value: new Color() },
-        uAmbientTop: { value: new Color() },
-        uAmbientBottom: { value: new Color() },
-        uHazeColor: { value: new Color() },
-        uHazeDist: { value: 30000 },
-        uMaxDist: { value: budget.maxDistance },
-        uSteps: { value: budget.steps },
-        uLightSteps: { value: budget.lightSteps },
-        uFlash: { value: 0 },
-        uFlashPos: { value: new Vector3() },
-      },
-      vertexShader: VOLUMETRIC_VERT,
-      fragmentShader: VOLUMETRIC_FRAG,
-      depthTest: false,
-      depthWrite: false,
-    });
-    const quad = new Mesh(new PlaneGeometry(2, 2), material);
-    quad.frustumCulled = false;
-    return { material, quad, scene: new Scene().add(quad), camera: new OrthographicCamera() };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   useEffect(
     () => () => {
-      pass.material.dispose();
-      pass.quad.geometry.dispose();
+      targets.march.dispose();
+      targets.history.forEach((t) => t.dispose());
     },
-    [pass],
+    [targets],
   );
+
+  const march = useMemo(
+    () =>
+      fullscreenPass(
+        new ShaderMaterial({
+          uniforms: {
+            uNoise: { value: null },
+            uFrame: { value: 0 },
+            uFullSize: { value: new Vector2() },
+            uInvProj: { value: new Matrix4() },
+            uCamWorld: { value: new Matrix4() },
+            uCamPos: { value: new Vector3() },
+            uEarthR: { value: EARTH_RADIUS_M },
+            uBase: { value: 1200 },
+            uThickness: { value: 1500 },
+            uCoverage: { value: 0 },
+            uType: { value: 0.45 },
+            uDensity: { value: 0.03 },
+            uWind: { value: new Vector2() },
+            uWindHigh: { value: new Vector2() },
+            uHighWindDir: { value: new Vector2(1, 0) },
+            uCirrusAlt: { value: 8500 },
+            uFreezeAlt: { value: 3000 },
+            uEvolve: { value: 0 },
+            uHigh: { value: 0 },
+            uLightDir: { value: new Vector3(0, 1, 0) },
+            uLightColor: { value: new Color() },
+            uAmbientTop: { value: new Color() },
+            uAmbientBottom: { value: new Color() },
+            uHazeColor: { value: new Color() },
+            uHazeDist: { value: 30000 },
+            uMaxDist: { value: budget.maxDistance },
+            uSteps: { value: budget.steps },
+            uLightSteps: { value: budget.lightSteps },
+            uFlash: { value: 0 },
+            uFlashPos: { value: new Vector3() },
+          },
+          vertexShader: fullscreenVert(),
+          fragmentShader: VOLUMETRIC_FRAG,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  useEffect(() => () => march.dispose(), [march]);
+
+  const resolve = useMemo(
+    () =>
+      fullscreenPass(
+        new ShaderMaterial({
+          uniforms: {
+            uMarch: { value: null },
+            uHistory: { value: null },
+            uHistoryValid: { value: 0 },
+            uFrame: { value: 0 },
+            uMarchSize: { value: new Vector2() },
+            uInvProj: { value: new Matrix4() },
+            uCamWorld: { value: new Matrix4() },
+            uPrevViewProj: { value: new Matrix4() },
+          },
+          vertexShader: fullscreenVert(),
+          fragmentShader: CLOUD_RESOLVE_FRAG,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      ),
+    [],
+  );
+  useEffect(() => () => resolve.dispose(), [resolve]);
 
   const composite = useMemo(
     () =>
       new ShaderMaterial({
         uniforms: { uClouds: { value: null } },
-        vertexShader: CLOUD_COMPOSITE_VERT,
+        vertexShader: fullscreenVert(1),
         fragmentShader: CLOUD_COMPOSITE_FRAG,
         transparent: true,
         depthTest: false,
@@ -252,21 +304,18 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     read: 0,
     historyValid: false,
     prevViewProj: new Matrix4(),
+    /** The shell actually drawn: eases towards targetsWanted. */
+    shell: null as ShellTargets | null,
   });
 
   // New render targets → no history to reuse.
   useEffect(() => {
     state.current.historyValid = false;
   }, [targets]);
-  // Weather/debug changes switch the shell at once and restart accumulation —
-  // blending towards a different cloud field would leave ghosts for a second.
-  useEffect(() => {
-    state.current.historyValid = false;
-  }, [targetsWanted]);
 
   const meshRef = useRef<Mesh>(null);
 
-  useFrame((frameState) => {
+  useFrame((frameState, delta) => {
     const st = state.current;
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -274,9 +323,13 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       mesh.visible = false;
       return;
     }
-    const u = pass.material.uniforms;
+    const u = march.material.uniforms;
 
-    const sh = targetsWanted;
+    // Weather/debug changes morph the shell over about a second instead of
+    // snapping; the resolve's variance clipping keeps that free of ghosts.
+    const sh = (st.shell ??= { ...targetsWanted });
+    const dt = Math.min(delta, 0.1);
+    for (const key of SHELL_KEYS) sh[key] = MathUtils.damp(sh[key], targetsWanted[key], SHELL_EASE, dt);
 
     const empty = sh.coverage < 0.015 && sh.high < 0.01;
     mesh.visible = !empty;
@@ -286,10 +339,12 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     }
 
     const camera = frameState.camera;
+    const write = targets.history[1 - st.read];
     u.uNoise.value = noise;
+    u.uFrame.value = st.frame;
+    (u.uFullSize.value as Vector2).set(write.width, write.height);
     (u.uInvProj.value as Matrix4).copy(camera.projectionMatrixInverse);
     (u.uCamWorld.value as Matrix4).copy(camera.matrixWorld);
-    (u.uPrevViewProj.value as Matrix4).copy(st.prevViewProj);
     (u.uCamPos.value as Vector3)
       .copy(camera.position)
       .multiplyScalar(METRES_PER_UNIT)
@@ -361,17 +416,23 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       .multiplyScalar(METRES_PER_UNIT)
       .add(EYE_OFFSET);
 
-    // Ping-pong: read history from one target, write the other.
-    const read = targets[st.read];
-    const write = targets[1 - st.read];
-    u.uHistory.value = read.texture;
-    u.uHistoryValid.value = st.historyValid ? 1 : 0;
-    u.uFrame.value = st.frame;
+    // Resolve: last frame's history (ping-pong) + this frame's march.
+    const r = resolve.material.uniforms;
+    r.uMarch.value = targets.march.texture;
+    r.uHistory.value = targets.history[st.read].texture;
+    r.uHistoryValid.value = st.historyValid ? 1 : 0;
+    r.uFrame.value = st.frame;
+    (r.uMarchSize.value as Vector2).set(targets.march.width, targets.march.height);
+    (r.uInvProj.value as Matrix4).copy(camera.projectionMatrixInverse);
+    (r.uCamWorld.value as Matrix4).copy(camera.matrixWorld);
+    (r.uPrevViewProj.value as Matrix4).copy(st.prevViewProj);
 
     const gl = frameState.gl;
     const previous = gl.getRenderTarget();
+    gl.setRenderTarget(targets.march);
+    gl.render(march.scene, march.camera);
     gl.setRenderTarget(write);
-    gl.render(pass.scene, pass.camera);
+    gl.render(resolve.scene, resolve.camera);
     gl.setRenderTarget(previous);
 
     composite.uniforms.uClouds.value = write.texture;

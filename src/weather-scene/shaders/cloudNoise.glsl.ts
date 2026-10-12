@@ -6,14 +6,6 @@
 //       sampling) and the high-frequency detail used to erode edges.
 // Everything wraps with the tile period, so wind can scroll it forever.
 
-export const CLOUD_NOISE_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
-}
-`;
-
 export const CLOUD_NOISE_FRAG = /* glsl */ `
 precision highp float;
 

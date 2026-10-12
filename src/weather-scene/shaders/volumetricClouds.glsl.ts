@@ -1,20 +1,33 @@
 // Volumetric clouds — Nubis-style (Schneider, Horizon Zero Dawn) raymarch
 // through a spherical shell above a curved Earth, in metres.
 //
-// Rendered into a low-res target; the camera barely moves (parallax only,
-// history is reprojected by view direction), so each frame only one pixel of
-// every 2×2 block is re-marched (with a fresh jitter) and blended with
-// history — the rest is copied. A pixel converges over a few frames and
-// the per-frame cost is ~1/4 of an already reduced resolution.
+// Three passes per frame, all at a fraction of the canvas:
+//   1. VOLUMETRIC_FRAG marches a half × half target: each texel is the one
+//      pixel of its 2×2 block whose turn it is this frame (fresh jitter), so
+//      the per-frame cost is ~1/4 of the cloud target.
+//   2. CLOUD_RESOLVE_FRAG rebuilds the full cloud target: history is
+//      reprojected by view direction (the camera only rotates a little) and
+//      clipped to the variance of the freshly marched neighbourhood, so moving
+//      or morphing clouds don't leave ghosts; the march is upsampled into it.
+//   3. CLOUD_COMPOSITE_FRAG tone-maps the result over the sky.
 //
-// Output is premultiplied: rgb = in-scattered radiance (pre-tonemap, "sky
-// units"), a = 1 − transmittance. The composite pass tone-maps it over the sky.
+// Cloud output is premultiplied: rgb = in-scattered radiance (pre-tonemap,
+// "sky units"), a = 1 − transmittance.
 
-export const VOLUMETRIC_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
+/** Which pixel of each 2×2 block is marched on a given frame (shared by passes 1 and 2). */
+const BLOCK_OFFSET = /* glsl */ `
+ivec2 blockOffset(float frame) {
+  int k = int(mod(frame, 4.0));
+  // Diagonal first, so two consecutive frames already cover both diagonals.
+  return k == 0 ? ivec2(0, 0) : k == 1 ? ivec2(1, 1) : k == 2 ? ivec2(1, 0) : ivec2(0, 1);
+}
+`;
+
+/** World ray direction for a UV of the full cloud target. */
+const VIEW_RAY = /* glsl */ `
+vec3 viewRay(vec2 uv) {
+  vec4 v = uInvProj * vec4(uv * 2.0 - 1.0, 1.0, 1.0);
+  return normalize((uCamWorld * vec4(v.xyz / v.w, 0.0)).xyz);
 }
 `;
 
@@ -22,15 +35,12 @@ export const VOLUMETRIC_FRAG = /* glsl */ `
 precision highp float;
 precision highp sampler3D;
 
-
 uniform sampler3D uNoise;
-uniform sampler2D uHistory;
-uniform float uHistoryValid;
 uniform float uFrame;
+uniform vec2 uFullSize;      // full cloud target, px
 
 uniform mat4 uInvProj;
 uniform mat4 uCamWorld;
-uniform mat4 uPrevViewProj; // previous frame, for reprojecting history
 uniform vec3 uCamPos;        // metres
 
 uniform float uEarthR;
@@ -61,6 +71,9 @@ uniform float uFlash;
 uniform vec3 uFlashPos;      // metres
 
 varying vec2 vUv;
+
+${BLOCK_OFFSET}
+${VIEW_RAY}
 
 const float SHAPE_SCALE = 1.0 / 3200.0;   // one noise tile ≈ 3.2 km
 const float DETAIL_SCALE = 1.0 / 520.0;
@@ -195,6 +208,23 @@ float sunEnergy(float od, float cosTheta) {
   return sum * mix(1.0, powder, 0.5 * (0.5 - 0.5 * cosTheta));
 }
 
+// Adaptive march. The fine step grows with distance (a far sample covers
+// more of the scene per pixel) but never drops below what crossing the shell
+// in uSteps would need. Empty air is crossed with cheap steps 3× as long that
+// skip the detail noise and the lighting; the first hit backs up one cheap
+// step and switches to fine steps, and a few empty fine samples in a row
+// switch back once past that hit. uSteps caps the lit (expensive) samples,
+// not the iterations.
+const int MAX_ITERATIONS = 192;
+const float STEP_PER_METRE = 0.02;   // fine step ≈ 2 % of the distance…
+const float MAX_STEP = 900.0;        // …up to this, m
+const float CHEAP_FACTOR = 3.0;
+const int EMPTY_TO_CHEAP = 3;
+
+float fineStep(float t, float minStep) {
+  return clamp(t * STEP_PER_METRE, minStep, max(minStep, MAX_STEP));
+}
+
 vec4 march(vec3 ro, vec3 rd, float jitter) {
   // Below the horizon: the ground is in the way.
   if (raySphere(ro, rd, uEarthR).x > 0.0) return vec4(0.0, 0.0, 0.0, 0.0);
@@ -208,14 +238,35 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
   float cosTheta = dot(rd, uLightDir);
 
   if (tStart < tEnd) {
-    float dt = (tEnd - tStart) / float(uSteps);
-    float t = tStart + dt * jitter;
-    for (int i = 0; i < 128; i++) {
-      if (i >= uSteps) break;
+    float minStep = max(25.0, uThickness / float(uSteps));
+    float t = tStart + fineStep(tStart, minStep) * jitter;
+    bool cheap = true;
+    float tHit = 0.0;
+    int empty = 0;
+    int lit = 0;
+    for (int i = 0; i < MAX_ITERATIONS; i++) {
+      if (t >= tEnd || lit >= uSteps) break;
+      float dt = fineStep(t, minStep);
       vec3 p = ro + rd * t;
       float hf = heightFraction(p);
+
+      if (cheap) {
+        if (density(p, hf, false) > 0.0) {
+          // Something is here: back up and walk in with fine steps.
+          cheap = false;
+          empty = 0;
+          tHit = t;
+          t = max(tStart, t - dt * CHEAP_FACTOR);
+        } else {
+          t += dt * CHEAP_FACTOR;
+        }
+        continue;
+      }
+
       float d = density(p, hf, true);
       if (d > 0.002) {
+        empty = 0;
+        lit++;
         if (tFirst < 0.0) tFirst = t;
         float sigma = d * uDensity;
         float od = lightOpticalDepth(p);
@@ -228,6 +279,10 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         scat += T * L * (1.0 - tr);
         T *= tr;
         if (T < 0.015) break;
+      } else if (++empty >= EMPTY_TO_CHEAP && t > tHit) {
+        // Only past the hit that sent us here — or a cloud whose detail
+        // erodes to nothing would bounce between the two modes forever.
+        cheap = true;
       }
       t += dt;
     }
@@ -262,38 +317,80 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
 }
 
 void main() {
-  vec2 ndc = vUv * 2.0 - 1.0;
-  vec4 v = uInvProj * vec4(ndc, 1.0, 1.0);
-  vec3 rd = normalize((uCamWorld * vec4(v.xyz / v.w, 0.0)).xyz);
-
-  // Clouds are effectively at infinity, so reprojecting by direction alone is
-  // exact enough — this keeps history valid while the parallax rig rotates.
-  vec4 prevClip = uPrevViewProj * vec4(rd, 0.0);
-  vec2 prevUv = prevClip.xy / prevClip.w * 0.5 + 0.5;
-  bool inside = prevClip.w > 0.0 && all(greaterThanEqual(prevUv, vec2(0.0))) && all(lessThanEqual(prevUv, vec2(1.0)));
-  bool historyOk = uHistoryValid > 0.5 && inside;
-  vec4 history = historyOk ? texture2D(uHistory, prevUv) : vec4(0.0);
-
-  ivec2 px = ivec2(gl_FragCoord.xy);
-  int phase = (px.x & 1) + 2 * (px.y & 1);
-  int frame = int(mod(uFrame, 4.0));
-  if (historyOk && phase != frame) {
-    gl_FragColor = history;
-    return;
-  }
-
-  float jitter = ign(gl_FragCoord.xy + vec2(5.588238 * uFrame, 2.71828 * uFrame));
-
-  vec4 current = march(uCamPos, rd, jitter);
-  gl_FragColor = historyOk ? mix(history, current, 0.2) : current;
+  // This texel stands for one pixel of its 2×2 block of the full target.
+  ivec2 b = ivec2(gl_FragCoord.xy);
+  ivec2 px = b * 2 + blockOffset(uFrame);
+  vec3 rd = viewRay((vec2(px) + 0.5) / uFullSize);
+  // Interleaved gradient noise across the march texels, rotated by the golden
+  // ratio each time this pixel's turn comes round: stratified in space and time.
+  float jitter = fract(ign(vec2(b)) + floor(uFrame / 4.0) * 0.618034);
+  gl_FragColor = march(uCamPos, rd, jitter);
 }
 `;
 
-export const CLOUD_COMPOSITE_VERT = /* glsl */ `
+export const CLOUD_RESOLVE_FRAG = /* glsl */ `
+precision highp float;
+
+uniform sampler2D uMarch;     // this frame's march, half × half
+uniform sampler2D uHistory;   // last resolved frame, full
+uniform float uHistoryValid;
+uniform float uFrame;
+uniform vec2 uMarchSize;
+uniform mat4 uInvProj;
+uniform mat4 uCamWorld;
+uniform mat4 uPrevViewProj;   // previous frame, for reprojecting history
+
 varying vec2 vUv;
+
+${BLOCK_OFFSET}
+${VIEW_RAY}
+
+// How far history may stray outside the fresh neighbourhood's spread, in
+// standard deviations: lower ghosts less but lets the jitter noise through.
+const float CLIP_GAMMA = 1.5;
+// Blend towards this frame: a freshly marched pixel brings real information,
+// elsewhere the upsampled march only nudges the history.
+const float ALPHA_MARCHED = 0.3;
+const float ALPHA_UPSAMPLED = 0.06;
+
 void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 1.0, 1.0);
+  ivec2 px = ivec2(gl_FragCoord.xy);
+  ivec2 off = blockOffset(uFrame);
+  // March texel b holds full pixel 2b + off.
+  vec2 m = vec2(px - off) * 0.5;
+  vec4 current = texture2D(uMarch, (m + 0.5) / uMarchSize);
+  bool marched = all(equal((px - off) & 1, ivec2(0)));
+
+  // Clouds are effectively at infinity, so reprojecting by direction alone is
+  // exact enough — this keeps history valid while the parallax rig rotates.
+  vec4 prevClip = uPrevViewProj * vec4(viewRay(vUv), 0.0);
+  vec2 prevUv = prevClip.xy / prevClip.w * 0.5 + 0.5;
+  bool inside = prevClip.w > 0.0 && all(greaterThanEqual(prevUv, vec2(0.0))) && all(lessThanEqual(prevUv, vec2(1.0)));
+  if (uHistoryValid < 0.5 || !inside) {
+    gl_FragColor = current;
+    return;
+  }
+
+  // Variance clipping against the 3×3 freshly marched texels around us:
+  // drifting, morphing or newly revealed clouds can't leave ghosts behind.
+  ivec2 last = ivec2(uMarchSize) - 1;
+  ivec2 centre = clamp(ivec2(floor(m + 0.5)), ivec2(0), last);
+  vec4 mean = vec4(0.0);
+  vec4 sq = vec4(0.0);
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec4 c = texelFetch(uMarch, clamp(centre + ivec2(x, y), ivec2(0), last), 0);
+      mean += c;
+      sq += c * c;
+    }
+  }
+  mean /= 9.0;
+  vec4 spread = CLIP_GAMMA * sqrt(max(sq / 9.0 - mean * mean, 0.0));
+  vec4 lo = min(mean - spread, current);
+  vec4 hi = max(mean + spread, current);
+
+  vec4 history = clamp(texture2D(uHistory, prevUv), lo, hi);
+  gl_FragColor = mix(history, current, marched ? ALPHA_MARCHED : ALPHA_UPSAMPLED);
 }
 `;
 

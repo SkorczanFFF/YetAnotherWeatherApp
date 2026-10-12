@@ -9,7 +9,7 @@ import type { QualityTier } from "../../weather/sceneParams";
 export interface VolumetricBudget {
   /** Cloud render-target size relative to the canvas (per axis). */
   scale: number;
-  /** Primary raymarch steps through the cloud shell. */
+  /** Lit (expensive) samples per ray — the adaptive march's cap; empty air is crossed cheaply. */
   steps: number;
   /** Steps towards the light per sample. */
   lightSteps: number;

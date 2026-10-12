@@ -4,7 +4,8 @@ import { Color, type Mesh, ShaderMaterial } from "three";
 import { getFrostAmount, type SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
-import { FROST_FRAG, FROST_VERT } from "../shaders/frost.glsl";
+import { FROST_FRAG } from "../shaders/frost.glsl";
+import { fullscreenVert } from "../shaders/fullscreen.glsl";
 
 interface FrostGlassProps {
   params: SceneParams;
@@ -37,7 +38,7 @@ export function FrostGlass({ params }: FrostGlassProps) {
           uAspect: { value: 1 },
           uTint: { value: new Color() },
         },
-        vertexShader: FROST_VERT,
+        vertexShader: fullscreenVert(),
         fragmentShader: FROST_FRAG,
         transparent: true,
         depthTest: false,
