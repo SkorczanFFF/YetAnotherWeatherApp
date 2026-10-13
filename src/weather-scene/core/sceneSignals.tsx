@@ -43,7 +43,7 @@ export interface SceneSignals {
   /** Accumulated displacement of those air masses, metres. */
   windOffsetLow: Vector3;
   windOffsetHigh: Vector3;
-  /** 0..~1.5 lightning flash envelope. */
+  /** 0..~0.8 lightning flash envelope (Thunder: double-flash envelope × distance peak ≤ 1). */
   flash: number;
   /** World position of the current bolt (for lighting the right cloud), valid while flash > 0. */
   flashPosition: Vector3;

@@ -63,7 +63,7 @@ export interface WeatherData {
   uv_index?: number;
   /** Dew point in the same temp unit as `temp`. */
   dew_point?: number;
-  /** Current precipitation rate (mm or in). */
+  /** Current precipitation, mm (never inches: only temperature/wind units are requested). */
   precipitation?: number;
   /** Cloud cover per altitude band, %, 0–100. */
   cloud_cover_low?: number;

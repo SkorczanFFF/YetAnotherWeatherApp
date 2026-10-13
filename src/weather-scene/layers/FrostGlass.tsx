@@ -20,10 +20,8 @@ const GROW_RATE = 0.12;
 const MELT_RATE = 0.25;
 
 /**
- * Procedural frosted glass over everything in the scene (the canvas sits
- * under the UI, so cards stay readable). Strength follows getFrostAmount():
- * 0 at 0 °C, full at −20 °C, scaled by humidity, with a floor for freezing
- * rain / rime. The frost grows and melts over seconds instead of snapping.
+ * Procedural frosted pane over the scene (under the UI, so cards stay readable), easing
+ * towards getFrostAmount() instead of snapping (see CLAUDE.md › Non-obvious gotchas).
  */
 export function FrostGlass({ params }: FrostGlassProps) {
   const s = useSceneSignals();

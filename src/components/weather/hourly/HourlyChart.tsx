@@ -42,6 +42,8 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, unit
 
     const grid = Array.from({ length: 4 }, (_, i) => PAD_T + (i / 3) * innerH);
 
+    // Points and hour labels are an HTML overlay positioned in %, so the SVG's
+    // preserveAspectRatio="none" doesn't stretch them horizontally.
     const points = slice.map((p, i) => ({
       key: i,
       time: p.time,

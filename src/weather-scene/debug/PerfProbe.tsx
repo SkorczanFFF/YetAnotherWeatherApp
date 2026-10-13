@@ -3,11 +3,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { perfStats } from "./perfStats";
 
 /**
- * Samples renderer.info and fps twice a second. Offscreen passes (volumetric
- * clouds) call gl.render() inside useFrame, which would reset the counters
- * mid-frame, so auto-reset is off while the probe is mounted and the probe
- * resets once per frame itself: each reading = previous main render + this
- * frame's offscreen passes, i.e. one full frame.
+ * Samples renderer.info every frame and fps twice a second. gl.render() inside
+ * useFrame (cloud passes) would reset the counters mid-frame, so auto-reset is off
+ * and the probe resets once per frame: a reading = last main render + this frame's passes.
  */
 export function PerfProbe() {
   const gl = useThree((state) => state.gl);

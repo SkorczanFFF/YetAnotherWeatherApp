@@ -6,6 +6,7 @@ import {
   type WeatherSceneDebugProps,
 } from "./WeatherScene";
 
+/** Renders nothing on a scene error — if the scene vanishes in dev, check DevTools. */
 class SceneErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }

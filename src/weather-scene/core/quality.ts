@@ -1,10 +1,8 @@
 import { QUALITY_TIERS, type QualityTier } from "../../weather/sceneParams";
 
-// Per-tier budgets. The initial tier comes from useIsMobile; drei's
-// <PerformanceMonitor> steps it down when the frame rate can't hold the cap,
-// all the way to "potato", which swaps the volumetric clouds for the flat
-// cloud deck. Particle counts are the simultaneous maximum at full intensity —
-// emission rates derive from them (count × intensity / lifetime).
+// Per-tier budgets; PerformanceMonitor steps the tier down to "potato" (flat cloud
+// deck). Particle counts are simultaneous maxima at full intensity: emission rate
+// = count × intensity / mean life.
 
 export interface VolumetricBudget {
   /** Cloud render-target size relative to the canvas (per axis). */

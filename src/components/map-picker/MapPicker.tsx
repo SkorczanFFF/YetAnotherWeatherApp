@@ -33,7 +33,7 @@ interface MapPickerProps {
   open: boolean;
   onClose: () => void;
   onPickLocation: (lat: number, lon: number) => void;
-  /** Optional initial center from current weather */
+  /** Map centre and pre-picked pin, applied when the drawer opens (else DEFAULT_CENTER). */
   initialCenter?: [number, number];
 }
 

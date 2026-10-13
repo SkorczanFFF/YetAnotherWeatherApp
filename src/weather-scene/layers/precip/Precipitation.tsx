@@ -36,7 +36,7 @@ interface KindDef {
   windFactor: number;
   sizeMin: number;
   sizeMax: number;
-  /** Fall speed range, m/s (rain overrides it by rate). */
+  /** Fall speed range, scene units/s (rain raises it with the rate). */
   fall: [number, number];
   /** Stretched billboards: streak length = |velocity| × stretch × size. */
   stretch?: number;
@@ -163,11 +163,9 @@ interface LiveSystem {
 }
 
 /**
- * Rain, drizzle, snow, snow grains, sleet and hail on three.quarks. One
- * BatchedRenderer; each kind is a ParticleSystem with a ViewVolumeEmitter, so
- * particles exist only inside the frame. A system is rebuilt only when the
- * set of kinds (or the frame) changes; rate, fall speed, colour and sway are
- * updated live, so a changing rate never pops. Showers pulse the rate.
+ * All precipitation kinds on one quarks BatchedRenderer, a ViewVolumeEmitter system each.
+ * Systems rebuild only when the set of kinds or the frame changes; rate, fall speed,
+ * colour and sway update live so a changing rate never pops.
  */
 export function Precipitation({ params, frame, budget }: PrecipitationProps) {
   const s = useSceneSignals();
@@ -263,8 +261,7 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
       if (entry.sway && spec.sway != null) entry.sway.value = spec.sway;
     }
     renderer.update(delta);
-    // quarks builds its own ShaderMaterial per batch and drops toneMapped;
-    // without this the scene's ACES exposure (0.5, tuned for <Sky>) greys particles out.
+    // quarks rebuilds batch materials without toneMapped; at exposure 0.5 particles render grey.
     for (const batch of renderer.batches) {
       const m = batch.material as Material;
       if (m.toneMapped) {

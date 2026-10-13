@@ -48,13 +48,8 @@ const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
 
 /**
- * Volumetric clouds (see shaders/volumetricClouds.glsl.ts): a low-res
- * raymarch into ping-pong render targets with temporal accumulation, then
- * one full-screen composite in the main scene (renderOrder 2 — over sky,
- * stars and moon, under precipitation).
- *
- * The raymarch is inherently "only where the camera looks": it runs per
- * pixel of the view, and the cost scales with the target size, not the sky.
+ * Low-res raymarch + temporal resolve into ping-pong targets, then one full-screen
+ * composite in the main scene (see CLAUDE.md › Scene rendering pipeline).
  */
 export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   const s = useSceneSignals();

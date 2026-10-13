@@ -1,11 +1,8 @@
 import { DataTexture, LinearFilter, RGBAFormat } from "three";
 
-// Particle sprites as white-RGB + alpha DataTextures, built once at module
-// scope. Canvas-backed textures are avoided on purpose: some GPU paths
-// (e.g. SwiftShader) upload canvas pixels premultiplied, which turns soft
-// edges grey and makes rain/snow read darker than the sky behind them.
-// quarks' particle shader writes colour without a colour-space conversion,
-// so the textures stay in "no colour space" — white is white.
+// White-RGB + alpha DataTextures, not canvas textures: some GPU paths upload canvas
+// pixels premultiplied (grey edges). quarks' shader has no colour-space conversion,
+// so they stay in "no colour space".
 
 function makeAlphaTexture(width: number, height: number, alpha: Uint8Array): DataTexture {
   const data = new Uint8Array(width * height * 4);

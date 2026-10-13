@@ -274,7 +274,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
 - Precipitation `KINDS` table; rebuild only on kind change, with live emitter updates.
 - Update the CLAUDE.md directory map in the same commit.
 
-**Phase 4 — comments pass**
+**Phase 4 — comments pass** — ✅ done 2026-10-13 (35 files, +107/−222 lines, every file proven comment-only by an AST/compiled-CSS comparison against HEAD). Fixed wrong comments on the way: `PrecipState` WMO ranges (showers 80–86, hail 96/99), precipitation always in mm, flash range 0..~0.8, precipitation fall speeds are scene units/s (not m/s), `useWeather` drops (doesn't abort) a superseded fetch, `uType` lists altocumulus. Whys still unknown, left without a comment: the mobile flash factor 0.7 (Thunder), hail on the snow spawn volume (Precipitation), the 2° margin (viewVolume). Still to verify: whether `current.rain/showers/snowfall` are 15-min sums (P2).
 - Apply §7 file by file: cut history and essays, fix the stale and wrong comments, add the missing whys.
 - Shorten the file headers to 1–3 lines and point to CLAUDE.md for the long form.
 - Fix the stale CLAUDE.md lines.

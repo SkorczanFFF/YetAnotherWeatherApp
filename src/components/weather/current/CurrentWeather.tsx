@@ -83,7 +83,7 @@ export const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }
         progress: t,
       };
     }
-    // Night phase
+    // Before dawn, the previous sunset is approximated as today's minus a day.
     const isAfterSunset = now >= sunset;
     const start = isAfterSunset ? sunset : (sunset - DAY_SECONDS);
     const end = isAfterSunset

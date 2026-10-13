@@ -26,7 +26,7 @@ interface WeatherState {
   error: string | null;
 }
 
-/** Fetches on every query/units change (a newer request cancels the older one) and refreshes silently. */
+/** Fetches on every query/units change (a superseded request's result is dropped) and refreshes silently. */
 export function useWeather(query: WeatherQuery, units: Units): WeatherState {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherUnits, setWeatherUnits] = useState<Units>(units);

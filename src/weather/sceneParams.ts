@@ -34,9 +34,9 @@ interface PrecipState {
   drizzle: boolean;
   /** WMO 56/57/66/67, or liquid below 0 °C — glaze. */
   freezing: boolean;
-  /** Convective (80–90, 95–99) — towering cumulus, pulsing intensity. */
+  /** Convective (WMO 80–86, 95–99) — towering cumulus, pulsing intensity. */
   showers: boolean;
-  /** WMO 87–90, 96, 99. */
+  /** WMO 96, 99. */
   hail: boolean;
   /** WMO 77 — snow grains instead of flakes. */
   grains: boolean;

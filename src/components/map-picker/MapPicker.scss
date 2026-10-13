@@ -30,8 +30,8 @@
   position: fixed;
   top: 0;
   right: 0;
-  // Dynamic viewport: on mobile 100vh is the height with the browser bars
-  // hidden, which pushed the confirm button below the visible area.
+  // `100dvh` after a `100vh` fallback: on mobile 100vh is the height with the
+  // browser bars hidden, which puts the confirm button off-screen.
   height: 100vh;
   height: 100dvh;
   z-index: 8001;
@@ -332,8 +332,8 @@
 }
 
 @include below($bp-phone) {
-  // Full-width sheet: the 385 px drawer overflowed narrow phones, and the
-  // resize handle is mouse-only anyway.
+  // Full-width sheet: the minimum drawer width (385 px) doesn't fit, and the
+  // resize handle is mouse-only.
   .map-picker-drawer {
     min-width: 100vw; // beats the inline drawer width
     max-width: 100vw;
@@ -347,9 +347,7 @@
   .map-picker-drawer { transition: none; }
 }
 
-// Custom divIcon pin; Leaflet sizes it from `iconSize`. (Was wrapped in
-// CSS-modules `:global()`, which a plain .scss keeps verbatim, so browsers
-// dropped the whole rule.)
+// Custom divIcon pin; Leaflet sizes it from `iconSize`.
 .map-picker-marker {
   filter: drop-shadow(0 4px 8px oklch(0 0 0 / 0.45));
 

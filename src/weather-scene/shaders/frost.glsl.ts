@@ -1,10 +1,7 @@
 // Frosted glass: ice creeping in from the corners and edges of the "window".
-// uAmount (0..1) drives both how far the frost has grown and how opaque it
-// is, so a few degrees below zero leave faint patches in the corners and
-// −20 °C a translucent frame around a clear centre — the scene always shows
-// through. The front, ferns and glints come from the shared tileable FBM
-// texture, sampled with a mip bias for a soft, blurred look; a handful of
-// texture reads per pixel and nothing outside the frost.
+// uAmount (0..1) drives both reach and opacity; even at 1 it is a translucent
+// frame around a clear centre. All shapes come from the shared FBM texture,
+// mip-biased for a soft, blurred look.
 
 export const FROST_FRAG = /* glsl */ `
 uniform sampler2D uNoise;

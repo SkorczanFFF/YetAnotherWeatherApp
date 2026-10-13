@@ -44,7 +44,7 @@ export const fetchWeather = async (
         countryCode = reverse.countryCode;
       }
     } catch {
-      // Optional: the formatter falls back to the timezone name.
+      // Optional: mapCurrent falls back to the timezone's city name.
     }
   }
 

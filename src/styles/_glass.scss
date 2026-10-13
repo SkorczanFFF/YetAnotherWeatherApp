@@ -1,21 +1,10 @@
-// Liquid glass: a blurred, saturated backdrop under a thin smoke tint, a
-// specular rim and a soft drop shadow. `--scene-light` (0 at night … 1 for a
-// white overcast or fog at noon, written by the scene's <UiBacklight>) darkens
-// the backdrop and thickens the tint, so white text keeps its contrast over a
-// bright sky while a dark sky still shows through untouched.
-//
-// Hover/active states raise `--glass-lift` instead of replacing `background`,
-// which would drop the tint.
+// Liquid glass and cursor reveal — see CLAUDE.md › UI conventions.
+// `--scene-light` darkens the backdrop so white text keeps its contrast over a
+// bright sky. Hover/active raise `--glass-lift`; replacing `background` would drop the tint.
 $glass-reveal: 160px;
 
-// Cursor reveal, for any boxed UI element (liquid glass includes it): a ring
-// just inside the border lights up wherever the mouse is near — hovered or
-// not, even from the gap between two cards — and brightens on :hover.
-// `--glass-spot: 1` marks the element for useGlassSpotlight
-// (hooks/useGlassSpotlight.ts), which writes the cursor position to
-// `--mx` / `--my`. The mixin owns `::after`; it can't decorate replaced
-// elements (input, select, img). Pass `$position: null` when the element is
-// already positioned (absolute/fixed). Components that declare their own
+// Owns `::after` (can't decorate input/select/img). `$position: null` for an
+// element that is already absolute/fixed. Components that declare their own
 // `transition` list must add `--glass-glow 0.35s ease` to it.
 @mixin glass-reveal($position: relative) {
   --glass-spot: 1;

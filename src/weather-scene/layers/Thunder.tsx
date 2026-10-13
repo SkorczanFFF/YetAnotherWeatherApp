@@ -74,11 +74,9 @@ function makeBolt(frame: ViewFrame, topY: number): Bolt {
 }
 
 /**
- * Thunderstorm: random 4–12 s strikes on ONE time base (the R3F clock).
- * Each strike draws a branching bolt inside the frame (drei <Line>), stores
- * its position in `signals.flashPosition` and drives `signals.flash`, which
- * brightens the sky grade and the clouds (from the bolt) and dims the stars. Sharp attack,
- * exponential decay, optional second pulse.
+ * Strikes every 4–12 s: a branching bolt inside the frame, `signals.flash` (sharp attack,
+ * exponential decay, optional second pulse) and `signals.flashPosition` for the clouds.
+ * Time only from the R3F clock — mixing in performance.now() offsets by the page's age.
  */
 export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: ThunderProps) {
   const s = useSceneSignals();

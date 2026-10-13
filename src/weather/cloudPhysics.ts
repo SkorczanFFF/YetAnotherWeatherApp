@@ -1,24 +1,7 @@
 /**
- * Cloud physics from Open-Meteo's upper-air, stability and radiation fields.
- * Pure functions, SI units, heights in metres ABOVE GROUND.
- *
- * Every estimate has a fallback, because model fields can be missing (some
- * models, night-time radiation, debug overrides that change the sky).
- *
- *   base      Lifting condensation level ≈ 125 m × (T − Td) (Espy), capped
- *             under the boundary layer top for stratiform decks; fog → ground.
- *   top       Stable air: the boundary layer height (inversion caps the deck;
- *             ≥ 100 m above the base), raised to the highest cloudy low pressure
- *             level, or with none capped at the first clear one. Convective air:
- *             grows with CAPE (≈ +4.2 m per J/kg) up to the tropopause.
- *   τ         Optical depth of the low layer from the clearness index
- *             SW / TOA vs. a clear-sky ≈ 0.74, corrected for cloud fraction,
- *             inverted with a two-stream approximation T = 1 / (1 + 0.1125 τ)
- *             (g = 0.85). At night / without data it is estimated from
- *             thickness and precipitation.
- *   layers    Cover-weighted heights of the low/mid/high bands from the
- *             pressure-level cloud cover + geopotential heights.
- *   winds     850 hPa (≈ 1.5 km) for low/mid clouds, 300 hPa (≈ 9 km) for cirrus.
+ * Cloud base/top/optical depth/convection/winds aloft from Open-Meteo's upper-air,
+ * stability and radiation fields. Pure, SI, heights in metres ABOVE GROUND; every
+ * estimate has a fallback for missing model fields (see CLAUDE.md › Cloud physics).
  */
 
 import type { AtmosphereData, Units } from "./types";
@@ -167,7 +150,7 @@ export const deckCover = (clouds: { low: number; mid: number }) => Math.max(clou
 const LAPSE_K_PER_M = 0.0065;
 /** Pressure levels from here up count as the cirrus band, m above ground. */
 const HIGH_BAND_M = 6500;
-/** Convection without showers or a storm: cumulus at most (type ≈ 0.74). */
+/** Convection without showers or a storm: cumulus, never a cumulonimbus. */
 const SHALLOW_CONVECTION = 0.6;
 
 /** Clear-sky clearness index (global / top-of-atmosphere) for a mid-latitude atmosphere. */
@@ -198,9 +181,8 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   let convection = smoothstep(cape, 80, 1500) * (override?.cape != null ? 1 : stabilityDamp);
   if (input.thunder) convection = Math.max(convection, 0.85);
   else if (input.showers) convection = Math.max(convection, 0.55);
-  // CAPE is only potential (a cap or dry air can keep it unused). Deep
-  // towers need showers or a storm; without them the sky gets cumulus,
-  // never a cumulonimbus.
+  // CAPE is only potential (a cap or dry air can keep it unused): deep towers
+  // need showers or a storm.
   const deep = input.thunder || input.showers;
   if (!deep) convection = Math.min(convection, SHALLOW_CONVECTION);
 
@@ -217,9 +199,8 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   baseM = override?.baseM ?? baseM;
 
   // --- top ---------------------------------------------------------------
-  // The inversion caps a deck inside the boundary layer; one just above the
-  // base (a lifting fog, a thin stratus) leaves a thin deck, not a 900 m slab.
-  // Under a boundary layer below the base the inversion says nothing.
+  // The inversion caps a deck inside the boundary layer, at least THIN_DECK_M
+  // thick (a lifting fog, thin stratus); a boundary layer below the base says nothing.
   let stableTop =
     blh != null && blh >= baseM
       ? Math.max(blh, baseM + THIN_DECK_M)

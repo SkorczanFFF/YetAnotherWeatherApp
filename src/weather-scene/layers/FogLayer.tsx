@@ -4,11 +4,8 @@ import { FogExp2 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 
 /**
- * Scene-wide FogExp2: colour = current horizon colour, density from
- * visibility (SceneDriver). Mounted only alongside the potato-tier
- * <CloudDeck>, the one material that opts in (`fog: true`); the sky's own
- * haze lives in SkyGrade, and the volumetric clouds do their own aerial
- * perspective.
+ * Scene FogExp2 in the horizon colour, density from visibility. Mounted only with the
+ * potato-tier <CloudDeck>, its one user (`fog: true`); sky and volumetrics do their own haze.
  */
 export function FogLayer() {
   const s = useSceneSignals();

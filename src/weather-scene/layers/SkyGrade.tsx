@@ -6,7 +6,7 @@ import { SKY_GRADE_FRAG, SKY_GRADE_VERT } from "../shaders/skyGrade.glsl";
 import { RENDER_ORDER } from "../core/constants";
 import { SKY_NIGHT_HORIZON, SKY_NIGHT_ZENITH, SKY_OVERCAST_DAY, SKY_OVERCAST_NIGHT } from "../core/palette";
 
-/** Night gradient + overcast + horizon haze + flash, over drei <Sky>. One draw. */
+/** One-draw sky overlay over drei <Sky> (see shaders/skyGrade.glsl.ts). */
 export function SkyGrade() {
   const s = useSceneSignals();
   const ref = useRef<Mesh>(null);

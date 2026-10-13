@@ -21,9 +21,8 @@ interface StarFieldProps {
 const RADIUS = 1500;
 
 /**
- * Stars generated ONLY inside the frame's patch of sky (drei <Stars> fills a
- * whole sphere and can't fade). Opacity follows night, cloud cover and haze;
- * the object is hidden outright when they'd be invisible.
+ * Stars only inside the frame's patch of sky, with continuous opacity — drei <Stars>
+ * fills a whole sphere and can't fade.
  */
 export function StarField({ frame, count }: StarFieldProps) {
   const s = useSceneSignals();

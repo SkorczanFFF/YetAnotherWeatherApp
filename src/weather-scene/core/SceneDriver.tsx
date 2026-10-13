@@ -89,6 +89,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       s.moonPhase = illum.phase;
       s.moonFraction = illum.fraction;
     }
+    // Display direction: the zenith maps 5° under the frame's top edge, so the disc stays in view.
     const kAz = Math.min(1, (0.8 * frame.hHalfRaw) / AZ_SQUEEZE_RANGE);
     const kAlt = (frame.topElevRaw - 5 * MathUtils.DEG2RAD) / (Math.PI / 2);
     directionFromRelative(

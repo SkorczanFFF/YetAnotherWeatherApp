@@ -7,10 +7,8 @@ import type { SceneParams } from "./sceneParams";
 const FROST_FULL_AT_C = -20;
 
 /**
- * Frosted-glass strength, 0..1. Grows gradually from 0 °C to −20 °C (eased,
- * so −1 °C is only a hint in the corners), scaled by humidity — dry air
- * frosts the glass less. Freezing rain/drizzle and rime fog glaze the glass
- * even near 0 °C.
+ * Frosted-glass strength, 0..1: eased from 0 °C to FROST_FULL_AT_C, scaled by
+ * humidity; freezing precipitation and rime glaze the glass even near 0 °C.
  */
 export function getFrostAmount(params: SceneParams): number {
   const cold = Math.pow(clamp01(params.temperatureC / FROST_FULL_AT_C), 1.6);

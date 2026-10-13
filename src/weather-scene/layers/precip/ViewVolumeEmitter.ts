@@ -24,18 +24,10 @@ interface ViewVolumeEmitterOptions {
 }
 
 /**
- * three.quarks emitter shape that keeps every particle inside the camera's
- * view volume for its whole life.
- *
- * Each spawn picks a random point inside the visible slice at a random depth
- * (∝ d, i.e. uniform per volume), traces it BACK along its velocity to where
- * it would have entered the slice (top edge for calm rain, the upwind side
- * edge in a gale), starts it there, and sets its life to the time until it
- * leaves through the opposite edge. Particles therefore stream through the
- * frame at any wind angle and are never simulated off-screen.
- *
- * The built-in shapes don't fit: RectangleEmitter emits from the perimeter,
- * GridEmitter only along +Z.
+ * three.quarks emitter that keeps every particle inside the view volume for its whole life:
+ * a random visible point is traced back along its velocity to the entry edge (top, or the
+ * upwind side in a gale) and lives until the exit edge, so nothing is simulated off-screen.
+ * Built-in shapes don't fit: RectangleEmitter emits from the perimeter, GridEmitter along +Z.
  */
 export class ViewVolumeEmitter implements EmitterShape {
   type = "view-volume";

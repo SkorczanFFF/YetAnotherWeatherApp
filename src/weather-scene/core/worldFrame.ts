@@ -35,8 +35,7 @@ export const CAMERA_ALTITUDE_M = 2;
 
 /**
  * Time-lapse for clouds driven by the real winds aloft (850 / 300 hPa):
- * metres of cloud drift per metre of air. Pure speed-up — the "stronger
- * aloft" part now comes from the data.
+ * metres of cloud drift per metre of air — a pure speed-up of the measured wind.
  */
 export const CLOUD_TIMELAPSE = 4;
 /** Clouds never stop completely — dead calm still reads as a frozen frame. */

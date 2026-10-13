@@ -6,10 +6,8 @@ import { useSceneSignals } from "../core/sceneSignals";
 import { RENDER_ORDER } from "../core/constants";
 
 /**
- * drei <Sky> (three-stdlib Preetham). Driven every frame from SceneSignals:
- * the displayed sun direction places the glow/disc, haze and overcast raise
- * turbidity, twilight warmth bumps rayleigh. Hidden once full night takes
- * over — SkyGrade paints the night gradient on top anyway.
+ * drei <Sky> (Preetham) at the displayed sun; haze/overcast raise turbidity, warmth rayleigh.
+ * Hidden at full night, where SkyGrade's night gradient covers it anyway.
  */
 export function SkyLayer() {
   const s = useSceneSignals();

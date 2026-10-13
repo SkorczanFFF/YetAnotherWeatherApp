@@ -1,5 +1,6 @@
 // Volumetric clouds — Nubis-style (Schneider, Horizon Zero Dawn) raymarch
-// through a spherical shell above a curved Earth, in metres.
+// through a spherical shell above a curved Earth, in metres
+// (see CLAUDE.md › Volumetric clouds).
 //
 // Three passes per frame, all at a fraction of the canvas:
 //   1. VOLUMETRIC_FRAG marches a half × half target: each texel is the one
@@ -49,7 +50,7 @@ uniform float uEarthR;
 uniform float uBase;         // cloud base altitude, m
 uniform float uThickness;    // shell thickness, m
 uniform float uCoverage;     // 0..1
-uniform float uType;         // 0 stratus · 0.5 cumulus · 1 cumulonimbus
+uniform float uType;         // 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1 cumulonimbus
 uniform float uDensity;      // extinction per metre at density 1
 uniform float uFeatureScale; // noise size multiplier, ≤ 1 — a low deck gets smaller cells
 uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), in noise space (xz)
@@ -118,24 +119,19 @@ float heightGradient(float hf) {
     : mix(cumulus, cb, uType * 2.0 - 1.0);
 }
 
-// The noise mixes below are close to normal and very narrow (90 % of the
-// cover mix lies within 0.54–0.71). Mean and spread were measured over the
-// generated 3D noise; the logistic CDF turns a value into its rank, an even
-// 0..1 share of the area, so a cover c can threshold off exactly c of it.
+// Measured stats of the near-normal, very narrow noise mixes, so noiseRank()
+// gives an even 0..1 rank and cover c keeps exactly c of the area.
+// Re-measure if cloudNoise.glsl changes.
 const vec2 COVER_NOISE = vec2(0.624, 0.050);   // mean, standard deviation
 const vec2 CIRRUS_NOISE = vec2(0.490, 0.081);
 const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
 
-// Rank (0..1) of the slowly scrolling weather noise at a spot. The top
-// uCoverage share of the area is cloud, so isolated cells at low cover grow
-// into a closed deck at 1.
+// Rank (0..1) of the slowly scrolling weather noise; the top uCoverage share is cloud.
 float coverRank(vec2 xz, float hf) {
   vec2 q = xz * WEATHER_SCALE;
   // Perlin-Worley + Worley at two scales — irregular cells, not round blobs.
-  // The field drifts through the noise's third axis with height (the fine
-  // scale fastest), so a cell's outline changes as it rises: rims lean and
-  // bulge instead of one footprint extruded into vertical curtains. Every
-  // slice has the same statistics, so the calibrated cover holds at all heights.
+  // Drifting through the third axis with height makes rims lean and bulge
+  // instead of extruding into vertical curtains; every slice has the same stats.
   float n = texture(uNoise, vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
           + texture(uNoise, vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25
           + texture(uNoise, vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
@@ -144,17 +140,14 @@ float coverRank(vec2 xz, float hf) {
 
 float density(vec3 p, float hf, bool detail) {
   if (hf < 0.0 || hf > 1.0) return 0.0;
-  // Noise space is metres ÷ uFeatureScale: a deck low overhead gets smaller
-  // cells, so it keeps the angular size of one at cumulus height instead of
-  // a single cell filling the frame. The drift is already in noise space, so
-  // a changing scale zooms around the camera, not around the far-off drift.
+  // Noise space is metres ÷ uFeatureScale, so a low deck keeps cumulus-sized cells
+  // on screen. uWind is already in noise space: a changing scale zooms around the camera.
   vec2 xz = p.xz / uFeatureScale - uWind;
   float y = p.y / uFeatureScale;
   float c = uCoverage;
   float rank = coverRank(xz, hf);
-  // Cells over the top c of the ranks. The edge is deliberately wide: the
-  // cover falling off towards a cell's rim is what rounds its top (with the
-  // height gradient below) — a sharp mask extrudes into vertical walls.
+  // Deliberately wide edge: the cover falling off at a cell's rim rounds its
+  // top; a sharp mask extrudes into vertical walls.
   float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, rank) * smoothstep(0.0, 0.05, c);
   // Convective towers narrow with height (stacked, rounded tops), so even a
   // tall cumulonimbus isn't its cell's footprint extruded into a column.
@@ -224,8 +217,7 @@ float sunEnergy(float od, float cosTheta) {
     // Narrow forward lobe (silver lining only close to the sun), broad main
     // lobe, a little back-scatter.
     float phase = 0.18 * hg(cosTheta, 0.88 * c) + 0.62 * hg(cosTheta, 0.3 * c) + 0.2 * hg(cosTheta, -0.25 * c);
-    // Higher orders only matter where there is medium to scatter in —
-    // they must not brighten thin edges (that drew white outlines).
+    // Higher orders need medium to scatter in; on thin edges they would draw white outlines.
     float depthWeight = i == 0 ? 1.0 : 1.0 - exp(-od * 1.5);
     sum += a * exp(-od * b) * phase * depthWeight;
     a *= 0.7;
@@ -238,13 +230,9 @@ float sunEnergy(float od, float cosTheta) {
   return sum * mix(1.0, powder, 0.5 * (0.5 - 0.5 * cosTheta));
 }
 
-// Adaptive march. The fine step grows with distance (a far sample covers
-// more of the scene per pixel) but never drops below what crossing the shell
-// in uSteps would need. Empty air is crossed with cheap steps 3× as long that
-// skip the detail noise and the lighting; the first hit backs up one cheap
-// step and switches to fine steps, and a few empty fine samples in a row
-// switch back once past that hit. uSteps caps the lit (expensive) samples,
-// not the iterations.
+// Adaptive march: cheap 3× steps (no detail, no lighting) through empty air,
+// back up one and go fine on a hit; the fine step grows with distance (a far
+// sample covers more per pixel). uSteps caps the lit samples, not the iterations.
 const int MAX_ITERATIONS = 192;
 const float STEP_PER_METRE = 0.02;   // fine step ≈ 2 % of the distance…
 const float MAX_STEP = 900.0;        // …up to this, m
@@ -428,9 +416,8 @@ export const CLOUD_COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D uClouds;
 varying vec2 vUv;
 void main() {
-  // The target holds premultiplied radiance. Un-premultiply BEFORE tone
-  // mapping and sRGB encoding: encoding a premultiplied value inflates thin
-  // edges (the linear toe of sRGB is ×12.92) and drew white outlines.
+  // Un-premultiply BEFORE tone mapping and sRGB encoding: encoding premultiplied
+  // colour inflates thin edges (sRGB's linear toe is ×12.92) into white outlines.
   vec4 c = texture2D(uClouds, vUv);
   float a = c.a;
   if (a < 0.002) discard;

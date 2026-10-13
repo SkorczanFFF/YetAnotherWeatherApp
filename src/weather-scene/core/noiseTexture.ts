@@ -8,13 +8,9 @@ import {
   UnsignedByteType,
 } from "three";
 
-// Tileable FBM noise generated once at module scope. The resulting
-// 256×256 single-channel texture is shared by the potato-tier cloud deck and
-// the frosted glass. Tileability means we can offset UVs by arbitrary wind
-// amounts without a seam ever showing.
-//
-// Baking cost: ~30 ms on a warm CPU. Sampling cost in shader: one texture
-// lookup per invocation, an order of magnitude cheaper than in-shader FBM.
+// Tileable 256×256 FBM (one channel), baked once on the CPU (~30 ms) and shared by
+// the potato-tier cloud deck and the frost glass; tiling lets UVs scroll seamlessly.
+// Assign it after UniformsUtils.merge, which would clone it.
 
 const TEX_SIZE = 256;
 const OCTAVES = 5;

@@ -10,25 +10,10 @@ interface FrameRateGateProps {
 const MAX_SAMPLE_MS = 100;
 
 /**
- * Caps the R3F render rate by pairing `frameloop="demand"` on the parent
- * `<Canvas>` with a requestAnimationFrame-driven `invalidate()` loop.
- *
- * Why this exists: on a 240 Hz display with the default
- * `frameloop="always"`, the renderer runs at the monitor rate even when
- * nothing has meaningfully changed — four frames of compositor work per
- * frame of perceived change. On integrated GPUs this is a battery leak,
- * on discrete GPUs it's the difference between 60 W and 300 W.
- *
- * It renders every N-th display frame, with N = round(capInterval /
- * measuredFrameInterval) (≥ 1), so pacing is always even: 60 Hz → every
- * frame, 120/144 Hz → every 2nd, 240 Hz → every 4th, 60 Hz with a 30 cap →
- * every 2nd. Comparing elapsed time against 1000/fps instead (the old rule)
- * dropped frames at random whenever rAF jitter made a 60 Hz tick arrive a
- * hair early — ~39 fps with 33 ms hitches, which also tricked
- * PerformanceMonitor into lowering the quality tier.
- *
- * The gate lives INSIDE the Canvas so `useThree` can reach the store. It
- * does not render any geometry.
+ * Caps the render rate; pairs with `frameloop="demand"` (without it the scene
+ * renders at monitor rate). Invalidates every N-th rAF tick, N from the measured
+ * display interval, so pacing stays even. Never gate on elapsed ≥ 1000/fps: rAF
+ * jitter drops random frames and PerformanceMonitor then lowers the tier.
  */
 export function FrameRateGate({ fps }: FrameRateGateProps) {
   const invalidate = useThree((s) => s.invalidate);

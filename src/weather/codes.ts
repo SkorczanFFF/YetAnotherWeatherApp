@@ -64,12 +64,9 @@ const UNKNOWN: CodeInfo = { label: "Unknown", kind: "clear", intensity: "light",
 export const codeInfo = (code: number): CodeInfo => CODES[Math.floor(code)] ?? UNKNOWN;
 
 /**
- * The current (15-min) weather_code is the step of the hour ending at the next
- * full hour, while cloud_cover is interpolated between the hours: at 11:15 a
- * deck breaking from 74 % to 41 % read "Mainly clear" next to 66 %. A pure
- * cloud code (0–3) is re-derived from the shown cover with Open-Meteo's own
- * thresholds, so the label, the cloud cover figure and the scene agree; fog,
- * precipitation and storms keep the model's code.
+ * The 15-min weather_code is the step of the coming hour while cloud_cover is
+ * interpolated, so pure cloud codes 0–3 are re-derived from the shown cover with
+ * Open-Meteo's thresholds; fog, precipitation and storm codes stay.
  */
 export const codeForCover = (code: number, coverPct: number | undefined): number =>
   code > 3 || typeof coverPct !== "number"

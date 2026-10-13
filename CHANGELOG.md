@@ -4,6 +4,9 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Changed (comments)
+- Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
+
 ### Changed (file organisation)
 - `services/weatherFormatter.ts` → `services/openMeteoMapper.ts` (API → app data only); `fetchWeather` is a named export.
 - `App.tsx` keeps state and layout; fetching, refresh and error text live in `hooks/useWeather`, the F7 / 5-tap toggle in `hooks/useDebugToggle`; `useGlassSpotlight` moved to `hooks/`.

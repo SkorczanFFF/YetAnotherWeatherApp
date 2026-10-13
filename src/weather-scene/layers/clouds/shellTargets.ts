@@ -23,9 +23,8 @@ export interface ShellTargets {
 /** Mean fill of the shaped noise inside the shell — converts τ into extinction. */
 const SHELL_FILL = 0.35;
 /**
- * Deck mid-height the noise scales were tuned at (cumulus, m). A lower deck
- * is closer, so its cells shrink with it — at the full size a 150–400 m
- * deck was one cell across the whole frame, a featureless grey sheet.
+ * Deck mid-height the noise scales were tuned at (cumulus, m). A lower deck is
+ * closer, so its cells shrink with it to keep their angular size.
  */
 const FEATURE_REF_M = 1200;
 const MIN_FEATURE_SCALE = 0.2;

@@ -33,10 +33,8 @@
   --glass-blur: 16px;
 }
 
-// Registered so hover lifts and the cursor glow on liquid glass
-// (styles/_glass.scss) can transition, and so a lit card never lights glass
-// nested inside it. `--glass-spot` must not inherit either: it marks the
-// glass element itself for useGlassSpotlight.
+// Registered so the glass lift/glow can transition; non-inherited so a lit card
+// never lights nested glass, and `--glass-spot` marks only the element itself.
 @property --glass-lift {
   syntax: "<number>";
   inherits: false;
@@ -124,10 +122,8 @@ body {
   flex-direction: column;
   gap: var(--gap);
 
-  // While another place loads, the old numbers go soft and faded under
-  // intact glass, so the crisp loader pill is the one thing in focus.
-  // Blur the cards' contents, never the cards or their ancestors — a filter
-  // or opacity there would cut the glass's own backdrop blur.
+  // Refetch: blur the cards' contents, never the cards or their ancestors — a
+  // filter or opacity there would cut the glass's own backdrop blur.
   .hero > *,
   .hourly > *,
   .forecast .day > * {
@@ -146,8 +142,7 @@ body {
   }
 }
 
-// Status pill for refetches, centred in the viewport over the blurred data —
-// always in view, whatever the scroll.
+// Refetch status pill: fixed to the viewport so it stays in view at any scroll.
 .refresh-indicator {
   position: fixed;
   left: 50%;
@@ -273,7 +268,7 @@ body {
   .stack .forecast .day > * { transition: none; }
 }
 
-/* Stats panels from @react-three/drei — stacked column, top-left */
+/* drei <Stats> panels stacked in a column, top-left. */
 .debug-stats {
   left: 4px !important;
   right: auto !important;
