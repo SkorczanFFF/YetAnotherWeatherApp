@@ -108,8 +108,15 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     s.warmth = (1 - smoothstep(a, 2, 18)) * smoothstep(a, -8, 0);
 
     const { clouds, fog, temperatureC } = params;
-    // Low/mid decks grey the sky; cirrus (in the total) only veils it.
+    // Only a closing low/mid deck greys the sky — the gaps of a broken one
+    // show clear blue; cirrus (in the total) only veils it.
     s.overcast = Math.max(
+      smoothstep(clouds.low, 0.8, 1.0),
+      smoothstep(Math.max(clouds.low, clouds.mid), 0.85, 1.0) * 0.8,
+    );
+    // The frame never shows the zenith, so a broken deck already fills most
+    // of it with bright cloud (what the UI glass sits over).
+    s.cloudFill = Math.max(
       smoothstep(clouds.low, 0.55, 1.0),
       smoothstep(Math.max(clouds.low, clouds.mid), 0.7, 1.0) * 0.8,
     );

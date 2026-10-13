@@ -110,6 +110,8 @@ interface ShellTargets {
   base: number;
   /** Extinction per metre at noise density 1. */
   density: number;
+  /** Noise size multiplier, ≤ 1: cells shrink with a low deck's height. */
+  featureScale: number;
   high: number;
   cirrusAlt: number;
   freezeAlt: number;
@@ -119,12 +121,20 @@ interface ShellTargets {
 const SHELL_FILL = 0.35;
 /** Shell fields eased between weathers (1/s): ~95 % of the way in a second. */
 const SHELL_EASE = 3;
+/**
+ * Deck mid-height the noise scales were tuned at (cumulus, m). A lower deck
+ * is closer, so its cells shrink with it — at the full size a 150–400 m
+ * deck was one cell across the whole frame, a featureless grey sheet.
+ */
+const FEATURE_REF_M = 1200;
+const MIN_FEATURE_SCALE = 0.2;
 const SHELL_KEYS = [
   "coverage",
   "type",
   "thickness",
   "base",
   "density",
+  "featureScale",
   "high",
   "cirrusAlt",
   "freezeAlt",
@@ -140,7 +150,7 @@ function shellTargets(params: SceneParams): ShellTargets {
   let base = midDominant ? p.midAltM - 350 : p.baseM;
   const top = midDominant ? p.midAltM + 450 : p.topM;
   if (params.fog.visibilityM < 800) base = Math.min(base, 150);
-  const thickness = MathUtils.clamp(top - base, 200, 12000);
+  const thickness = MathUtils.clamp(top - base, 80, 12000);
   const conv = p.convection;
   const type = params.thunder
     ? 1
@@ -161,6 +171,7 @@ function shellTargets(params: SceneParams): ShellTargets {
     thickness,
     base,
     density: MathUtils.clamp(p.opticalDepth / (thickness * SHELL_FILL), 0.004, 0.15),
+    featureScale: MathUtils.clamp((base + thickness * 0.5) / FEATURE_REF_M, MIN_FEATURE_SCALE, 1),
     high,
     cirrusAlt: p.highAltM,
     freezeAlt: p.freezingLevelM ?? 3000,
@@ -237,6 +248,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
             uCoverage: { value: 0 },
             uType: { value: 0.45 },
             uDensity: { value: 0.03 },
+            uFeatureScale: { value: 1 },
             uWind: { value: new Vector2() },
             uWindHigh: { value: new Vector2() },
             uHighWindDir: { value: new Vector2(1, 0) },
@@ -362,6 +374,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uCoverage.value = sh.coverage;
     u.uType.value = sh.type;
     u.uDensity.value = sh.density;
+    u.uFeatureScale.value = sh.featureScale;
     u.uHigh.value = sh.high;
     u.uCirrusAlt.value = sh.cirrusAlt;
     u.uFreezeAlt.value = sh.freezeAlt;

@@ -32,8 +32,8 @@ export function UiBacklight({ thunder }: UiBacklightProps) {
   }, []);
 
   useFrame((_, delta) => {
-    // A clear sky reads mid-bright; a white deck, haze or fog is the worst case.
-    const whiteout = Math.max(s.overcast, s.haze);
+    // A clear sky reads mid-bright; white cloud, haze or fog is the worst case.
+    const whiteout = Math.max(s.cloudFill, s.haze);
     let target = s.day * MathUtils.lerp(0.55, 1, whiteout);
     if (thunder) target *= 0.55;
 

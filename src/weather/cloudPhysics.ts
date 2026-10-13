@@ -7,8 +7,9 @@
  *
  *   base      Lifting condensation level ≈ 125 m × (T − Td) (Espy), capped
  *             under the boundary layer top for stratiform decks; fog → ground.
- *   top       Stable air: the boundary layer height (inversion caps the deck),
- *             raised to the highest cloudy low pressure level. Convective air:
+ *   top       Stable air: the boundary layer height (inversion caps the deck;
+ *             ≥ 100 m above the base), raised to the highest cloudy low pressure
+ *             level, or with none capped at the first clear one. Convective air:
  *             grows with CAPE (≈ +4.2 m per J/kg) up to the tropopause.
  *   τ         Optical depth of the low layer from the clearness index
  *             SW / TOA vs. a clear-sky ≈ 0.74, corrected for cloud fraction,
@@ -160,6 +161,14 @@ function highestCloud(levels: AtmosphereSI["levels"], minCover: number): number 
   return top;
 }
 
+/** Lowest level above `minM` with (almost) no cloud, m above ground; null when none. */
+function lowestClearAbove(levels: AtmosphereSI["levels"], minM: number): number | null {
+  for (const l of levels) if (l.heightM >= minM && l.cover < 0.05) return l.heightM;
+  return null;
+}
+
+/** A deck under an inversion right above its base (lifting fog, thin stratus), m. */
+const THIN_DECK_M = 100;
 /** Convection without showers or a storm: cumulus at most (type ≈ 0.74). */
 const SHALLOW_CONVECTION = 0.6;
 
@@ -210,8 +219,18 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   baseM = override?.baseM ?? baseM;
 
   // --- top ---------------------------------------------------------------
-  let stableTop = blh != null && blh > baseM + 150 ? blh : baseM + (clouds.low > 0.8 ? 600 : 900);
+  // The inversion caps a deck inside the boundary layer; one just above the
+  // base (a lifting fog, a thin stratus) leaves a thin deck, not a 900 m slab.
+  // Under a boundary layer below the base the inversion says nothing.
+  let stableTop =
+    blh != null && blh >= baseM
+      ? Math.max(blh, baseM + THIN_DECK_M)
+      : baseM + (clouds.low > 0.8 ? 600 : 900);
   if (lowBand && lowBand.topM + 150 > stableTop) stableTop = lowBand.topM + 150;
+  // With no cloudy level in the column, the first clear level above the
+  // base bounds the deck from above.
+  const clearAbove = lowBand ? null : lowestClearAbove(levels, baseM + THIN_DECK_M);
+  if (clearAbove != null) stableTop = Math.min(stableTop, clearAbove);
   if (input.precipitating) stableTop = Math.max(stableTop, baseM + 1500);
   let convectiveTop = Math.min(TROPOPAUSE_M, baseM + 500 + 4.2 * cape);
   if (!deep) {

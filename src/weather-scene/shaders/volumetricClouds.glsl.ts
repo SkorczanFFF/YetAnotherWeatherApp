@@ -49,6 +49,7 @@ uniform float uThickness;    // shell thickness, m
 uniform float uCoverage;     // 0..1
 uniform float uType;         // 0 stratus · 0.5 cumulus · 1 cumulonimbus
 uniform float uDensity;      // extinction per metre at density 1
+uniform float uFeatureScale; // noise size multiplier, ≤ 1 — a low deck gets smaller cells
 uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), m (xz)
 uniform vec2 uWindHigh;      // accumulated drift at cirrus level (300 hPa), m (xz)
 uniform vec2 uHighWindDir;   // unit, xz — cirrus streaks stretch along it
@@ -143,7 +144,11 @@ float coverRank(vec2 xz, float hf) {
 
 float density(vec3 p, float hf, bool detail) {
   if (hf < 0.0 || hf > 1.0) return 0.0;
-  vec2 xz = p.xz - uWind;
+  // Noise space is metres ÷ uFeatureScale: a deck low overhead gets smaller
+  // cells, so it keeps the angular size of one at cumulus height instead of
+  // a single cell filling the frame.
+  vec2 xz = (p.xz - uWind) / uFeatureScale;
+  float y = p.y / uFeatureScale;
   float c = uCoverage;
   float rank = coverRank(xz, hf);
   // Cells over the top c of the ranks. The edge is deliberately wide: the
@@ -162,7 +167,7 @@ float density(vec3 p, float hf, bool detail) {
   cov = clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
   if (cov < 0.01) return 0.0;
 
-  vec3 uvw = vec3(xz.x, p.y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;
+  vec3 uvw = vec3(xz.x, y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;
   vec4 n = texture(uNoise, uvw);
   float lowFbm = n.g * 0.625 + n.b * 0.25 + n.a * 0.125;
   float base = remap(n.r, lowFbm - 1.0, 1.0, 0.0, 1.0);
@@ -173,7 +178,7 @@ float density(vec3 p, float hf, bool detail) {
   if (base <= 0.0) return 0.0;
 
   if (detail) {
-    vec3 duvw = vec3(xz.x, p.y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
+    vec3 duvw = vec3(xz.x, y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
     vec4 d = texture(uNoise, duvw);
     float hfFbm = d.g * 0.625 + d.b * 0.25 + d.a * 0.125;
     // Wispy bottoms, billowy tops; above the freezing level the cloud is

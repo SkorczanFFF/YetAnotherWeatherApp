@@ -7,7 +7,7 @@ import {
   tempSymbol,
   toCardinal,
 } from "../../../services/weatherFormatter";
-import { PinIcon } from "../../icons";
+import { CLOUD_PATH, PinIcon, WeatherIcon } from "../../icons";
 import { WeatherData, Units } from "../../../weather/types";
 import "./CurrentWeather.scss";
 
@@ -25,57 +25,6 @@ const uvLabel = (uv?: number): string => {
   if (uv < 8) return "high";
   if (uv < 11) return "v.high";
   return "extreme";
-};
-
-/** Cloud outline (24×24) whose flat base sits at `y`. */
-const cloud = (y: number) => `M7 ${y}a4 4 0 1 1 0-8 5 5 0 0 1 9.7 1A4 4 0 1 1 17 ${y}H7Z`;
-
-const conditionIcon = (code: number, isDay: number) => {
-  if (code <= 1) {
-    return isDay ? (
-      <>
-        <circle cx="12" cy="12" r="4.5" />
-        <g strokeLinecap="round">
-          <path d="M12 2.5v2" /><path d="M12 19.5v2" />
-          <path d="M2.5 12h2" /><path d="M19.5 12h2" />
-          <path d="m5.2 5.2 1.4 1.4" /><path d="m17.4 17.4 1.4 1.4" />
-          <path d="m5.2 18.8 1.4-1.4" /><path d="m17.4 6.6 1.4-1.4" />
-        </g>
-      </>
-    ) : <path d="M21 13.5A8.5 8.5 0 1 1 10.5 3a6.5 6.5 0 0 0 10.5 10.5Z" />;
-  }
-  if (code === 2) return (
-    <>
-      <circle cx="17" cy="7" r="3" />
-      <path d={cloud(18)} />
-    </>
-  );
-  if (code === 3) return <path d={cloud(18)} />;
-  if (code === 45 || code === 48) return (
-    <g strokeLinecap="round">
-      <path d="M3 8h13" /><path d="M5 12h15" /><path d="M3 16h11" /><path d="M16 16h5" />
-    </g>
-  );
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86 || code === 66 || code === 67) return (
-    <>
-      <path d={cloud(15)} />
-      <g strokeLinecap="round">
-        <path d="M9 19v2" /><path d="M13 19v2" /><path d="M17 19v2" />
-      </g>
-    </>
-  );
-  if (code >= 95 && code <= 99) return (
-    <>
-      <path d={cloud(16)} />
-      <path d="m11 17-2 4h3l-1 3 3-5h-3l2-2" />
-    </>
-  );
-  return (
-    <>
-      <path d={cloud(15)} />
-      <path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3" strokeLinecap="round" />
-    </>
-  );
 };
 
 const getLiveTimeParts = (timezone: string) => {
@@ -194,9 +143,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
             )}
           </div>
           <div className="condition">
-            <svg className="cond-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-              {conditionIcon(weather.weather_code, weather.is_day)}
-            </svg>
+            <WeatherIcon className="cond-icon" code={weather.weather_code} isDay={weather.is_day !== 0} />
             <span>{weather.details}</span>
           </div>
           <div className="temp">
@@ -259,7 +206,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
           </div>
           <div className="stat">
             <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-              <path d={cloud(18)} />
+              <path d={CLOUD_PATH} />
             </svg>
             <div className="info">
               <span className="label">Cloud cover</span>

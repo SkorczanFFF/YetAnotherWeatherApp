@@ -51,7 +51,7 @@ Don't get wet — check the weather first!
 | 3D Scene | Three.js, React Three Fiber, @react-three/drei |
 | Maps | React Leaflet + OpenStreetMap |
 | Date/Time | Luxon |
-| Icons | react-icons |
+| Icons | Own line-art SVG (`components/icons.tsx`) |
 | Tooltips | react-tooltip |
 | Notifications | react-toastify |
 | Analytics | Vercel Analytics |

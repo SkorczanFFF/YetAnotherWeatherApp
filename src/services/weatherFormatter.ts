@@ -1,4 +1,4 @@
-/** Weather data formatting: API response → WeatherData, icon URLs, date formatting. */
+/** Weather data formatting: API response → WeatherData, descriptions, date formatting. */
 
 import { DateTime } from "luxon";
 import type {
@@ -10,39 +10,49 @@ import type {
 } from "../weather/types";
 import { type OpenMeteoResponse, PRESSURE_LEVELS } from "./weatherApi";
 
-const weatherCodeMap: Record<number, { description: string; icon: string }> = {
-  0: { description: "Clear sky", icon: "01d" },
-  1: { description: "Mainly clear", icon: "02d" },
-  2: { description: "Partly cloudy", icon: "03d" },
-  3: { description: "Overcast", icon: "04d" },
-  45: { description: "Fog", icon: "50d" },
-  48: { description: "Depositing rime fog", icon: "50d" },
-  51: { description: "Light drizzle", icon: "09d" },
-  53: { description: "Moderate drizzle", icon: "09d" },
-  55: { description: "Dense drizzle", icon: "09d" },
-  56: { description: "Light freezing drizzle", icon: "09d" },
-  57: { description: "Dense freezing drizzle", icon: "09d" },
-  61: { description: "Slight rain", icon: "10d" },
-  63: { description: "Moderate rain", icon: "10d" },
-  65: { description: "Heavy rain", icon: "10d" },
-  66: { description: "Light freezing rain", icon: "13d" },
-  67: { description: "Heavy freezing rain", icon: "13d" },
-  71: { description: "Slight snow fall", icon: "13d" },
-  73: { description: "Moderate snow fall", icon: "13d" },
-  75: { description: "Heavy snow fall", icon: "13d" },
-  77: { description: "Snow grains", icon: "13d" },
-  80: { description: "Slight rain showers", icon: "09d" },
-  81: { description: "Moderate rain showers", icon: "09d" },
-  82: { description: "Violent rain showers", icon: "09d" },
-  85: { description: "Slight snow showers", icon: "13d" },
-  86: { description: "Heavy snow showers", icon: "13d" },
-  95: { description: "Thunderstorm", icon: "11d" },
-  96: { description: "Thunderstorm with slight hail", icon: "11d" },
-  99: { description: "Thunderstorm with heavy hail", icon: "11d" },
+const weatherDescriptions: Record<number, string> = {
+  0: "Clear sky",
+  1: "Mainly clear",
+  2: "Partly cloudy",
+  3: "Overcast",
+  45: "Fog",
+  48: "Depositing rime fog",
+  51: "Light drizzle",
+  53: "Moderate drizzle",
+  55: "Dense drizzle",
+  56: "Light freezing drizzle",
+  57: "Dense freezing drizzle",
+  61: "Slight rain",
+  63: "Moderate rain",
+  65: "Heavy rain",
+  66: "Light freezing rain",
+  67: "Heavy freezing rain",
+  71: "Slight snow fall",
+  73: "Moderate snow fall",
+  75: "Heavy snow fall",
+  77: "Snow grains",
+  80: "Slight rain showers",
+  81: "Moderate rain showers",
+  82: "Violent rain showers",
+  85: "Slight snow showers",
+  86: "Heavy snow showers",
+  95: "Thunderstorm",
+  96: "Thunderstorm with slight hail",
+  99: "Thunderstorm with heavy hail",
 };
 
-const describeCode = (code: number) =>
-  weatherCodeMap[code] ?? { description: "Unknown", icon: "01d" };
+const describeCode = (code: number) => weatherDescriptions[code] ?? "Unknown";
+
+/**
+ * The current (15-min) weather_code is the step of the hour ending at the next
+ * full hour, while cloud_cover is interpolated between the hours: at 11:15 a
+ * deck breaking from 74 % to 41 % read "Mainly clear" next to 66 %. A pure
+ * cloud code (0–3) is re-derived from the shown cover with Open-Meteo's own
+ * thresholds, so the label, the cloud cover figure and the scene agree; fog,
+ * precipitation and storms keep the model's code.
+ */
+const cloudCode = (code: number, cover: number | undefined) =>
+  code > 3 || typeof cover !== "number" ? code : cover < 20 ? 0 : cover < 50 ? 1 : cover < 80 ? 2 : 3;
 
 export const formatCurrentWeather = (
   data: OpenMeteoResponse,
@@ -55,7 +65,7 @@ export const formatCurrentWeather = (
     apparent_temperature: feels_like,
     relative_humidity_2m: humidity,
     pressure_msl: pressure,
-    weather_code,
+    weather_code: modelCode,
     wind_speed_10m: speed,
     wind_direction_10m: wind_direction,
     is_day,
@@ -73,7 +83,8 @@ export const formatCurrentWeather = (
     snowfall,
   } = current;
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
-  const { description: details } = describeCode(weather_code);
+  const weather_code = cloudCode(modelCode, cloud_cover);
+  const details = describeCode(weather_code);
   const sunrise_time = DateTime.fromISO(sunrise[0]).toSeconds();
   const sunset_time = DateTime.fromISO(sunset[0]).toSeconds();
   const next_sunrise = sunrise[1] ? DateTime.fromISO(sunrise[1]).toSeconds() : undefined;
@@ -152,15 +163,14 @@ export const formatWeeklyWeather = (
   const weeklyData = daily.time.slice(1, 8).map((date, index) => {
     const i = index + 1;
     const code = daily.weather_code[i];
-    const meta = describeCode(code);
     const dtSec = DateTime.fromISO(date).toSeconds();
     return {
       title: formatToLocalTime(dtSec, timezone, "ccc"),
       date: formatToLocalTime(dtSec, timezone, "dd LLL"),
       temp: daily.temperature_2m_max[i],
       temp_min: daily.temperature_2m_min[i],
-      icon: meta.icon,
-      details: meta.description,
+      code,
+      details: describeCode(code),
       precip_prob: daily.precipitation_probability_max?.[i] ?? 0,
       wind_max: daily.wind_speed_10m_max?.[i] ?? 0,
       wind_dir: daily.wind_direction_10m_dominant?.[i],
@@ -180,9 +190,6 @@ export const formatWeeklyWeather = (
 
 export const formatToLocalTime = (secs: number, zone: string, format: string): string =>
   DateTime.fromSeconds(secs).setZone(zone).toFormat(format);
-
-export const iconUrlFromCode = (code: string): string =>
-  `https://openweathermap.org/img/wn/${code}@4x.png`;
 
 export const tempSymbol = (units: Units): string => (units === "metric" ? "°C" : "°F");
 

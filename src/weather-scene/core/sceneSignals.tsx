@@ -26,6 +26,8 @@ export interface SceneSignals {
   warmth: number;
   /** 0..1 how much the cloud deck hides the sky. */
   overcast: number;
+  /** 0..1 how much of the frame low/mid cloud fills (UI backlight). */
+  cloudFill: number;
   /** 0..1 horizon haze / fog strength (sky overlay). */
   haze: number;
   fogDensity: number;
@@ -62,6 +64,7 @@ export function createSceneSignals(): SceneSignals {
     night: 0,
     warmth: 0,
     overcast: 0,
+    cloudFill: 0,
     haze: 0,
     fogDensity: 0.001,
     horizonColor: new Color("#c8d8e6"),

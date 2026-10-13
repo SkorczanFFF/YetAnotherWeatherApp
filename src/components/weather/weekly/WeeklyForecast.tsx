@@ -1,10 +1,10 @@
 import React from "react";
 import {
-  iconUrlFromCode,
   formatSpeed,
   toCardinal,
 } from "../../../services/weatherFormatter";
 import { DailyWeather, Units } from "../../../weather/types";
+import { WeatherIcon } from "../../icons";
 import "./WeeklyForecast.scss";
 
 interface WeeklyForecastProps {
@@ -25,12 +25,7 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
               <span className="day-date">{d.date}</span>
             </div>
             <div className="day-body">
-              <img
-                className="day-icon"
-                src={iconUrlFromCode(d.icon)}
-                alt=""
-                aria-hidden="true"
-              />
+              <WeatherIcon className="day-icon" code={d.code} tinted />
               <div className="day-temps">
                 <span className="day-hi">{`${d.temp.toFixed()}°`}</span>
                 <span className="day-lo">{`${d.temp_min.toFixed()}°`}</span>

@@ -15,7 +15,7 @@ export type Facing = "south" | "north";
 export const CAMERA_FOV = 50;
 export const CAMERA_NEAR = 0.5;
 export const CAMERA_FAR = 4000;
-export const CAMERA_PITCH = MathUtils.degToRad(16);
+export const CAMERA_PITCH = MathUtils.degToRad(22);
 /** Parallax rig looks at a point this far ahead, so translation also tilts the view a hair. */
 export const LOOK_DISTANCE = 30;
 /** Camera translation (scene units) at parallaxAmount = 1. */

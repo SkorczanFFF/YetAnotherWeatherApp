@@ -17,7 +17,8 @@ export interface DailyWeather {
   date: string;
   temp: number;
   temp_min: number;
-  icon: string;
+  /** WMO weather code (most severe of the day). */
+  code: number;
   details: string;
   precip_prob: number;
   wind_max: number;
