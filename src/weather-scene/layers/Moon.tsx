@@ -13,6 +13,7 @@ import {
 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { MOON_FRAG, MOON_VERT } from "../shaders/moon.glsl";
+import { RENDER_ORDER } from "../core/constants";
 
 const DISTANCE = 1400;
 /** Drawn ~4× the real 0.5° so it reads at phone sizes. */
@@ -79,7 +80,7 @@ export function Moon() {
   });
 
   return (
-    <mesh ref={ref} material={material} renderOrder={1} frustumCulled={false}>
+    <mesh ref={ref} material={material} renderOrder={RENDER_ORDER.moon} frustumCulled={false}>
       <planeGeometry args={[SIZE, SIZE]} />
     </mesh>
   );

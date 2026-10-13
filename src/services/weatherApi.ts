@@ -43,6 +43,43 @@ interface OpenMeteoCurrentData {
 /** Pressure levels requested for the cloud column, hPa (surface → upper troposphere). */
 export const PRESSURE_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250] as const;
 
+/** Requested `current` fields; `satisfies` keeps them inside OpenMeteoCurrentData. */
+export const CURRENT_FIELDS = [
+  "temperature_2m",
+  "apparent_temperature",
+  "relative_humidity_2m",
+  "pressure_msl",
+  "weather_code",
+  "wind_speed_10m",
+  "wind_direction_10m",
+  "is_day",
+  "cloud_cover",
+  "visibility",
+  "uv_index",
+  "dew_point_2m",
+  "precipitation",
+  "rain",
+  "showers",
+  "snowfall",
+  "cloud_cover_low",
+  "cloud_cover_mid",
+  "cloud_cover_high",
+  "wind_gusts_10m",
+  // Upper-air, stability and radiation fields for the scene's cloud physics.
+  "boundary_layer_height",
+  "cape",
+  "lifted_index",
+  "freezing_level_height",
+  "shortwave_radiation",
+  "direct_radiation",
+  "terrestrial_radiation",
+  "wind_speed_850hPa",
+  "wind_direction_850hPa",
+  "wind_speed_300hPa",
+  "wind_direction_300hPa",
+  ...PRESSURE_LEVELS.flatMap((p) => [`cloud_cover_${p}hPa`, `geopotential_height_${p}hPa`] as const),
+] satisfies (keyof OpenMeteoCurrentData)[];
+
 interface OpenMeteoHourlyData {
   time: string[];
   temperature_2m: number[];
@@ -60,6 +97,20 @@ interface OpenMeteoDailyData {
   wind_direction_10m_dominant: number[];
   uv_index_max: number[];
 }
+
+export const HOURLY_FIELDS = ["temperature_2m"] satisfies (keyof OpenMeteoHourlyData)[];
+
+export const DAILY_FIELDS = [
+  "temperature_2m_max",
+  "temperature_2m_min",
+  "weather_code",
+  "sunrise",
+  "sunset",
+  "precipitation_probability_max",
+  "wind_speed_10m_max",
+  "wind_direction_10m_dominant",
+  "uv_index_max",
+] satisfies (keyof OpenMeteoDailyData)[];
 
 export interface OpenMeteoResponse {
   latitude: number;

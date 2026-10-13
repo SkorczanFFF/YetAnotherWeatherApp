@@ -6,9 +6,10 @@ import {
   formatSpeed,
   tempSymbol,
   toCardinal,
-} from "../../../services/weatherFormatter";
-import { CLOUD_PATH, PinIcon, WeatherIcon } from "../../icons";
+} from "../../../utils/format";
+import { CLOUD_PATH, LineIcon, PinIcon, WeatherIcon } from "../../icons";
 import { WeatherData, Units } from "../../../weather/types";
+import { clamp01 } from "../../../utils/math";
 import "./CurrentWeather.scss";
 
 interface CurrentWeatherProps {
@@ -72,7 +73,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
     const sunset = weather.sunset;
     const isDaytime = now >= sunrise && now < sunset;
     if (isDaytime) {
-      const t = Math.max(0, Math.min(1, (now - sunrise) / (sunset - sunrise || 1)));
+      const t = clamp01((now - sunrise) / (sunset - sunrise || 1));
       return {
         mode: "day" as const,
         leftLabel: "Sunrise",
@@ -89,7 +90,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
       ? (weather.next_sunrise ?? sunrise + DAY_SECONDS)
       : sunrise;
     const span = end - start || 1;
-    const t = Math.max(0, Math.min(1, (now - start) / span));
+    const t = clamp01((now - start) / span);
     return {
       mode: "night" as const,
       leftLabel: "Sunset",
@@ -157,74 +158,74 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
 
         <div className="stats">
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d="M3 8h10a3 3 0 1 0-3-3" /><path d="M3 12h15a3 3 0 1 1-3 3" /><path d="M3 16h8" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Wind</span>
               <span className="value">{formatted.wind}<span className="u"> {formatted.windDir}</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Humidity</span>
               <span className="value">{formatted.humidity}<span className="u">%</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Pressure</span>
               <span className="value">{formatted.pressure}<span className="u"> hPa</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <circle cx="12" cy="12" r="4" />
               <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">UV index</span>
               <span className="value">{formatted.uv}<span className="u"> {formatted.uvLabel}</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Visibility</span>
               <span className="value">{formatted.visibility}<span className="u"> km</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d={CLOUD_PATH} />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Cloud cover</span>
               <span className="value">{formatted.cloudCover}<span className="u">%</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d="M6 14a6 6 0 0 1 12 0" />
               <path d="M12 18v3" /><path d="M8 19l-1 2" /><path d="M16 19l1 2" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Precip.</span>
               <span className="value">{formatted.precip}<span className="u"> mm</span></span>
             </div>
           </div>
           <div className="stat">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <LineIcon className="icon">
               <path d="M4 14h16" /><path d="M7 14a5 5 0 0 1 10 0" /><path d="M12 4v4" /><path d="m9 6 3-3 3 3" />
-            </svg>
+            </LineIcon>
             <div className="info">
               <span className="label">Dew point</span>
               <span className="value">{formatted.dew}</span>

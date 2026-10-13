@@ -1,0 +1,18 @@
+// Layout breakpoints and shared text recipes (colours live as CSS custom
+// properties in index.scss).
+$bp-tablet: 720px;
+$bp-phone: 440px;
+
+@mixin below($bp) {
+  @media (max-width: $bp) {
+    @content;
+  }
+}
+
+// Small uppercase label in Geist Mono; colour is up to the caller.
+@mixin mono-label($size: 11px, $spacing: 0.06em) {
+  font-family: var(--font-mono);
+  font-size: $size;
+  letter-spacing: $spacing;
+  text-transform: uppercase;
+}

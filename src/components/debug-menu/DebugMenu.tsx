@@ -4,14 +4,17 @@ import { DateTime } from "luxon";
 import {
   type Auto,
   type QualityTier,
+  type BoolOverrideKey,
   type SceneOverrides,
   type SceneParams,
   getFrostAmount,
+  QUALITY_TIERS,
 } from "../../weather/sceneParams";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
-import { toCardinal } from "../../services/weatherFormatter";
+import { toCardinal } from "../../utils/format";
+import { CloseIcon, LineIcon } from "../icons";
 import "./DebugMenu.scss";
 
 export interface DebugTools {
@@ -33,11 +36,10 @@ interface DebugMenuProps {
 }
 
 const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
-const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", "potato", "low", "medium", "high"];
+const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", ...QUALITY_TIERS];
 /** Keys a preset owns — "Auto" preset clears exactly these. */
 const PRESET_KEYS = Object.keys(WEATHER_PRESETS[0].overrides) as (keyof SceneOverrides)[];
 
-type BoolKey = "drizzle" | "freezing" | "showers" | "hail" | "grains" | "thunder" | "rime";
 
 function numericOrAuto(v: string): number | "auto" {
   if (v === "") return "auto";
@@ -96,7 +98,7 @@ function NumericField({ label, field, step, min, max, current, half = true, over
 
 interface FlagChipProps {
   label: string;
-  field: BoolKey;
+  field: BoolOverrideKey;
   effective: boolean;
   overrides: SceneOverrides;
   onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
@@ -185,15 +187,13 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
           <h2>Debug panel</h2>
           <div className="debug-menu-header-actions">
             <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto" aria-label="Reset all to auto">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <LineIcon strokeWidth={2}>
                 <path d="M4 12a8 8 0 1 0 2.3-5.6" />
                 <path d="M4 4v4h4" />
-              </svg>
+              </LineIcon>
             </button>
             <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close" aria-label="Close debug menu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M6 6l12 12M18 6 6 18" />
-              </svg>
+              <CloseIcon />
             </button>
           </div>
         </div>
@@ -279,7 +279,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
               {e.cloudPhysics.opticalDepthMeasured ? " (radiation)" : " (estimated)"} · convection {Math.round(e.cloudPhysics.convection * 100)}%
               {e.cloudPhysics.liftedIndex != null && ` · LI ${fmt(e.cloudPhysics.liftedIndex)}`}
               {e.cloudPhysics.boundaryLayerM != null && ` · BL ${fmt(e.cloudPhysics.boundaryLayerM, 0)} m`}
-              {e.cloudPhysics.freezingLevelM != null && ` · 0 °C at ${fmt(e.cloudPhysics.freezingLevelM, 0)} m`}
+              {` · 0 °C at ${fmt(e.cloudPhysics.freezingLevelM, 0)} m`}
               {e.cloudPhysics.directFraction != null && ` · sun through clouds ${Math.round(e.cloudPhysics.directFraction * 100)}%`}
               {` · frost ${Math.round(getFrostAmount(e) * 100)}%`}
             </div>

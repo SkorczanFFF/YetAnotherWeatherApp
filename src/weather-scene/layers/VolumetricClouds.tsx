@@ -19,6 +19,7 @@ import {
   type WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
+import { deckCover } from "../../weather/cloudPhysics";
 import type { SceneParams } from "../../weather/sceneParams";
 import type { VolumetricBudget } from "../core/quality";
 import { useSceneSignals } from "../core/sceneSignals";
@@ -36,6 +37,8 @@ import {
   CLOUD_RESOLVE_FRAG,
   VOLUMETRIC_FRAG,
 } from "../shaders/volumetricClouds.glsl";
+import { MAX_DT, RENDER_ORDER } from "../core/constants";
+import { CLOUD_MOON, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../core/palette";
 
 interface VolumetricCloudsProps {
   params: SceneParams;
@@ -128,17 +131,11 @@ const SHELL_EASE = 3;
  */
 const FEATURE_REF_M = 1200;
 const MIN_FEATURE_SCALE = 0.2;
-const SHELL_KEYS = [
-  "coverage",
-  "type",
-  "thickness",
-  "base",
-  "density",
-  "featureScale",
-  "high",
-  "cirrusAlt",
-  "freezeAlt",
-] as const satisfies readonly (keyof ShellTargets)[];
+/** Eased fields; one missing here would silently freeze, so the Record makes it a type error. */
+const SHELL_KEY_SET = {
+  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
+} satisfies Record<keyof ShellTargets, 1>;
+const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
 
 function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
@@ -149,7 +146,6 @@ function shellTargets(params: SceneParams): ShellTargets {
   const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3) && p.convection < 0.5;
   let base = midDominant ? p.midAltM - 350 : p.baseM;
   const top = midDominant ? p.midAltM + 450 : p.topM;
-  if (params.fog.visibilityM < 800) base = Math.min(base, 150);
   const thickness = MathUtils.clamp(top - base, 80, 12000);
   const conv = p.convection;
   const type = params.thunder
@@ -162,11 +158,7 @@ function shellTargets(params: SceneParams): ShellTargets {
   return {
     // The shell is the low/mid cloud; high cover is the cirrus layer, not
     // cumulus. Total cover only stands in when no layer explains it.
-    coverage: MathUtils.clamp(
-      Math.max(low, mid * 0.85, low + mid + high < 0.05 ? total : 0),
-      0,
-      1,
-    ),
+    coverage: MathUtils.clamp(Math.max(deckCover(params.clouds), low + mid + high < 0.05 ? total : 0), 0, 1),
     type,
     thickness,
     base,
@@ -174,13 +166,10 @@ function shellTargets(params: SceneParams): ShellTargets {
     featureScale: MathUtils.clamp((base + thickness * 0.5) / FEATURE_REF_M, MIN_FEATURE_SCALE, 1),
     high,
     cirrusAlt: p.highAltM,
-    freezeAlt: p.freezingLevelM ?? 3000,
+    freezeAlt: p.freezingLevelM,
   };
 }
 
-const SUN_LOW = new Color("#ff5f2e");
-const SUN_HIGH = new Color("#fff3e4");
-const MOON_LIGHT = new Color("#a9bedf");
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
 
 /**
@@ -348,12 +337,13 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     // Weather/debug changes morph the shell over about a second instead of
     // snapping; the resolve's variance clipping keeps that free of ghosts.
     const sh = (st.shell ??= { ...targetsWanted });
-    const dt = Math.min(delta, 0.1);
+    const dt = Math.min(delta, MAX_DT);
     for (const key of SHELL_KEYS) sh[key] = MathUtils.damp(sh[key], targetsWanted[key], SHELL_EASE, dt);
     const drift = (CLOUD_TIMELAPSE * dt) / sh.featureScale;
     st.windNoise.x += s.windVelocityLow.x * drift;
     st.windNoise.y += s.windVelocityLow.z * drift;
 
+    // Below the shader's own cut-offs (cover fades in over 0..0.05, cirrus is skipped under 0.01).
     const empty = sh.coverage < 0.015 && sh.high < 0.01;
     mesh.visible = !empty;
     if (empty) {
@@ -408,12 +398,12 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       const relAz = Math.atan2(s.sunDir.x, -s.sunDir.z);
       directionFromRelative(relAz, s.sunAlt, u.uLightDir.value as Vector3);
       lightColor
-        .copy(SUN_LOW)
-        .lerp(SUN_HIGH, MathUtils.smoothstep(sunAltDeg, -3, 22))
+        .copy(CLOUD_SUN_LOW)
+        .lerp(CLOUD_SUN_HIGH, MathUtils.smoothstep(sunAltDeg, -3, 22))
         .multiplyScalar(1.3 * sunVis);
     } else {
       (u.uLightDir.value as Vector3).copy(s.moonDir);
-      lightColor.copy(MOON_LIGHT).multiplyScalar(s.moonIntensity * 1.4);
+      lightColor.copy(CLOUD_MOON).multiplyScalar(s.moonIntensity * 1.4);
     }
     // Thick storm towers starve their own bases of light.
     const gloom = params.thunder ? 0.5 : params.precip.rainMmH > 4 ? 0.3 : 0;
@@ -464,7 +454,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   });
 
   return (
-    <mesh ref={meshRef} material={composite} renderOrder={2} frustumCulled={false}>
+    <mesh ref={meshRef} material={composite} renderOrder={RENDER_ORDER.clouds} frustumCulled={false}>
       <planeGeometry args={[2, 2]} />
     </mesh>
   );

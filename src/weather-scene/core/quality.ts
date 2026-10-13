@@ -1,4 +1,4 @@
-import type { QualityTier } from "../../weather/sceneParams";
+import { QUALITY_TIERS, type QualityTier } from "../../weather/sceneParams";
 
 // Per-tier budgets. The initial tier comes from useIsMobile; drei's
 // <PerformanceMonitor> steps it down when the frame rate can't hold the cap,
@@ -79,7 +79,5 @@ export function initialTier(isMobile: boolean): QualityTier {
 }
 
 export function lowerTier(tier: QualityTier): QualityTier {
-  if (tier === "high") return "medium";
-  if (tier === "medium") return "low";
-  return "potato";
+  return QUALITY_TIERS[Math.max(0, QUALITY_TIERS.indexOf(tier) - 1)];
 }

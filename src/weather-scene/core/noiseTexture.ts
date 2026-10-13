@@ -2,6 +2,7 @@ import {
   DataTexture,
   LinearFilter,
   LinearMipMapLinearFilter,
+  MathUtils,
   RedFormat,
   RepeatWrapping,
   UnsignedByteType,
@@ -74,7 +75,7 @@ export function getCloudNoiseTexture(): DataTexture {
       const fx = (x / TEX_SIZE) * BASE_PERIOD;
       const fy = (y / TEX_SIZE) * BASE_PERIOD;
       const v = fbm(fx, fy, OCTAVES);
-      data[y * TEX_SIZE + x] = Math.max(0, Math.min(255, Math.floor(v * 255)));
+      data[y * TEX_SIZE + x] = MathUtils.clamp(Math.floor(v * 255), 0, 255);
     }
   }
   const tex = new DataTexture(

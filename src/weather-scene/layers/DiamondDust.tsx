@@ -3,6 +3,7 @@ import { Sparkles } from "@react-three/drei";
 import type { Material, Points } from "three";
 import type { SceneParams } from "../../weather/sceneParams";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
+import { RENDER_ORDER } from "../core/constants";
 
 interface DiamondDustProps {
   params: SceneParams;
@@ -59,7 +60,7 @@ export function DiamondDust({ params, frame, count }: DiamondDustProps) {
       opacity={1}
       color="#ffffff"
       noise={0.6}
-      renderOrder={6}
+      renderOrder={RENDER_ORDER.diamondDust}
     />
   );
 }

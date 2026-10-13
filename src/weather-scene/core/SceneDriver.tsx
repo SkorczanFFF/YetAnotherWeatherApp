@@ -13,6 +13,23 @@ import {
   relativeAzimuth,
   windVelocity,
 } from "./worldFrame";
+import { MAX_DT } from "./constants";
+import {
+  DAY_HAZE,
+  GROUND_DAY,
+  GROUND_NIGHT,
+  HAZE_OVERCAST_DAY,
+  HAZE_OVERCAST_NIGHT,
+  HEAT_HAZE,
+  HEMI_DAY,
+  HEMI_NIGHT,
+  HEMI_OVERCAST,
+  NIGHT_HAZE,
+  RIME_FOG,
+  SUN_HIGH,
+  SUN_LOW,
+  TWILIGHT,
+} from "./palette";
 
 interface SceneDriverProps {
   params: SceneParams;
@@ -23,22 +40,6 @@ interface SceneDriverProps {
 const CELESTIAL_INTERVAL = 1000;
 /** Any azimuth up to ±135° from straight ahead is squeezed into 80 % of the half-frame. */
 const AZ_SQUEEZE_RANGE = 135 * MathUtils.DEG2RAD;
-
-// Palette (sRGB hex → linear via Color).
-const DAY_HAZE = new Color("#c8d8e6");
-const TWILIGHT = new Color("#eda476");
-const NIGHT_HAZE = new Color("#141c30");
-const OVERCAST_DAY = new Color("#a3abb5");
-const OVERCAST_NIGHT = new Color("#1b1f28");
-const RIME_FOG = new Color("#e2e8ef");
-const HEAT_HAZE = new Color("#dccdb0");
-const SUN_LOW = new Color("#ff8f4d");
-const SUN_HIGH = new Color("#fff3df");
-const HEMI_DAY = new Color("#a9c6e8");
-const HEMI_NIGHT = new Color("#1c2740");
-const HEMI_OVERCAST = new Color("#8f98a3");
-const GROUND_DAY = new Color("#5b5a55");
-const GROUND_NIGHT = new Color("#0d1018");
 
 const smoothstep = MathUtils.smoothstep;
 
@@ -132,8 +133,8 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     horizon.lerp(NIGHT_HAZE, s.night);
     if (heat > 0) horizon.lerp(HEAT_HAZE, heat * 0.5 * s.day);
     const overcastTint = scratch.current
-      .copy(OVERCAST_DAY)
-      .lerp(OVERCAST_NIGHT, s.night);
+      .copy(HAZE_OVERCAST_DAY)
+      .lerp(HAZE_OVERCAST_NIGHT, s.night);
     horizon.lerp(overcastTint, s.overcast * 0.85);
     if (fog.rime) horizon.lerp(RIME_FOG, 0.6 * (1 - s.night * 0.85));
     // Under a storm the light at the horizon is dim too.
@@ -159,7 +160,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       speedMs + (gustMs - speedMs) * Math.min(1, gustEnvelope(t)),
     );
     windVelocity(fromDeg, speed, facing, s.windVelocity);
-    const dt = Math.min(delta, 0.1);
+    const dt = Math.min(delta, MAX_DT);
 
     // Clouds ride the winds aloft, not the surface wind (cloudPhysics.ts).
     const { windLow, windHigh } = params.cloudPhysics;

@@ -27,7 +27,7 @@ WeatherQuery {q | lat,lon}
                        at PRESSURE_LEVELS; hourly; daily)
       → weatherFormatter.ts → WeatherData { current, atmosphere?, daily[], hourly[] }
   → weather/sceneParams.ts: mapToSceneParams(weather, units, overrides)
-      SI units (m/s, °C, mm/h, cm/h, m); WMO traits via getCodeTraits() (+ codes.ts);
+      SI units (m/s, °C, mm/h, cm/h, m; units.ts); WMO traits from codes.ts::codeInfo();
       continuous values only — no time-of-day phases; merges SceneOverrides ("auto" = pass through)
       → weather/cloudPhysics.ts: deriveCloudPhysics() → params.cloudPhysics
         (base, top, layer heights, optical depth, convection, winds aloft)
@@ -43,12 +43,14 @@ WeatherQuery {q | lat,lon}
 ```
 src/
   App.tsx                       top-level state + debug entry (F7, or 5 taps on the footer status)
-  services/                     weatherService, weatherApi, geocoder, weatherFormatter
+  services/                     weatherService, weatherApi (+ requested field lists), geocoder, weatherFormatter (API → WeatherData)
+  utils/                        format.ts (display: times, °, speeds, compass, coords), math.ts (clamp, smoothstep, lerp)
   weather/
     sceneParams.ts              WeatherData + units + SceneOverrides → SceneParams; getFrostAmount
     cloudPhysics.ts             API atmosphere → cloud base/top/τ/convection/winds aloft (with fallbacks)
     scenePresets.ts             debug presets — one per weather-catalogue row
-    codes.ts                    WMO → EffectType/intensity, cloud cover fallback
+    codes.ts                    the WMO table: label, kind, intensity, flags, cover fallback (scene, labels, icons)
+    units.ts                    metric/imperial: API unit names, labels, conversions to SI
     types.ts                    API/domain types
   components/                   UI (navbar, map-picker, cards, loader, debug-menu, weather-scene container)
   weather-scene/
@@ -60,6 +62,8 @@ src/
       SceneDriver.tsx           clock, suncalc (real + display directions), light/fog colours, gusts
       UiBacklight.tsx           scene brightness → `--scene-light` CSS var on <html> (drives the glass UI)
       quality.ts                low / medium / high budgets
+      constants.ts              RENDER_ORDER, TONE_EXPOSURE, MAX_DT
+      palette.ts                every scene colour (haze, sun, ambient, sky veil, cloud light)
       CameraRig.tsx             static camera + subtle parallax (gyro / pointer); LOOK_TARGET
       FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
       noiseTexture.ts           module-scoped tileable FBM 256×256 singleton
@@ -75,7 +79,7 @@ src/
       DiamondDust.tsx           drei <Sparkles> at ≤ −10 °C, clear and humid
       FrostGlass.tsx            procedural frosted pane (shaders/frost), grows 0 → −20 °C
       FogLayer.tsx              scene FogExp2, mounted only with the potato-tier deck (its one user)
-    shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck, cloudNoise, volumetricClouds)
+    shaders/                    GLSL strings (skyGrade, stars, moon, cloudDeck, cloudNoise, volumetricClouds); chunks.glsl.ts = shared helpers
     debug/                      PerfProbe + perfStats (renderer.info)
 ```
 
@@ -108,7 +112,7 @@ Mount order in `SceneRoot` is load-bearing (R3F runs useFrame callbacks in subsc
 7. **`<Precipitation>`** (4) → **`<Thunder>`** bolt (5, top at the cloud base) → **`<DiamondDust>`** (6) → **`<FrostGlass>`** (30).
 8. Debug: `<PerfProbe>` + three drei `<Stats>`.
 
-`<Canvas>`: `camera={{ position: [0, 0, 0], fov: 50, near: 0.5, far: 4000 }}`, `dpr={[1, budget.dprMax]}`, `gl={{ alpha: false, antialias: !isMobile }}`, `toneMappingExposure = 0.5` (set in `onCreated`, tuned for Preetham).
+`<Canvas>`: `camera={{ position: [0, 0, 0], fov: 50, near: 0.5, far: 4000 }}`, `dpr={[1, budget.dprMax]}`, `gl={{ alpha: false, antialias: !isMobile }}`, `toneMappingExposure = TONE_EXPOSURE` (0.5, set in `onCreated`, tuned for Preetham).
 
 ## Quality tiers
 
@@ -140,7 +144,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **Never sRGB-encode premultiplied colour.** The cloud target is premultiplied; encoding it directly inflates thin edges (sRGB's linear toe is ×12.92) and draws white outlines around every cloud. The composite divides by alpha first, then tone-maps/encodes, then normal-blends.
 - **`gl.render()` inside `useFrame` resets `renderer.info`.** `PerfProbe` disables auto-reset and resets once per frame, so the readout covers the cloud pass + the main render.
 - **Headless/software GL (SwiftShader) runs the scene at ~3–10 fps**, so `PerformanceMonitor` drops straight to `potato` — pin the tier in the debug menu when taking screenshots. The 128³ noise also takes seconds there (milliseconds on a real GPU).
-- **The current weather_code and cloud_cover disagree by design.** Open-Meteo's 15-min `current.weather_code` is the step of the hour ending at the next full hour, `cloud_cover` is interpolated between hours (11:15: "Mainly clear" next to 66 %). `weatherFormatter.ts::cloudCode()` re-derives pure cloud codes 0–3 from the shown cover with Open-Meteo's thresholds (< 20 / 50 / 80 %); fog, precipitation and storm codes stay. The scene never read the code for clouds (only `cloud_cover*`), so this only aligns the label and icon.
+- **The current weather_code and cloud_cover disagree by design.** Open-Meteo's 15-min `current.weather_code` is the step of the hour ending at the next full hour, `cloud_cover` is interpolated between hours (11:15: "Mainly clear" next to 66 %). `codes.ts::codeForCover()` re-derives pure cloud codes 0–3 from the shown cover with Open-Meteo's thresholds (< 20 / 50 / 80 %); fog, precipitation and storm codes stay. The scene never read the code for clouds (only `cloud_cover*`), so this only aligns the label and icon.
 - **`signals.overcast` vs `signals.cloudFill`.** `overcast` (greys the sky and horizon, overcast ambient, hides stars/moon) starts only at 80 % low / 85 % mid cover — the gaps of a broken deck are blue; at 55 % it turned a 76 % "partly cloudy" frame uniformly grey. `cloudFill` (from 55 %) feeds only `<UiBacklight>`: the frame never shows the zenith (it spans −3°…+47°), so a broken deck already fills most of it with bright cloud.
 - **`SceneErrorBoundary` in `WeatherSceneContainer` silently renders `null`** on error. If the 3D scene vanishes in dev, open DevTools.
 
@@ -149,7 +153,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **Liquid glass** = `@include liquid-glass` from `src/styles/_glass.scss` (hero, hourly, forecast tiles, navbar controls, footer pill, loaders). It is adaptive: `--scene-light` (0 night … 1 white overcast/fog at noon, eased and written by `<UiBacklight>` from `signals.cloudFill` + haze, fallback 0.4 in `:root`) darkens the backdrop (`brightness()`), thickens a smoke tint, firms up `--fg-dim/mute/faint` + `--stroke`, and fades in a text halo on `.shell`. Hover/active raise `--glass-lift` (registered via `@property`, non-inherited) instead of replacing `background`, which would drop the tint. Blur is `--glass-blur` (16 px, 12 px ≤ 720 px).
 - **Cursor reveal** (Fluent-style) on every boxed UI element: `@include glass-reveal` (liquid glass includes it; buttons, the map drawer and its controls, debug buttons and the error box use it alone). It sets `--glass-spot: 1` (registered non-inherited); `styles/useGlassSpotlight.ts` (called in `App`) collects those elements across the page (skipping the canvas and Leaflet's map pane), and once per frame writes `--mx`/`--my` to every one within 160 px (`$glass-reveal`) of the cursor, hovered or not, parking the rest off-screen. The mixin's `::after` is a masked 1.5 px ring inside the border lit at that point — so edges light up even from the gap between two cards — and `:hover` fades `--glass-glow` in (liquid glass also gets an inner glow). The mixin owns `::after` and sets `position: relative` (pass `null` for elements that are already absolute/fixed); components use `::before` for their own decoration. A component with its own `transition` list must add `--glass-glow` to it. Replaced elements (input, select, img) can't carry it. Mouse only.
 - Full-height overlays (map drawer, debug menu) use `100dvh` after a `100vh` fallback: on mobile `100vh` is the height with the browser bars hidden, which put the map's confirm button off-screen. Under 440 px the map drawer is a full-width sheet. The brand is the v1 two-line logo everywhere (underlined `YET ANOTHER` over `WEATHER APP`; `DEBUG` / `MODE` in debug).
-- Shared SVG icons live in `components/icons.tsx` (`PinIcon`, `PIN_PATH`, `CLOUD_PATH`, `WeatherIcon`). `WeatherIcon` is the one weather-code → icon mapping (hero + forecast tiles; `tinted` puts sun/moon/bolt in `--accent-warm`): sky state with day/night, sun/moon cut out behind clouds with a mask, precipitation marks by type, count by intensity. Scaled shapes divide their stroke by the scale — `non-scaling-stroke` would pin it to screen pixels. No remote icons (the forecast used to hotlink OpenWeatherMap PNGs). The °C/°F symbol comes from `weatherFormatter.ts::tempSymbol()`. No icon library.
+- Shared SVG icons live in `components/icons.tsx` (`PinIcon`, `PIN_PATH`, `CLOUD_PATH`, `WeatherIcon`). `WeatherIcon` is the one weather-code → icon mapping (hero + forecast tiles; `tinted` puts sun/moon/bolt in `--accent-warm`): sky state with day/night, sun/moon cut out behind clouds with a mask, precipitation marks by type, count by intensity. Scaled shapes divide their stroke by the scale — `non-scaling-stroke` would pin it to screen pixels. No remote icons (the forecast used to hotlink OpenWeatherMap PNGs). `LineIcon` carries the shared outline-SVG attributes; `CloseIcon` is the one ✕. The °C/°F symbol comes from `utils/format.ts::tempSymbol()` (`weather/units.ts` underneath). No icon library.
 - Small labels use `font-family: var(--font-mono)` uppercase 10–11 px with positive letter-spacing; body and temperatures use `var(--font-sans)` (Chakra Petch).
 - Footer is a 2-row block inside `.stack`: top row `[status] … [attrib]`, bottom row centres the SkorczanFFF GitHub pill.
 - Hero sun/moon arc uses `preserveAspectRatio="none"` + `vector-effect: non-scaling-stroke`. Progress via a `<clipPath>` rect, not `stroke-dasharray` (which doesn't normalise correctly under those settings).
@@ -162,7 +166,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **F7** toggles the menu (on phones: 5 quick taps on the footer "Open-Meteo · Live data" status). Key handlers ignore inputs/textareas.
 - **Presets** (`weather/scenePresets.ts`) pin every weather key, one per catalogue row (clear → hailstorm, fog, rime, sleet, blizzard, diamond dust, heat, gale…). "auto" clears exactly those keys.
 - Time: local-hour slider (location timezone) + date; a pinned time stops the live clock. The readout shows sun altitude and moon phase.
-- Every override is a literal or `"auto"`. `isOverridesDirty()` (in `sceneParams.ts`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS` — add new keys there.
+- Every override is a literal or `"auto"`. `isOverridesDirty()` (in `sceneParams.ts`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS`, derived from `OVERRIDE_KEY_SET` (a `Record<keyof SceneOverrides, 1>`, so a missing key is a type error).
 - Auto-bumps in `applyOverrides`: precipitation *pinned in the menu* raises low cloud (≥ 0.85; showers ≥ 0.6; thunder ≥ 0.95) — measured weather keeps the model's cover, with only a floor in `fromWeather` (0.25 under rain/snow codes, 0.35 under thunder), so pinning e.g. the time never changes the clouds; thunder/hail without a rate bring 6 mm/h rain; rime caps visibility at 400 m.
 - Cloud physics row: base m / top m / CAPE / τ overrides (τ "auto" = estimated once the sky is pinned), plus a readout of the derived physics, winds aloft and frost %.
 - Tools: quality tier pin, perf readout (fps, draw calls, triangles, points, tier), ⚡ force lightning (works without a storm).
@@ -170,10 +174,12 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 ## Conventions
 
 - Files use named exports, except `WeatherSceneContainer`, `DebugMenu` and `App`, which default-export.
-- New scene input: add it to `SceneParams` (+ `DEFAULT_PARAMS`, `fromWeather`), add a `SceneOverrides` key + `OVERRIDE_KEYS` entry + `applyOverrides` line, add it to `CALM` in `scenePresets.ts` if it describes weather, and to the catalogue in `SCENE_REFACTOR.md`.
+- New scene input: add it to `SceneParams` (+ `DEFAULT_PARAMS`, `fromWeather`), add a `SceneOverrides` key + `OVERRIDE_KEY_SET` entry + `applyOverrides` line, add it to `CALM` in `scenePresets.ts` if it describes weather, and to the catalogue in `SCENE_REFACTOR.md`.
 - Per-frame values go through `SceneSignals` (written once in `SceneDriver`), not React state. No allocations in `useFrame` — use refs/scratch objects.
 - Materials, geometries and textures created in `useMemo` are disposed in an effect cleanup.
-- Wind compass labels come from `services/weatherFormatter.ts::toCardinal()`. Don't duplicate.
+- Display formatting (times in the location zone, degrees, speeds, compass labels, coordinates, GMT offset) lives in `utils/format.ts`. Don't duplicate.
+- Layer draw order comes from `core/constants.ts::RENDER_ORDER`, scene colours from `core/palette.ts`, the frame delta cap from `MAX_DT`.
+- SCSS: breakpoints via `@include below($bp-tablet | $bp-phone)` and small labels via `@include mono-label(size, spacing)` from `styles/_tokens.scss`; accent tints are `color-mix(in oklch, var(--accent-warm) N%, transparent)`, never a copied OKLCH literal.
 
 ## Things that are NOT bugs
 

@@ -6,6 +6,7 @@ import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { FROST_FRAG } from "../shaders/frost.glsl";
 import { fullscreenVert } from "../shaders/fullscreen.glsl";
+import { MAX_DT, RENDER_ORDER } from "../core/constants";
 
 interface FrostGlassProps {
   params: SceneParams;
@@ -57,7 +58,7 @@ export function FrostGlass({ params }: FrostGlassProps) {
   useFrame((_state, delta) => {
     const mesh = ref.current;
     if (!mesh) return;
-    const dt = Math.min(delta, 0.1);
+    const dt = Math.min(delta, MAX_DT);
     const diff = target - amount.current;
     const step = (diff > 0 ? GROW_RATE : MELT_RATE) * dt;
     amount.current += Math.sign(diff) * Math.min(Math.abs(diff), step);
@@ -70,7 +71,7 @@ export function FrostGlass({ params }: FrostGlassProps) {
   });
 
   return (
-    <mesh ref={ref} material={material} renderOrder={30} frustumCulled={false}>
+    <mesh ref={ref} material={material} renderOrder={RENDER_ORDER.frost} frustumCulled={false}>
       <planeGeometry args={[2, 2]} />
     </mesh>
   );

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
-import { DateTime } from "luxon";
 import { HourlyForecast, Units } from "../../../weather/types";
-import { tempSymbol } from "../../../services/weatherFormatter";
+import { formatDegrees, formatToLocalTime, tempSymbol } from "../../../utils/format";
 import "./HourlyChart.scss";
 
 interface HourlyChartProps {
@@ -70,8 +69,8 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
         >
           <defs>
             <linearGradient id="tempgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.82 0.14 62)" stopOpacity="0.38" />
-              <stop offset="100%" stopColor="oklch(0.82 0.14 62)" stopOpacity="0" />
+              <stop offset="0%" style={{ stopColor: "var(--accent-warm)" }} stopOpacity="0.38" />
+              <stop offset="100%" style={{ stopColor: "var(--accent-warm)" }} stopOpacity="0" />
             </linearGradient>
           </defs>
           {chart.grid.map((y, i) => (
@@ -96,7 +95,7 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
                 style={{ left: `${p.xPct}%`, top: `${p.yPct}%` }}
               >
                 <span className="chart-pt-label">
-                  {Math.round(p.temp)}°
+                  {formatDegrees(p.temp)}
                 </span>
                 <span className="chart-dot" />
               </div>
@@ -108,7 +107,7 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
               className="chart-hr"
               style={{ left: `${p.xPct}%` }}
             >
-              {DateTime.fromSeconds(p.time).setZone(timezone).toFormat("HH")}
+              {formatToLocalTime(p.time, timezone, "HH")}
             </span>
           ))}
         </div>

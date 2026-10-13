@@ -1,4 +1,5 @@
 @use "../../styles/glass" as *;
+@use "../../styles/tokens" as *;
 
 .topbar {
   --search-h: 42px;
@@ -12,11 +13,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.08em;
+    @include mono-label(12px, 0.08em);
     color: var(--fg-dim);
-    text-transform: uppercase;
     text-decoration: none;
     transition: color 0.2s;
 
@@ -204,7 +202,7 @@
   .topbar .unit-toggle[aria-busy="true"] button.on { animation: none; }
 }
 
-@media (max-width: 720px) {
+@include below($bp-tablet) {
   .topbar {
     --search-h: 44px;
 

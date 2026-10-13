@@ -1,4 +1,5 @@
 @use "../../styles/glass" as *;
+@use "../../styles/tokens" as *;
 
 .map-picker-backdrop {
   position: fixed;
@@ -15,8 +16,8 @@
   border: 0;
   padding: 0;
   background: oklch(0 0 0 / 0.32);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.25s ease-out;
@@ -29,8 +30,6 @@
   position: fixed;
   top: 0;
   right: 0;
-  min-width: 385px;
-  max-width: 800px;
   // Dynamic viewport: on mobile 100vh is the height with the browser bars
   // hidden, which pushed the confirm button below the visible area.
   height: 100vh;
@@ -148,11 +147,8 @@
   h2 {
     margin: 0;
     flex: 1;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    @include mono-label(11px, 0.12em);
     font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
     color: var(--fg-dim);
   }
 }
@@ -307,11 +303,8 @@
   justify-content: center;
   gap: 8px;
   padding: 11px 18px;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  @include mono-label(11px, 0.12em);
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--fg);
   background: var(--accent-warm);
   border: 1px solid var(--accent-warm);
@@ -326,8 +319,8 @@
   }
 
   &:hover:not(:disabled) {
-    background: oklch(0.86 0.16 62);
-    border-color: oklch(0.86 0.16 62);
+    background: var(--accent-warm-hover);
+    border-color: var(--accent-warm-hover);
   }
 
   &:disabled {
@@ -338,7 +331,7 @@
   }
 }
 
-@media (max-width: 440px) {
+@include below($bp-phone) {
   // Full-width sheet: the 385 px drawer overflowed narrow phones, and the
   // resize handle is mouse-only anyway.
   .map-picker-drawer {

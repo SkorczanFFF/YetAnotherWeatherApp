@@ -1,26 +1,14 @@
 /** Orchestrator: geocode → fetch → format → WeatherData. */
 
 import type { Units, WeatherData, WeatherQuery } from "../weather/types";
+import { UNITS } from "../weather/units";
 import { WeatherError } from "./errors";
 import { geocodeCity, reverseGeocode } from "./geocoder";
-import { getForecast, PRESSURE_LEVELS } from "./weatherApi";
+import { CURRENT_FIELDS, DAILY_FIELDS, getForecast, HOURLY_FIELDS } from "./weatherApi";
 import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
 
-/** Upper-air, stability and radiation fields for the scene's cloud physics. */
-const ATMOSPHERE_FIELDS = [
-  "boundary_layer_height",
-  "cape",
-  "lifted_index",
-  "freezing_level_height",
-  "shortwave_radiation",
-  "direct_radiation",
-  "terrestrial_radiation",
-  "wind_speed_850hPa",
-  "wind_direction_850hPa",
-  "wind_speed_300hPa",
-  "wind_direction_300hPa",
-  ...PRESSURE_LEVELS.flatMap((p) => [`cloud_cover_${p}hPa`, `geopotential_height_${p}hPa`]),
-].join(",");
+/** Forecast tiles after today. */
+const FORECAST_DAYS = 6;
 
 const getFormattedWeatherData = async (
   searchParams: WeatherQuery & { units: Units },
@@ -60,28 +48,19 @@ const getFormattedWeatherData = async (
     }
   }
 
-  let temperature_unit = "celsius";
-  let wind_speed_unit = "kmh";
-  if (searchParams.units === "imperial") {
-    temperature_unit = "fahrenheit";
-    wind_speed_unit = "mph";
-  }
-
+  const { temperatureApi, windApi } = UNITS[searchParams.units];
   const data = await getForecast({
     latitude: lat,
     longitude: lon,
     timezone: "auto",
-    temperature_unit,
-    wind_speed_unit,
-    current:
-      "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation,rain,showers,snowfall,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_gusts_10m," +
-      ATMOSPHERE_FIELDS,
-    hourly: "temperature_2m",
-    daily:
-      "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max",
+    temperature_unit: temperatureApi,
+    wind_speed_unit: windApi,
+    current: CURRENT_FIELDS.join(","),
+    hourly: HOURLY_FIELDS.join(","),
+    daily: DAILY_FIELDS.join(","),
     // From the current hour: 12 upcoming points + slack until the next refresh.
     forecast_hours: 14,
-    forecast_days: 8,
+    forecast_days: FORECAST_DAYS + 1,
   });
 
   const formattedCurrentWeather = formatCurrentWeather(

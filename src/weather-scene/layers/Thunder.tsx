@@ -5,6 +5,7 @@ import { type Group, MathUtils, Vector3 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
 import { METRES_PER_UNIT } from "../core/worldFrame";
+import { RENDER_ORDER } from "../core/constants";
 
 /** Bolt top in scene units: just inside the cloud base from the cloud physics. */
 const boltTopY = (cloudBaseM: number) => (Math.max(300, cloudBaseM) * 1.05) / METRES_PER_UNIT;
@@ -127,7 +128,7 @@ export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: Thunder
   if (!bolt) return null;
 
   return (
-    <group ref={group} renderOrder={5}>
+    <group ref={group} renderOrder={RENDER_ORDER.thunder}>
       <Line points={bolt.segments} segments color="#c9d6ff" lineWidth={7} transparent opacity={0.3} toneMapped={false} fog={false} />
       <Line points={bolt.segments} segments color="#f4f7ff" lineWidth={2.4} transparent toneMapped={false} fog={false} />
     </group>

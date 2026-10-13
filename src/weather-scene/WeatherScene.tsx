@@ -24,6 +24,7 @@ import { DiamondDust } from "./layers/DiamondDust";
 import { FrostGlass } from "./layers/FrostGlass";
 import { PerfProbe } from "./debug/PerfProbe";
 import { perfStats } from "./debug/perfStats";
+import { TONE_EXPOSURE } from "./core/constants";
 
 export interface WeatherSceneDebugProps {
   /** fps graph + renderer.info probe. */
@@ -153,7 +154,7 @@ export function WeatherScene({
         dpr={[1, budget.dprMax]}
         gl={{ alpha: false, antialias: !isMobile }}
         onCreated={({ gl }) => {
-          gl.toneMappingExposure = 0.5;
+          gl.toneMappingExposure = TONE_EXPOSURE;
         }}
         eventSource={eventSource}
         eventPrefix="client"

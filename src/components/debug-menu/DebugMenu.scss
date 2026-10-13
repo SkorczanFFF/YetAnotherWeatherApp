@@ -14,7 +14,7 @@
 
 .debug-menu-panel {
   background: #1a1a2eef;
-  color: #ffffff;
+  color: var(--fg);
   border-radius: 8px;
   width: 385px;
   max-width: 100%;
@@ -24,7 +24,6 @@
   overflow-x: hidden;
   box-sizing: border-box;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  font-family: inherit;
 }
 
 .debug-menu-header {
@@ -34,14 +33,12 @@
   gap: 0.5rem;
   padding: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
   min-width: 0;
 
   h2 {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #ffffff;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -88,7 +85,6 @@
 
 .debug-menu-body {
   padding: 1rem;
-  color: #ffffff;
   box-sizing: border-box;
   min-width: 0;
 }
@@ -101,14 +97,12 @@
 
 .debug-menu-group {
   margin-bottom: 0.75rem;
-  color: #ffffff;
 
   label {
     display: block;
     font-size: 0.8rem;
     color: #e0e0e0;
     margin-bottom: 0.25rem;
-    font-family: inherit;
   }
 
   input[type="text"],
@@ -161,7 +155,7 @@
 .debug-menu-group input[type="range"] {
   flex: 1;
   min-width: 0;
-  accent-color: #e8846b;
+  accent-color: var(--accent-warm);
 }
 
 .debug-menu-readout {

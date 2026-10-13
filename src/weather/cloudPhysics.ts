@@ -22,6 +22,8 @@
  */
 
 import type { AtmosphereData, Units } from "./types";
+import { UNITS } from "./units";
+import { clamp, lerp, smoothstep } from "../utils/math";
 
 interface WindVector {
   speedMs: number;
@@ -49,8 +51,8 @@ export interface CloudPhysics {
   cape: number;
   liftedIndex: number | null;
   boundaryLayerM: number | null;
-  /** 0 °C level above ground, m. */
-  freezingLevelM: number | null;
+  /** 0 °C level above ground, m (standard lapse rate when the model has none). */
+  freezingLevelM: number;
   windLow: WindVector;
   windHigh: WindVector;
 }
@@ -87,17 +89,6 @@ export interface AtmosphereSI {
   levels: { heightM: number; cover: number }[];
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-const smoothstep = (x: number, e0: number, e1: number) => {
-  const t = clamp((x - e0) / (e1 - e0), 0, 1);
-  return t * t * (3 - 2 * t);
-};
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-export function speedToMs(speed: number, units: Units): number {
-  return units === "imperial" ? speed * 0.44704 : speed / 3.6;
-}
-
 export function toAtmosphereSI(
   data: AtmosphereData | undefined,
   units: Units,
@@ -109,7 +100,7 @@ export function toAtmosphereSI(
     .filter((l) => l.heightM > 0)
     .sort((a, b) => a.heightM - b.heightM);
   const wind = (w?: { speed: number; direction: number }): WindVector | undefined =>
-    w ? { speedMs: speedToMs(w.speed, units), fromDeg: w.direction } : undefined;
+    w ? { speedMs: UNITS[units].toMs(w.speed), fromDeg: w.direction } : undefined;
   return {
     boundaryLayerM: data.boundaryLayerM,
     cape: data.cape,
@@ -169,6 +160,11 @@ function lowestClearAbove(levels: AtmosphereSI["levels"], minM: number): number 
 
 /** A deck under an inversion right above its base (lifting fog, thin stratus), m. */
 const THIN_DECK_M = 100;
+/** Cover of the one low/mid deck the scene draws (high cover is the cirrus), 0..1. */
+export const deckCover = (clouds: { low: number; mid: number }) => Math.max(clouds.low, clouds.mid * 0.85);
+
+/** Standard-atmosphere temperature lapse rate. */
+const LAPSE_K_PER_M = 0.0065;
 /** Pressure levels from here up count as the cirrus band, m above ground. */
 const HIGH_BAND_M = 6500;
 /** Convection without showers or a storm: cumulus at most (type ≈ 0.74). */
@@ -312,7 +308,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     cape,
     liftedIndex: li,
     boundaryLayerM: blh,
-    freezingLevelM: atm?.freezingLevelM ?? null,
+    freezingLevelM: atm?.freezingLevelM ?? Math.max(0, input.temperatureC / LAPSE_K_PER_M),
     windLow,
     windHigh,
   };

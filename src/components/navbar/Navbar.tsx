@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { LoadSource, WeatherQuery, Units } from "../../weather/types";
+import { UNITS } from "../../weather/units";
 import { Spinner } from "../loader/Loader";
-import { PinIcon } from "../icons";
+import { LineIcon, PinIcon } from "../icons";
 import "./Navbar.scss";
 
 interface NavbarProps {
@@ -77,10 +78,10 @@ const Navbar: React.FC<NavbarProps> = ({
     <header className="topbar">
       <a className="brand" href="https://skoftware.pl/" aria-label="Yet Another Weather App">
         <span className="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <LineIcon strokeWidth={1.6}>
             <circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none" />
             <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
-          </svg>
+          </LineIcon>
         </span>
         <span className="brand-text">
           <span className="brand-line brand-line--top">
@@ -122,10 +123,10 @@ const Navbar: React.FC<NavbarProps> = ({
             {searchBusy ? (
               <Spinner />
             ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <LineIcon strokeWidth={2}>
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
-              </svg>
+              </LineIcon>
             )}
           </button>
         </div>
@@ -135,11 +136,11 @@ const Navbar: React.FC<NavbarProps> = ({
           onClick={onOpenMapPicker}
           aria-label="Pick location from map"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <LineIcon strokeWidth={1.6}>
             <path d="M9 3 3 5.5v15.5L9 18l6 3 6-2.5V3l-6 2.5L9 3Z" />
             <path d="M9 3v15" />
             <path d="M15 5.5V21" />
-          </svg>
+          </LineIcon>
         </button>
       </form>
 
@@ -150,14 +151,14 @@ const Navbar: React.FC<NavbarProps> = ({
             className={units === "metric" ? "on" : ""}
             onClick={() => setUnits("metric")}
           >
-            °C
+            {UNITS.metric.tempSymbol}
           </button>
           <button
             type="button"
             className={units === "imperial" ? "on" : ""}
             onClick={() => setUnits("imperial")}
           >
-            °F
+            {UNITS.imperial.tempSymbol}
           </button>
         </div>
       </div>

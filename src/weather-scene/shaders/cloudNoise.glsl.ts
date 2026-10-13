@@ -5,11 +5,16 @@
 //   G, B, A — Worley fbm at 4, 8, 16 cells per tile: shape fbm (low-res
 //       sampling) and the high-frequency detail used to erode edges.
 // Everything wraps with the tile period, so wind can scroll it forever.
+// Changing it shifts the noise statistics: re-measure COVER_NOISE and
+// CIRRUS_NOISE in volumetricClouds.glsl.ts (the coverage calibration).
+
+import { FBM_WEIGHTS, REMAP } from "./chunks.glsl";
 
 export const CLOUD_NOISE_FRAG = /* glsl */ `
 precision highp float;
 
 uniform float uSlice; // z of this slice, 0..1
+${FBM_WEIGHTS}
 varying vec2 vUv;
 
 vec3 hash33(vec3 p) {
@@ -38,7 +43,7 @@ float worley(vec3 p, float freq) {
 }
 
 float worleyFbm(vec3 p, float freq) {
-  return worley(p, freq) * 0.625 + worley(p, freq * 2.0) * 0.25 + worley(p, freq * 4.0) * 0.125;
+  return dot(vec3(worley(p, freq), worley(p, freq * 2.0), worley(p, freq * 4.0)), FBM_WEIGHTS);
 }
 
 vec3 grad(vec3 cell, float freq) {
@@ -79,9 +84,7 @@ float perlinFbm(vec3 p, float freq) {
   return sum / norm;
 }
 
-float remap(float v, float l0, float h0, float l1, float h1) {
-  return l1 + (v - l0) * (h1 - l1) / (h0 - l0);
-}
+${REMAP}
 
 void main() {
   vec3 p = vec3(vUv, uSlice);

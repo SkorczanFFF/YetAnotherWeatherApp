@@ -11,12 +11,13 @@ import { MapPicker } from "./components/map-picker/MapPicker";
 import { LoaderPanel, LoaderPill } from "./components/loader/Loader";
 import { useGlassSpotlight } from "./styles/useGlassSpotlight";
 import {
+  DEFAULT_LOCATION,
   isOverridesDirty,
   mapToSceneParams,
   type SceneOverrides,
 } from "./weather/sceneParams";
 import getFormattedWeatherData from "./services/weatherService";
-import { tempSymbol } from "./services/weatherFormatter";
+import { formatCoords, formatGmtOffset, formatLatLon, tempSymbol } from "./utils/format";
 import { WeatherError } from "./services/errors";
 import {
   type LoadSource,
@@ -35,7 +36,7 @@ const DEBUG_TAP_GAP_MS = 600;
 const describeQuery = (query: WeatherQuery): string =>
   query.q
     ? query.q.charAt(0).toUpperCase() + query.q.slice(1)
-    : `${query.lat?.toFixed(2)}, ${query.lon?.toFixed(2)}`;
+    : formatCoords(query.lat ?? 0, query.lon ?? 0);
 
 const loadingLabel = (source: LoadSource, query: WeatherQuery, units: Units): string => {
   switch (source) {
@@ -48,23 +49,9 @@ const loadingLabel = (source: LoadSource, query: WeatherQuery, units: Units): st
   }
 };
 
-const formatGmtOffset = (timezone?: string): string => {
-  if (!timezone) return "";
-  try {
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: timezone,
-      timeZoneName: "shortOffset",
-    }).formatToParts(new Date());
-    const offset = parts.find((p) => p.type === "timeZoneName")?.value;
-    return offset ?? "";
-  } catch {
-    return "";
-  }
-};
-
 const App = (): React.ReactElement => {
   useGlassSpotlight();
-  const [query, setQuery] = useState<WeatherQuery>({ q: "katowice" });
+  const [query, setQuery] = useState<WeatherQuery>({ q: DEFAULT_LOCATION.name });
   const [units, setUnits] = useState<Units>("metric");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   // Units the shown data was fetched in — the toggle flips `units` before the
@@ -235,7 +222,7 @@ const App = (): React.ReactElement => {
                     <div className="attrib">
                       {weather.lat != null && weather.lon != null && (
                         <span>
-                          Lat {weather.lat.toFixed(2)} · Lon {weather.lon.toFixed(2)}
+                          {formatLatLon(weather.lat, weather.lon)}
                         </span>
                       )}
                       {gmtOffset && <span>{gmtOffset}</span>}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { MathUtils } from "three";
 
 const TILT_RANGE = 30;
 
@@ -50,8 +51,8 @@ export function useDeviceOrientation(): React.MutableRefObject<DeviceOrientation
         tiltY = e.beta - 90;
     }
 
-    orientation.current.x = Math.max(-1, Math.min(1, tiltX / TILT_RANGE));
-    orientation.current.y = Math.max(-1, Math.min(1, -tiltY / TILT_RANGE));
+    orientation.current.x = MathUtils.clamp(tiltX / TILT_RANGE, -1, 1);
+    orientation.current.y = MathUtils.clamp(-tiltY / TILT_RANGE, -1, 1);
     orientation.current.available = true;
   }, []);
 

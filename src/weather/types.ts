@@ -1,4 +1,4 @@
-/** Weather domain types: API data and WMO effect classification. Scene parameters live in sceneParams.ts. */
+/** Weather domain types (API data as the app uses it). Scene parameters live in sceneParams.ts, WMO codes in codes.ts. */
 
 export interface WeatherQuery {
   q?: string;
@@ -109,12 +109,3 @@ export interface AtmosphereData {
   wind300?: { speed: number; direction: number };
   levels: AtmosphereLevel[];
 }
-
-export type EffectType =
-  | "clear"
-  | "rain"
-  | "snow"
-  | "fog"
-  | "thunderstorm";
-
-export type Intensity = "light" | "moderate" | "heavy";

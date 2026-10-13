@@ -3,7 +3,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LoaderPill } from "../loader/Loader";
-import { PIN_PATH, PinIcon } from "../icons";
+import { CloseIcon, LineIcon, PIN_PATH, PinIcon } from "../icons";
+import { clamp } from "../../utils/math";
+import { formatCoords, formatLatLon } from "../../utils/format";
 import "./MapPicker.scss";
 
 const DRAWER_WIDTH_MIN = 385;
@@ -17,7 +19,7 @@ const MARKER_ICON = L.divIcon({
   html:
     `<span aria-hidden="true" class="map-picker-marker__pin" style="width:${PIN_SIZE}px;height:${PIN_SIZE}px;display:block">` +
     `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
-    `<path d="${PIN_PATH}" fill="oklch(0.82 0.14 62)" stroke="oklch(0.34 0.06 240)" />` +
+    `<path d="${PIN_PATH}" stroke="oklch(0.34 0.06 240)" style="fill:var(--accent-warm)" />` +
     `<circle cx="12" cy="9" r="2.6" fill="oklch(0.34 0.06 240)" />` +
     `</svg></span>`,
   iconSize: [PIN_SIZE, PIN_SIZE],
@@ -95,7 +97,7 @@ export function MapPicker({
 
     const onMove = (moveEvent: MouseEvent) => {
       const delta = startX - moveEvent.clientX;
-      const next = Math.min(DRAWER_WIDTH_MAX, Math.max(DRAWER_WIDTH_MIN, startWidth + delta));
+      const next = clamp(startWidth + delta, DRAWER_WIDTH_MIN, DRAWER_WIDTH_MAX);
       setDrawerWidth(next);
     };
     const onUp = () => {
@@ -215,9 +217,7 @@ export function MapPicker({
             onClick={onClose}
             aria-label="Close"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 6l12 12M18 6 6 18" />
-            </svg>
+            <CloseIcon strokeWidth={1.8} />
           </button>
         </header>
         <div className="map-picker-body">
@@ -243,7 +243,7 @@ export function MapPicker({
                     icon={MARKER_ICON}
                   >
                     <Popup>
-                      {picked.lat.toFixed(4)}, {picked.lon.toFixed(4)}
+                      {formatCoords(picked.lat, picked.lon, 4)}
                     </Popup>
                   </Marker>
                 )}
@@ -258,7 +258,7 @@ export function MapPicker({
               <span className="k">Selected</span>
               {picked ? (
                 <span className="v">
-                  Lat {picked.lat.toFixed(3)} · Lon {picked.lon.toFixed(3)}
+                  {formatLatLon(picked.lat, picked.lon, 3)}
                 </span>
               ) : (
                 <span className="v map-picker-coords--empty">Click on the map to pick</span>
@@ -270,9 +270,9 @@ export function MapPicker({
               onClick={handleConfirm}
               disabled={!picked}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <LineIcon strokeWidth={2}>
                 <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
+              </LineIcon>
               Use this location
             </button>
           </div>

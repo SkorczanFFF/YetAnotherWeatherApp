@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { MathUtils } from "three";
 import { useSceneSignals } from "./sceneSignals";
+import { MAX_DT } from "./constants";
 
 interface UiBacklightProps {
   thunder: boolean;
@@ -40,7 +41,7 @@ export function UiBacklight({ thunder }: UiBacklightProps) {
     value.current =
       value.current < 0
         ? target
-        : MathUtils.damp(value.current, target, EASE, Math.min(delta, 0.1));
+        : MathUtils.damp(value.current, target, EASE, Math.min(delta, MAX_DT));
 
     if (Math.abs(value.current - written.current) >= STEP) {
       written.current = value.current;

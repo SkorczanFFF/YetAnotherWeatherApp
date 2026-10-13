@@ -9,6 +9,8 @@
 // minus the accumulated wind drift, so clouds move with the real wind.
 // FogExp2 chunks fade it into the horizon colour.
 
+import { CIRRUS_ALPHA, NOISE_RANK } from "./chunks.glsl";
+
 export const CLOUD_DECK_VERT = /* glsl */ `
 #include <common>
 #include <fog_pars_vertex>
@@ -49,9 +51,8 @@ const vec2 HIGH_SCALE = vec2(1.0 / 700.0, 1.0 / 160.0);
 // cover c thresholds off exactly that share of the area.
 const vec2 DECK_NOISE = vec2(0.552, 0.081);
 const vec2 HIGH_NOISE = vec2(0.552, 0.111);
-float noiseRank(float n, vec2 stats) {
-  return 1.0 / (1.0 + exp(-1.702 * (n - stats.x) / stats.y));
-}
+${NOISE_RANK}
+${CIRRUS_ALPHA}
 
 void main() {
   vec2 p = vWorld.xz;
@@ -73,9 +74,7 @@ void main() {
   vec2 qw = vec2(dot(q, w), dot(q, vec2(-w.y, w.x)));
   float nh = texture2D(uNoise, qw * HIGH_SCALE + 0.57).r;
   float rankHigh = noiseRank(nh, HIGH_NOISE);
-  float aHigh = smoothstep(1.0 - uHigh - 0.08, 1.0 - uHigh + 0.12, rankHigh) * (0.35 + 0.3 * uHigh)
-              + smoothstep(0.55, 1.0, uHigh) * 0.18;
-  aHigh = min(aHigh, 0.7) * smoothstep(0.0, 0.05, uHigh);
+  float aHigh = cirrusAlpha(rankHigh, uHigh) * smoothstep(0.0, 0.05, uHigh);
 
   float a = aLow + aHigh * (1.0 - aLow);
   vec3 col = (colLow * aLow + uHighColor * aHigh * (1.0 - aLow)) / max(a, 1e-4);

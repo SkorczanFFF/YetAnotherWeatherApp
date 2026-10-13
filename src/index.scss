@@ -1,4 +1,5 @@
 @use "./styles/glass" as *;
+@use "./styles/tokens" as *;
 
 :root {
   --font-sans: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
@@ -20,6 +21,7 @@
   --fill-hover: oklch(1 0 0 / 0.14);
 
   --accent-warm: oklch(0.82 0.14 62);
+  --accent-warm-hover: oklch(0.86 0.16 62);
   --accent-good: oklch(0.80 0.14 145);
 
   --gap: 20px;
@@ -53,7 +55,7 @@
   initial-value: 0;
 }
 
-@media (max-width: 720px) {
+@include below($bp-tablet) {
   // Every glass card re-blurs the live canvas each frame; keep it cheaper on phones.
   :root { --glass-blur: 12px; }
 }
@@ -252,7 +254,7 @@ body {
 .stack > *:nth-child(3) { animation-delay: 0.22s; }
 .stack > *:nth-child(4) { animation-delay: 0.30s; }
 
-@media (max-width: 720px) {
+@include below($bp-tablet) {
   .footer {
     .footer-row {
       flex-direction: column;

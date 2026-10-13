@@ -10,12 +10,14 @@ import {
   UniformsUtils,
   Vector2,
 } from "three";
+import { deckCover } from "../../weather/cloudPhysics";
 import type { SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, nearestVisibleDistance, type ViewFrame } from "../core/viewVolume";
 import { CLOUD_TIMELAPSE, DECK_FAR, DECK_Y, METRES_PER_UNIT } from "../core/worldFrame";
 import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
+import { RENDER_ORDER } from "../core/constants";
 
 interface CloudDeckProps {
   params: SceneParams;
@@ -105,8 +107,7 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    // Same deck cover as the volumetric shell: low, or mid when it dominates.
-    const deck = Math.max(clouds.low, clouds.mid * 0.85);
+    const deck = deckCover(clouds);
     mesh.visible = deck > 0.01 || clouds.high > 0.02;
     if (!mesh.visible) return;
     const u = material.uniforms;
@@ -133,7 +134,7 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
       ref={ref}
       geometry={geometry}
       material={material}
-      renderOrder={2}
+      renderOrder={RENDER_ORDER.clouds}
       frustumCulled={false}
     />
   );

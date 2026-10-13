@@ -1,21 +1,21 @@
 /** WeatherData + units + debug overrides → SceneParams (continuous values, SI units, no React). */
 
 import { DateTime } from "luxon";
-import type { Intensity, Units, WeatherData } from "./types";
-import {
-  getCloudCoverFromWeatherCode,
-  getEffectTypeAndIntensity,
-} from "./codes";
+import type { Units, WeatherData } from "./types";
+import { codeInfo, type Intensity } from "./codes";
+import { UNITS } from "./units";
+import { clamp, clamp01 } from "../utils/math";
 import {
   type AtmosphereSI,
   type CloudPhysics,
   deriveCloudPhysics,
   dewPointFromHumidity,
-  speedToMs,
   toAtmosphereSI,
 } from "./cloudPhysics";
 
-export type QualityTier = "potato" | "low" | "medium" | "high";
+/** Quality tiers, lowest first. */
+export const QUALITY_TIERS = ["potato", "low", "medium", "high"] as const;
+export type QualityTier = (typeof QUALITY_TIERS)[number];
 export type Auto<T> = T | "auto";
 
 interface CloudLayers {
@@ -118,35 +118,27 @@ export interface SceneOverrides {
   quality?: Auto<QualityTier>;
 }
 
-/** Single source of truth for "is a simulated state active" — extend when adding a key. */
-const OVERRIDE_KEYS: (keyof SceneOverrides)[] = [
-  "hour",
-  "date",
-  "cloudLow",
-  "cloudMid",
-  "cloudHigh",
-  "windSpeed",
-  "windGust",
-  "windFrom",
-  "rain",
-  "snow",
-  "drizzle",
-  "freezing",
-  "showers",
-  "hail",
-  "grains",
-  "thunder",
-  "visibility",
-  "rime",
-  "temperature",
-  "humidity",
-  "cloudBase",
-  "cloudTop",
-  "cape",
-  "opticalDepth",
-  "parallax",
-  "quality",
-];
+/** Every override key; a key missing here (or a stale one) is a type error. */
+const OVERRIDE_KEY_SET = {
+  hour: 1, date: 1,
+  cloudLow: 1, cloudMid: 1, cloudHigh: 1,
+  windSpeed: 1, windGust: 1, windFrom: 1,
+  rain: 1, snow: 1, drizzle: 1, freezing: 1, showers: 1, hail: 1, grains: 1, thunder: 1,
+  visibility: 1, rime: 1, temperature: 1, humidity: 1,
+  cloudBase: 1, cloudTop: 1, cape: 1, opticalDepth: 1,
+  parallax: 1, quality: 1,
+} satisfies Record<keyof SceneOverrides, 1>;
+const OVERRIDE_KEYS = Object.keys(OVERRIDE_KEY_SET) as (keyof SceneOverrides)[];
+
+/** Overrides that make it precipitate (they bring a deck to fall from). */
+const PRECIP_KEYS = [
+  "rain", "snow", "drizzle", "showers", "thunder", "hail", "freezing", "grains",
+] satisfies (keyof SceneOverrides)[];
+
+/** The on/off override keys (debug-menu toggles). */
+export type BoolOverrideKey = {
+  [K in keyof SceneOverrides]-?: NonNullable<SceneOverrides[K]> extends Auto<boolean> ? K : never;
+}[keyof SceneOverrides];
 
 export function isOverridesDirty(overrides: SceneOverrides | null): boolean {
   if (!overrides) return false;
@@ -161,7 +153,6 @@ function pick<T>(override: Auto<T> | undefined, base: T): T {
   return isSet(override) ? override : base;
 }
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** Fallbacks when the code says it's precipitating but the gauge reads 0. */
 const FALLBACK_RAIN_MM_H: Record<Intensity, number> = {
@@ -184,11 +175,15 @@ const SNOW_CM_PER_MM = 0.7;
 
 /** Upper bound on visibility for fog codes — the API reading is often optimistic. */
 const FOG_MAX_VISIBILITY_M = 700;
+/** WMO definition of fog. */
+const FOG_VISIBILITY_M = 1000;
+/** Rime needs supercooled fog: caps visibility when only the flag is pinned. */
+const RIME_VISIBILITY_M = 400;
 
 export const CLEAR_VISIBILITY_M = 24000;
 
-/** Katowice — matches the app's initial query so the first frame isn't at (0, 0). */
-const DEFAULT_LOCATION = { lat: 50.26, lon: 19.02 };
+/** The app's initial location; the scene uses it before the first fetch lands, not (0, 0). */
+export const DEFAULT_LOCATION = { name: "Katowice", lat: 50.26, lon: 19.02 };
 
 function browserTimezone(): string {
   try {
@@ -255,27 +250,21 @@ interface CodeTraits {
   rime: boolean;
 }
 
-/** WMO code → visual traits. Covers the full 0–99 table, not just Open-Meteo's subset. */
 function getCodeTraits(code: number): CodeTraits {
-  const c = Math.floor(code);
-  const { type, intensity } = getEffectTypeAndIntensity(c);
+  const { kind, intensity, freezing, showers, hail, grains, rime } = codeInfo(code);
   return {
     intensity,
-    liquid: type === "rain" || type === "thunderstorm",
-    frozen: type === "snow",
-    thunder: type === "thunderstorm",
-    fog: type === "fog",
-    drizzle: c >= 51 && c <= 57,
-    freezing: c === 56 || c === 57 || c === 66 || c === 67,
-    showers: (c >= 80 && c <= 90) || c >= 95,
-    hail: (c >= 87 && c <= 90) || c === 96 || c === 99,
-    grains: c === 77,
-    rime: c === 48,
+    liquid: kind === "rain" || kind === "drizzle" || kind === "thunder",
+    frozen: kind === "snow",
+    thunder: kind === "thunder",
+    fog: kind === "fog",
+    drizzle: kind === "drizzle",
+    freezing: !!freezing,
+    showers: !!showers,
+    hail: !!hail,
+    grains: !!grains,
+    rime: !!rime,
   };
-}
-
-function toCelsius(temp: number, units: Units): number {
-  return units === "imperial" ? ((temp - 32) * 5) / 9 : temp;
 }
 
 function precipFromWeather(
@@ -326,12 +315,13 @@ function precipFromWeather(
 
 function fromWeather(weather: WeatherData, units: Units): SceneParams {
   const traits = getCodeTraits(weather.weather_code);
-  const temperatureC = toCelsius(weather.temp, units);
+  const { toCelsius, toMs } = UNITS[units];
+  const temperatureC = toCelsius(weather.temp);
 
   const total =
     typeof weather.cloud_cover === "number"
       ? clamp01(weather.cloud_cover / 100)
-      : getCloudCoverFromWeatherCode(weather.weather_code);
+      : codeInfo(weather.weather_code).cover;
   const layer = (v: number | undefined, fallback: number) =>
     typeof v === "number" ? clamp01(v / 100) : fallback;
   // Rain or a storm needs a few cells to fall from, even when the model's
@@ -345,10 +335,10 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
     high: layer(weather.cloud_cover_high, total * 0.5),
   };
 
-  const speedMs = speedToMs(weather.speed ?? 0, units);
+  const speedMs = toMs(weather.speed ?? 0);
   const gustMs = Math.max(
     speedMs,
-    speedToMs(weather.wind_gusts ?? weather.speed ?? 0, units),
+    toMs(weather.wind_gusts ?? weather.speed ?? 0),
   );
 
   let visibilityM = weather.visibility ?? CLEAR_VISIBILITY_M;
@@ -359,7 +349,7 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
   const humidity = clamp01((weather.humidity ?? 60) / 100);
   const dewPointC =
     weather.dew_point != null
-      ? toCelsius(weather.dew_point, units)
+      ? toCelsius(weather.dew_point)
       : dewPointFromHumidity(temperatureC, humidity);
   const precip = precipFromWeather(weather, traits, temperatureC);
   const wind = { speedMs, gustMs, fromDeg: weather.wind_direction ?? 0 };
@@ -390,7 +380,7 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
       thunder: traits.thunder,
       showers: traits.showers,
       precipitating: precip.rainMmH > 0 || precip.snowCmH > 0,
-      fog: traits.fog || visibilityM < 1000,
+      fog: traits.fog || visibilityM < FOG_VISIBILITY_M,
       trustRadiation: true,
     }),
     atmosphere,
@@ -408,7 +398,7 @@ function resolveTime(o: SceneOverrides, timezone: string): number | null {
     if (d.isValid) dt = dt.set({ year: d.year, month: d.month, day: d.day });
   }
   if (isSet(o.hour)) {
-    const h = Math.min(24, Math.max(0, o.hour));
+    const h = clamp(o.hour, 0, 24);
     const hour = Math.floor(h);
     const minute = Math.round((h - hour) * 60);
     dt = dt.startOf("day").plus({ hours: hour, minutes: minute });
@@ -443,7 +433,7 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
   let low = pick(o.cloudLow, base.clouds.low);
   // Precipitation pinned in the debug menu brings its deck to fall from.
   // (Measured weather keeps the model's cover — see fromWeather.)
-  const precipPinned = [o.rain, o.snow, o.drizzle, o.showers, o.thunder, o.hail, o.freezing, o.grains].some(isSet);
+  const precipPinned = PRECIP_KEYS.some((k) => isSet(o[k]));
   if (!isSet(o.cloudLow) && precipPinned) {
     if (thunder) low = Math.max(low, 0.95);
     else if (precipitating) low = Math.max(low, showers ? 0.6 : 0.85);
@@ -459,7 +449,7 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
 
   const rime = pick(o.rime, base.fog.rime);
   let visibilityM = pick(o.visibility, base.fog.visibilityM);
-  if (rime && !isSet(o.visibility)) visibilityM = Math.min(visibilityM, 400);
+  if (rime && !isSet(o.visibility)) visibilityM = Math.min(visibilityM, RIME_VISIBILITY_M);
 
   const speedMs = Math.max(0, pick(o.windSpeed, base.wind.speedMs));
   const wind = {
@@ -497,7 +487,7 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
     thunder,
     showers,
     precipitating,
-    fog: visibilityM < 1000 || rime,
+    fog: visibilityM < FOG_VISIBILITY_M || rime,
     trustRadiation: !skyTouched,
     override: {
       baseM: isSet(o.cloudBase) ? o.cloudBase : undefined,

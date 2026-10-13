@@ -4,6 +4,12 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Changed (single sources of truth)
+- One WMO table (`weather/codes.ts`) for the scene, the labels and the icons. Fixes light freezing drizzle (56) and snow grains (77), which were treated as heavy (1 mm/h and 1.2 cm/h fallbacks).
+- Units, requested API fields, override and shell keys (type-checked), quality tiers, render orders, tone exposure, frame-delta cap, scene palette, shared GLSL helpers, display formatting (`utils/format.ts`), math helpers, the forecast day count and the default location each defined once.
+- The freezing level falls back to the standard lapse rate (was a flat 3 km); a debug-pinned cloud base is no longer overridden under fog.
+- UI: `LineIcon`/`CloseIcon`, SCSS breakpoint and label mixins, accent tints derived from `--accent-warm`; narrow grids use `minmax(0, 1fr)` so long content can't overflow.
+
 ### Removed
 - Unread API fields (hourly precipitation probability and weather code, geocoder ids, response units), the generic endpoint parameter, the dead `NETWORK_ERROR` path and `getSunAltitude`.
 - `react-dom/server` from the bundle (map marker is a static Leaflet `divIcon`): −197 kB (−60 kB gzip).

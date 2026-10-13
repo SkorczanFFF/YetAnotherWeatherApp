@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { MathUtils, type ShaderMaterial, type Vector3 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
+import { RENDER_ORDER } from "../core/constants";
 
 /**
  * drei <Sky> (three-stdlib Preetham). Driven every frame from SceneSignals:
@@ -16,7 +17,7 @@ export function SkyLayer() {
 
   // drei <Sky> has no renderOrder prop in its types; set it once.
   useEffect(() => {
-    if (ref.current) ref.current.renderOrder = -2;
+    if (ref.current) ref.current.renderOrder = RENDER_ORDER.sky;
   }, []);
 
   useFrame(() => {

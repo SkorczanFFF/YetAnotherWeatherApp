@@ -11,6 +11,7 @@ import { useSceneSignals } from "../core/sceneSignals";
 import { skyPatch, type ViewFrame } from "../core/viewVolume";
 import { directionFromRelative } from "../core/worldFrame";
 import { STARS_FRAG, STARS_VERT } from "../shaders/stars.glsl";
+import { RENDER_ORDER } from "../core/constants";
 
 interface StarFieldProps {
   frame: ViewFrame;
@@ -89,7 +90,7 @@ export function StarField({ frame, count }: StarFieldProps) {
       ref={ref}
       geometry={geometry}
       material={material}
-      renderOrder={0}
+      renderOrder={RENDER_ORDER.stars}
       frustumCulled={false}
     />
   );

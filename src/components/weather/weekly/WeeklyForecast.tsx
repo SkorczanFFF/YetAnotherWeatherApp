@@ -3,7 +3,7 @@ import {
   formatDegrees,
   formatSpeed,
   toCardinal,
-} from "../../../services/weatherFormatter";
+} from "../../../utils/format";
 import { DailyWeather, Units } from "../../../weather/types";
 import { WeatherIcon } from "../../icons";
 import "./WeeklyForecast.scss";
@@ -15,8 +15,12 @@ interface WeeklyForecastProps {
 
 const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
   return (
-    <section className="forecast" aria-label="6-day forecast">
-      {items.slice(0, 6).map((d, i) => {
+    <section
+      className="forecast"
+      aria-label={`${items.length}-day forecast`}
+      style={{ "--days": items.length } as React.CSSProperties}
+    >
+      {items.map((d, i) => {
         const cardinal = toCardinal(d.wind_dir);
         const windText = `${formatSpeed(d.wind_max, units)}${cardinal ? ` ${cardinal}` : ""}`;
         return (

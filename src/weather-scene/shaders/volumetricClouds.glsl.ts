@@ -14,6 +14,8 @@
 // Cloud output is premultiplied: rgb = in-scattered radiance (pre-tonemap,
 // "sky units"), a = 1 − transmittance.
 
+import { CIRRUS_ALPHA, FBM_WEIGHTS, NOISE_RANK, REMAP } from "./chunks.glsl";
+
 /** Which pixel of each 2×2 block is marched on a given frame (shared by passes 1 and 2). */
 const BLOCK_OFFSET = /* glsl */ `
 ivec2 blockOffset(float frame) {
@@ -80,9 +82,10 @@ const float SHAPE_SCALE = 1.0 / 3200.0;   // one noise tile ≈ 3.2 km
 const float DETAIL_SCALE = 1.0 / 520.0;
 const float WEATHER_SCALE = 1.0 / 10000.0;
 
-float remap(float v, float l0, float h0, float l1, float h1) {
-  return l1 + (v - l0) * (h1 - l1) / (h0 - l0);
-}
+${REMAP}
+${NOISE_RANK}
+${FBM_WEIGHTS}
+${CIRRUS_ALPHA}
 
 // Interleaved gradient noise — cheap per-pixel jitter, decorrelated per frame.
 float ign(vec2 p) {
@@ -122,9 +125,6 @@ float heightGradient(float hf) {
 const vec2 COVER_NOISE = vec2(0.624, 0.050);   // mean, standard deviation
 const vec2 CIRRUS_NOISE = vec2(0.490, 0.081);
 const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
-float noiseRank(float n, vec2 stats) {
-  return 1.0 / (1.0 + exp(-1.702 * (n - stats.x) / stats.y));
-}
 
 // Rank (0..1) of the slowly scrolling weather noise at a spot. The top
 // uCoverage share of the area is cloud, so isolated cells at low cover grow
@@ -170,7 +170,7 @@ float density(vec3 p, float hf, bool detail) {
 
   vec3 uvw = vec3(xz.x, y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;
   vec4 n = texture(uNoise, uvw);
-  float lowFbm = n.g * 0.625 + n.b * 0.25 + n.a * 0.125;
+  float lowFbm = dot(n.gba, FBM_WEIGHTS);
   float base = remap(n.r, lowFbm - 1.0, 1.0, 0.0, 1.0);
   base *= heightGradient(hf);
   base = remap(base, 1.0 - cov, 1.0, 0.0, 1.0) * cov;
@@ -181,7 +181,7 @@ float density(vec3 p, float hf, bool detail) {
   if (detail) {
     vec3 duvw = vec3(xz.x, y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
     vec4 d = texture(uNoise, duvw);
-    float hfFbm = d.g * 0.625 + d.b * 0.25 + d.a * 0.125;
+    float hfFbm = dot(d.gba, FBM_WEIGHTS);
     // Wispy bottoms, billowy tops; above the freezing level the cloud is
     // glaciated — softer, fibrous edges (anvils, ice tops).
     float altitude = hf * uThickness + uBase;
@@ -335,12 +335,7 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
       vec2 qw = vec2(dot(q, uHighWindDir), dot(q, vec2(-uHighWindDir.y, uHighWindDir.x)));
       float n = texture(uNoise, vec3(qw.x / 90000.0, qw.y / 14000.0, 0.57)).g;
       n = n * 0.7 + texture(uNoise, vec3(qw.x / 30000.0, qw.y / 5000.0, 0.11)).b * 0.3;
-      // Streaks over the top uHigh share of the layer, denser as it fills;
-      // a closing high deck adds a milky cirrostratus veil between them.
-      float rank = noiseRank(n, CIRRUS_NOISE);
-      float streaks = smoothstep(1.0 - uHigh - 0.08, 1.0 - uHigh + 0.12, rank) * (0.35 + 0.3 * uHigh);
-      float veil = smoothstep(0.55, 1.0, uHigh) * 0.18;
-      float a = min(streaks + veil, 0.7) * (1.0 - smoothstep(60000.0, 160000.0, tc));
+      float a = cirrusAlpha(noiseRank(n, CIRRUS_NOISE), uHigh) * (1.0 - smoothstep(60000.0, 160000.0, tc));
       vec3 col = uLightColor * mix(hg(cosTheta, 0.6), 1.0, 0.5) * 0.9 + uAmbientTop * 1.2;
       col = mix(col, uHazeColor, 1.0 - exp(-tc / (uHazeDist * 2.5)));
       scat += T * col * a;

@@ -1,11 +1,16 @@
 import React, { useId } from "react";
+import { codeInfo, type CodeInfo, type Intensity } from "../weather/codes";
 
-/** Map pin outline in a 24×24 viewBox. */
-export const PIN_PATH = "M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z";
+interface LineIconProps {
+  strokeWidth?: number;
+  className?: string;
+  children: React.ReactNode;
+}
 
-/** Outlined map pin, coloured by `currentColor`. */
-export const PinIcon = ({ strokeWidth = 1.6 }: { strokeWidth?: number }): React.ReactElement => (
+/** Decorative 24×24 outline icon in `currentColor` with round caps and joins. */
+export const LineIcon = ({ strokeWidth = 1.5, className, children }: LineIconProps): React.ReactElement => (
   <svg
+    className={className}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -14,9 +19,24 @@ export const PinIcon = ({ strokeWidth = 1.6 }: { strokeWidth?: number }): React.
     strokeLinejoin="round"
     aria-hidden="true"
   >
+    {children}
+  </svg>
+);
+
+export const CloseIcon = ({ strokeWidth = 2 }: { strokeWidth?: number }): React.ReactElement => (
+  <LineIcon strokeWidth={strokeWidth}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </LineIcon>
+);
+
+/** Map pin outline in a 24×24 viewBox. */
+export const PIN_PATH = "M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z";
+
+export const PinIcon = ({ strokeWidth = 1.6 }: { strokeWidth?: number }): React.ReactElement => (
+  <LineIcon strokeWidth={strokeWidth}>
     <path d={PIN_PATH} />
     <circle cx="12" cy="9" r="2.5" />
-  </svg>
+  </LineIcon>
 );
 
 // ---------------------------------------------------------------------------
@@ -106,26 +126,17 @@ const Marks = ({ marks, dx = 0, strokeWidth }: { marks: Mark[]; dx?: number; str
   </>
 );
 
-/** 1 light · 2 moderate · 3 heavy, from the WMO code. */
-const LEVEL: Record<number, number> = {
-  51: 1, 53: 2, 55: 3, 56: 1, 57: 3,
-  61: 1, 63: 2, 65: 3, 66: 1, 67: 3,
-  71: 1, 73: 2, 75: 3, 77: 1,
-  80: 1, 81: 2, 82: 3, 85: 1, 86: 3,
-};
+const LEVEL: Record<Intensity, number> = { light: 1, moderate: 2, heavy: 3 };
 
 const repeat = (n: number, cycle: Mark[]): Mark[] =>
   Array.from({ length: n }, (_, i) => cycle[i % cycle.length]);
 
-/** Falling marks for a precipitation code (null when it isn't one). */
-function precipMarks(code: number): Mark[] | null {
-  const n = (LEVEL[code] ?? 2) + 1;
-  if (code >= 51 && code <= 55) return repeat(n, ["dot"]);
-  if (code === 56 || code === 57) return repeat(n, ["dot", "flake"]);
-  if ((code >= 61 && code <= 65) || (code >= 80 && code <= 82)) return repeat(n, ["drop"]);
-  if (code === 66 || code === 67) return repeat(n, ["drop", "flake"]);
-  if ((code >= 71 && code <= 75) || code === 85 || code === 86) return repeat(Math.min(n, 3), ["flake"]);
-  if (code === 77) return ["flake", "dot", "flake"];
+/** Falling marks for a precipitation code (null when it isn't one); count follows the intensity. */
+function precipMarks({ kind, intensity, freezing, grains }: CodeInfo): Mark[] | null {
+  const n = LEVEL[intensity] + 1;
+  if (kind === "drizzle") return repeat(n, freezing ? ["dot", "flake"] : ["dot"]);
+  if (kind === "rain") return repeat(n, freezing ? ["drop", "flake"] : ["drop"]);
+  if (kind === "snow") return grains ? ["flake", "dot", "flake"] : repeat(Math.min(n, 3), ["flake"]);
   return null;
 }
 
@@ -156,6 +167,7 @@ export const WeatherIcon = ({
   const maskId = `wi${useId()}`;
   const warm = tinted ? { stroke: "var(--accent-warm)" } : undefined;
   const c = Math.floor(code);
+  const info = codeInfo(c);
 
   /** `behind` drawn under a cloud, cut out where the cloud is so outlines don't cross. */
   const occluded = (behind: React.ReactNode, front: CloudPlace, tintBehind = true) => (
@@ -181,7 +193,7 @@ export const WeatherIcon = ({
     isDay ? <Sun cx={cx} cy={cy} r={r} /> : <Moon cx={cx} cy={cy} k={r / 4.5} sw={strokeWidth} flip={flip} />;
 
   let body: React.ReactNode;
-  const marks = precipMarks(c);
+  const marks = precipMarks(info);
   if (c === 0) {
     body = <g style={warm}>{celestial(12, 12, 4.5)}</g>;
   } else if (c === 1) {
@@ -190,9 +202,9 @@ export const WeatherIcon = ({
     body = occluded(celestial(15, 8.5, 3.2), { cx: 11, by: 20, s: 0.85 });
   } else if (c === 3) {
     body = occluded(<Cloud place={{ cx: 15, by: 13, s: 0.6 }} sw={strokeWidth} />, { cx: 10.5, by: 20, s: 0.85 }, false);
-  } else if (c === 45 || c === 48) {
+  } else if (info.kind === "fog") {
     body =
-      c === 45 ? (
+      !info.rime ? (
         <path d="M3 8h13M5 12h15M3 16h11M16 16h5" />
       ) : (
         <>
@@ -200,22 +212,22 @@ export const WeatherIcon = ({
           <path d={flake(19, 6.4)} />
         </>
       );
-  } else if (c >= 95 && c <= 99) {
-    // Hailstones beside the bolt: two with slight hail (96), three with heavy (99).
+  } else if (info.kind === "thunder") {
+    // Hailstones beside the bolt: two with slight hail, three with heavy.
     body = (
       <>
         <Cloud place={{ cx: 12, by: 14.5, s: 0.9 }} sw={strokeWidth} />
         <path d="M13.2 15.5l-2.6 3.6h3.1l-2.3 3.9" style={warm} />
-        {c >= 96 && (
+        {info.hail && (
           <>
             <circle cx={6.8} cy={19.5} r={1} />
             <circle cx={17.8} cy={18.8} r={1} />
-            {c === 99 && <circle cx={16.2} cy={22.4} r={1} />}
+            {info.intensity === "heavy" && <circle cx={16.2} cy={22.4} r={1} />}
           </>
         )}
       </>
     );
-  } else if (marks && c >= 80 && c <= 86) {
+  } else if (marks && info.showers) {
     // Showers: sun or moon in the gaps of a convective cloud.
     body = (
       <>
@@ -235,17 +247,8 @@ export const WeatherIcon = ({
   }
 
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
+    <LineIcon className={className} strokeWidth={strokeWidth}>
       {body}
-    </svg>
+    </LineIcon>
   );
 };

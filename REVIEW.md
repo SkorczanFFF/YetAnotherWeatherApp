@@ -246,7 +246,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
   - Use a module-level Leaflet `divIcon` and drop `react-dom/server`.
 - Un-export the local-only types.
 
-**Phase 2 — single sources of truth**
+**Phase 2 — single sources of truth** — ✅ done 2026-10-13. Deviations: palettes centralised in `core/palette.ts` but their values kept (the look-alike pairs are tuned on purpose — sky veil vs horizon haze, cloud-base red vs sun disc); the three sun drawings stay (filled logo, UV stat, weather icon differ by design); the loader keeps its 18 px blur; `smoothstep` already had MathUtils' argument order (the trap is GLSL's order — documented in `utils/math.ts`); display formatting went straight to `utils/format.ts`, so phase 3's formatter split is half done.
 - **Domain:**
   - `weather/codes.ts` becomes the single WMO table (fixes the 56/77 intensities).
   - `weather/units.ts`.

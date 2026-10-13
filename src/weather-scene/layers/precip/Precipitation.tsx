@@ -12,11 +12,13 @@ import {
   Vector4,
 } from "three.quarks";
 import type { SceneParams } from "../../../weather/sceneParams";
+import { clamp01 } from "../../../utils/math";
 import type { QualityBudget } from "../../core/quality";
 import { useSceneSignals } from "../../core/sceneSignals";
 import type { PrecipVolume, ViewFrame } from "../../core/viewVolume";
 import { getDotTexture, getSnowAtlas, SNOW_TILES } from "./textures";
 import { ViewVolumeEmitter } from "./ViewVolumeEmitter";
+import { RENDER_ORDER } from "../../core/constants";
 
 interface PrecipitationProps {
   params: SceneParams;
@@ -49,7 +51,6 @@ interface SystemSpec {
 
 const RAIN_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 40, pad: 1.5 };
 const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 function buildSpecs(params: SceneParams, budget: QualityBudget): SystemSpec[] {
   const { precip, wind } = params;
@@ -241,7 +242,7 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
             : {},
         uTileCount: spec.tiles ?? 1,
         vTileCount: 1,
-        renderOrder: 4,
+        renderOrder: RENDER_ORDER.precipitation,
       });
       const entry: LiveSystem = { system, emitter, rate, material };
       rate.value = (spec.max * spec.intensity) / emitter.meanLife;
