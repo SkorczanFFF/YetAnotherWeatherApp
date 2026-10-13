@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Color, type Mesh, ShaderMaterial } from "three";
-import { getFrostAmount, type SceneParams } from "../../weather/sceneParams";
+import { getFrostAmount } from "../../weather/frost";
+import type { SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { FROST_FRAG } from "../shaders/frost.glsl";

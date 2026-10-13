@@ -1,37 +1,21 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastContainer } from "react-toastify";
-import Navbar from "./components/navbar/Navbar";
-import CurrentWeather from "./components/weather/current/CurrentWeather";
-import HourlyChart from "./components/weather/hourly/HourlyChart";
-import WeeklyForecast from "./components/weather/weekly/WeeklyForecast";
-import WeatherScene from "./components/weather-scene/WeatherSceneContainer";
-import DebugMenu, { type DebugTools } from "./components/debug-menu/DebugMenu";
+import { Navbar } from "./components/navbar/Navbar";
+import { CurrentWeather } from "./components/weather/current/CurrentWeather";
+import { HourlyChart } from "./components/weather/hourly/HourlyChart";
+import { WeeklyForecast } from "./components/weather/weekly/WeeklyForecast";
+import { WeatherSceneContainer } from "./weather-scene/WeatherSceneContainer";
+import { DebugMenu, type DebugTools } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
 import { LoaderPanel, LoaderPill } from "./components/loader/Loader";
-import { useGlassSpotlight } from "./styles/useGlassSpotlight";
-import {
-  DEFAULT_LOCATION,
-  isOverridesDirty,
-  mapToSceneParams,
-  type SceneOverrides,
-} from "./weather/sceneParams";
-import getFormattedWeatherData from "./services/weatherService";
+import { useDebugToggle } from "./hooks/useDebugToggle";
+import { useGlassSpotlight } from "./hooks/useGlassSpotlight";
+import { useWeather } from "./hooks/useWeather";
+import { DEFAULT_LOCATION, mapToSceneParams } from "./weather/sceneParams";
+import { isOverridesDirty, type SceneOverrides } from "./weather/overrides";
 import { formatCoords, formatGmtOffset, formatLatLon, tempSymbol } from "./utils/format";
-import { WeatherError } from "./services/errors";
-import {
-  type LoadSource,
-  type WeatherQuery,
-  type Units,
-  type WeatherData,
-} from "./weather/types";
-
-const MIN_LOADING_MS = 500;
-/** Current conditions and the hourly chart's "now" go stale without a refetch. */
-const REFRESH_MS = 15 * 60_000;
-/** Phones have no F7: this many quick taps on the footer status toggle the debug menu. */
-const DEBUG_TAPS = 5;
-const DEBUG_TAP_GAP_MS = 600;
+import type { LoadSource, Units, WeatherQuery } from "./weather/types";
 
 const describeQuery = (query: WeatherQuery): string =>
   query.q
@@ -53,14 +37,9 @@ const App = (): React.ReactElement => {
   useGlassSpotlight();
   const [query, setQuery] = useState<WeatherQuery>({ q: DEFAULT_LOCATION.name });
   const [units, setUnits] = useState<Units>("metric");
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  // Units the shown data was fetched in — the toggle flips `units` before the
-  // new data arrives, and Open-Meteo returns °F/mph in imperial mode.
-  const [weatherUnits, setWeatherUnits] = useState<Units>(units);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { weather, weatherUnits, loading, error } = useWeather(query, units);
   const [loadSource, setLoadSource] = useState<LoadSource>("initial");
-  const [error, setError] = useState<string | null>(null);
-  const [debugOpen, setDebugOpen] = useState(false);
+  const { open: debugOpen, setOpen: setDebugOpen, onTap: handleStatusTap } = useDebugToggle();
   const [debugOverrides, setDebugOverrides] = useState<SceneOverrides | null>(null);
   const [debugTools, setDebugTools] = useState<DebugTools>({
     showPerf: true,
@@ -76,93 +55,6 @@ const App = (): React.ReactElement => {
     () => mapToSceneParams(weather, weatherUnits, debugOverrides),
     [weather, weatherUnits, debugOverrides],
   );
-
-  const statusTaps = useRef({ count: 0, last: 0 });
-  const handleStatusTap = () => {
-    const taps = statusTaps.current;
-    const now = performance.now();
-    taps.count = now - taps.last < DEBUG_TAP_GAP_MS ? taps.count + 1 : 1;
-    taps.last = now;
-    if (taps.count >= DEBUG_TAPS) {
-      taps.count = 0;
-      setDebugOpen((prev) => !prev);
-    }
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "F7") {
-        e.preventDefault();
-        setDebugOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    // A newer request supersedes this one: its late result and its
-    // loading-finished must not touch the state.
-    let cancelled = false;
-    const fetchWeather = async () => {
-      setLoading(true);
-      setError(null);
-      const startedAt = Date.now();
-      try {
-        const data = await getFormattedWeatherData({ ...query, units });
-        if (cancelled) return;
-        setWeather(data);
-        setWeatherUnits(units);
-      } catch (err: unknown) {
-        if (cancelled) return;
-        console.error(err);
-        const code = err instanceof WeatherError ? err.code : null;
-        const message =
-          code === "GEOCODE_FAILED"
-            ? "City not found. Please check the name and try again."
-            : code === "API_ERROR"
-              ? "Weather service is temporarily unavailable."
-              : "Network error. Please check your connection.";
-        setError(message);
-      } finally {
-        if (!cancelled) {
-          const elapsed = Date.now() - startedAt;
-          const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-          if (remaining > 0) {
-            setTimeout(() => {
-              if (!cancelled) setLoading(false);
-            }, remaining);
-          } else {
-            setLoading(false);
-          }
-        }
-      }
-    };
-    fetchWeather();
-    return () => {
-      cancelled = true;
-    };
-  }, [query, units]);
-
-  // Silent refresh: no loader, and a failure keeps the shown data.
-  useEffect(() => {
-    let cancelled = false;
-    const id = window.setInterval(async () => {
-      try {
-        const data = await getFormattedWeatherData({ ...query, units });
-        if (cancelled) return;
-        setWeather(data);
-        setWeatherUnits(units);
-        setError(null);
-      } catch (err) {
-        console.warn(err);
-      }
-    }, REFRESH_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [query, units]);
 
   const gmtOffset = formatGmtOffset(weather?.timezone);
   const requestQuery = (next: WeatherQuery, source: LoadSource): void => {
@@ -181,7 +73,7 @@ const App = (): React.ReactElement => {
 
   return (
     <div className="App">
-      <WeatherScene
+      <WeatherSceneContainer
         params={effectiveParams}
         showPerf={debugOpen && debugTools.showPerf}
         lightningNonce={lightningNonce}

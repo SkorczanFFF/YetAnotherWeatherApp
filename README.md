@@ -1,6 +1,6 @@
 # Yet Another Weather App
 
-Yet another weather app — but with a custom 3D WebGL weather scene, gyroscope parallax on mobile, frost overlays, and interactive weather data. Hover over items to discover tooltips, click the temperature to toggle units, and enjoy the vibes.
+Yet another weather app — but the background is a live 3D sky computed from the forecast: volumetric clouds from the model's cloud layers and atmosphere, real sun and moon positions, rain, snow, hail, lightning and frost on the glass. Liquid-glass UI that adapts to how bright the sky is.
 
 Don't get wet — check the weather first!
 
@@ -10,49 +10,43 @@ Don't get wet — check the weather first!
 
 ## Features
 
-- **City search** — worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback so names like "Warszawa" or "Waszyngton" resolve correctly
-- **Geolocation** — fetch weather for your current location via the browser Geolocation API
-- **Map picker** — resizable drawer with an interactive Leaflet/OpenStreetMap map; click to pick a location, confirm to load weather for that point
-- **Current conditions** — temperature, feels like, min/max, wind speed, pressure, humidity, sunrise/sunset, and weather description with icon
-- **Live date & time** — day, date, full month, year, and time in the forecast location's timezone, synced every second with a blinking colon
-- **7-day forecast** — weekly outlook displayed as interactive cards
-- **Unit toggle** — switch between Metric (°C, km/h) and Imperial (°F, mph) by clicking the temperature
-- **Weather-driven 3D scene** — custom Three.js scene (sky gradients, sun/moon with lens flare, clouds, rain, snow, fog, mist, stars at night, thunderstorm with lightning) driven by live weather data
-- **Gyroscope parallax** — on mobile devices, the camera responds to device tilt via the gyroscope; on desktop, camera follows mouse movement; iOS permission is requested automatically on first tap
-- **Frost overlay** — when temperature drops below 0 °C, frost PNG textures appear on all four screen edges with a smooth fade-in transition
-- **Responsive mobile layout** — sticky search bar with backdrop blur, scrollable weather content, single-column layout
-- **Toast notifications** — error and info messages via react-toastify instead of browser alerts
-- **Tooltips** — follow cursor on hover with dynamic text (e.g. "Click to switch to Fahrenheit")
-- **Loading state** — animated loader with minimum 500 ms display time, content blur animation while loading
-- **Glassmorphism UI** — frosted-glass panels with backdrop blur
-- **Dynamic text color** — CSS variable (`--app-text-color`) switches between day/night palettes based on time of day
-- **Debug menu (F7)** — override effect type, intensity, time of day, cloud cover, fog density, wind, particles, thunderstorm flag, and more
+- **City search** — worldwide geocoding with result ranking (capitals and large cities preferred) and browser-language + English fallback, so names like "Warszawa" or "Waszyngton" resolve correctly
+- **Geolocation** — weather for your current location via the browser Geolocation API
+- **Map picker** — resizable drawer with a Leaflet/OpenStreetMap map; click to pick a point, confirm to load it
+- **Current conditions** — temperature, feels like, min/max, wind, pressure, humidity, visibility, cloud cover, UV, precipitation, dew point, and the sun (or moon) arc between sunrise and sunset, all in the location's time zone
+- **Next 12 hours** — temperature chart
+- **6-day forecast** — tiles with icon, min/max, precipitation chance, wind and UV
+- **Unit toggle** — Metric (°C, km/h) or Imperial (°F, mph)
+- **Weather-driven 3D scene** — see below
+- **Parallax** — the camera follows device tilt on phones (iOS asks for permission on first tap) and the mouse on desktop
+- **Adaptive liquid glass** — cards darken and firm up their text as the sky behind them brightens; edges light up near the cursor
+- **Silent refresh** — data reloads every 15 minutes without a loader
+- **Quality tiers** — the scene steps down (high → medium → low → a flat cloud deck) when the frame rate can't keep up
+- **Debug menu** — F7 (or 5 quick taps on the footer status on phones): weather presets, time, every scene input, cloud physics, quality tier, perf readout, forced lightning
 
 ## How the Weather Scene Works
 
-- **Rain vs drizzle** — Rain falls quickly in straight or slightly slanted streaks. Drizzle is finer and softer, creating a misty feeling.
-- **Snow** — Snowflakes fall slowly and gently sway side to side, drifting and floating.
-- **Wind** — Stronger wind tilts rain and pushes snow and mist sideways. Clouds drift with the wind, biased toward the upwind direction for natural spawning.
-- **Fog and mist** — Fog fades distant parts of the scene into soft gray, thickening with humidity. Mist is lighter and more transparent.
-- **Clouds** — Multi-tiered (low/mid/high) clouds move across the sky responding to wind direction and speed. Spawn bounds dynamically scale with camera aspect ratio for correct coverage on any screen size.
-- **Thunderstorms** — Heavy rain, darker sky, and bright lightning flashes with double-flash timing.
-- **Frost** — Below 0 °C, frost textures appear on all four screen edges — left, right, top, and bottom.
-- **Sun and moon** — Position driven by actual sunrise/sunset times. Sun includes a multi-sample lens flare that hides behind clouds via raycasting.
+- **Clouds** — a raymarched volumetric layer whose base, top, cover, type (stratus → cumulus → cumulonimbus) and density come from the forecast: dew point, boundary layer, CAPE, cloud cover per pressure level and measured sunlight. Cirrus is a separate high layer. Low and high clouds drift with the 850 hPa and 300 hPa winds.
+- **Sun and moon** — real positions (suncalc), squeezed into the frame so they stay visible; the moon shows its real phase. Clouds glow red at sunset.
+- **Precipitation** — rain, drizzle, freezing rain, snow, wet snow, snow grains and hail, with rates from the forecast; wind slants rain and pushes snow, showers come in pulses.
+- **Thunderstorms** — lightning bolts that light up the cloud they strike from.
+- **Fog and haze** — from the reported visibility.
+- **Frost** — the window frosts gradually from 0 °C to −20 °C (more in humid air), and glazes under freezing rain or rime fog.
+- **Diamond dust** — sparkling ice crystals in very cold, clear, humid air.
 
 ## Tech Stack
 
 | Category | Technology |
 |---|---|
 | Framework | React 19 + TypeScript |
-| Build | Create React App |
+| Build | Vite |
 | Styling | Sass (SCSS) |
 | Weather API | [Open-Meteo](https://open-meteo.com/) (free, no API key required) |
-| Geocoding | [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) |
-| 3D Scene | Three.js, React Three Fiber, @react-three/drei |
+| Geocoding | [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api), Nominatim (reverse) |
+| 3D Scene | Three.js, React Three Fiber, @react-three/drei, three.quarks (particles), suncalc |
 | Maps | React Leaflet + OpenStreetMap |
 | Date/Time | Luxon |
 | Icons | Own line-art SVG (`components/icons.tsx`) |
-| Tooltips | react-tooltip |
 | Notifications | react-toastify |
 | Analytics | Vercel Analytics |
 | Deployment | Vercel |
@@ -82,34 +76,29 @@ The app opens at [http://localhost:3000](http://localhost:3000).
 
 | Script | Description |
 |---|---|
-| `npm start` | Run the development server |
-| `npm run build` | Create a production build |
+| `npm start` / `npm run dev` | Run the development server |
+| `npm run build` | Type-check and create a production build |
+| `npm run preview` | Serve the production build |
 
 ## Project Structure
 
 ```
 src/
-├── components/
-│   ├── navbar/              # Search bar, geolocation, map picker trigger
-│   ├── weather/
-│   │   ├── current/         # Current weather display
-│   │   └── weekly/          # 7-day forecast cards
-│   ├── map-picker/          # Resizable drawer with Leaflet map
-│   ├── weather-scene/       # Container: mounts 3D scene + frost overlay
-│   └── debug-menu/          # F7 overlay for simulation overrides
-├── weather-scene/
-│   ├── scene/               # CameraRig, useDeviceOrientation, SkyBackground, DebugBox, FreeCameraWASD
-│   ├── effects/             # CelestialBodies, CloudEffect, Rain, Snow, Mist, Fog, Lightning
-│   │   └── clouds/          # Cloud builder, tiers, spawning, color, constants
-│   ├── physics/             # Wind and weather physics helpers
-│   ├── cameraFrustum.ts     # Frustum-based spawn bounds calculation
-│   └── WeatherScene.tsx     # R3F Canvas and scene composition
-├── weather/                 # Config, types, sun progress, weather codes
-├── services/                # API calls, geocoding, data formatting, error types
-├── App.tsx                  # Root component, state management
-├── index.tsx                # Entry point
-└── index.scss               # Global styles, frost overlay, mobile layout
+├── App.tsx                # Top-level state and layout
+├── hooks/                 # useWeather (fetch + refresh), useDebugToggle, useGlassSpotlight
+├── services/              # Open-Meteo forecast + geocoding calls, API → app data mapping
+├── weather/               # Domain: WMO codes, units, scene parameters, cloud physics, debug overrides, presets
+├── utils/                 # Display formatting, math helpers
+├── components/            # UI: navbar, current/hourly/weekly cards, map picker, loaders, debug menu, icons
+├── styles/                # Liquid-glass and token SCSS
+└── weather-scene/
+    ├── WeatherScene.tsx   # R3F canvas, quality tiers, layer mount order
+    ├── core/              # World frame, view volumes, per-frame signals, scene driver, palette, constants
+    ├── layers/            # Sky, stars, moon, clouds/, cloud deck, precip/, thunder, frost, diamond dust
+    └── shaders/           # GLSL
 ```
+
+More detail for contributors (and AI agents) is in `CLAUDE.md`; the history is in `CHANGELOG.md`.
 
 ## API
 

@@ -7,38 +7,36 @@ import {
   LinearFilter,
   MathUtils,
   Matrix4,
-  Mesh,
-  OrthographicCamera,
-  PlaneGeometry,
-  RepeatWrapping,
-  Scene,
+  type Mesh,
   ShaderMaterial,
   Vector2,
   Vector3,
-  WebGL3DRenderTarget,
-  type WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-import { deckCover } from "../../weather/cloudPhysics";
-import type { SceneParams } from "../../weather/sceneParams";
-import type { VolumetricBudget } from "../core/quality";
-import { useSceneSignals } from "../core/sceneSignals";
+import type { SceneParams } from "../../../weather/sceneParams";
+import type { VolumetricBudget } from "../../core/quality";
+import { useSceneSignals } from "../../core/sceneSignals";
 import {
   CAMERA_ALTITUDE_M,
   directionFromRelative,
   CLOUD_TIMELAPSE,
   EARTH_RADIUS_M,
   METRES_PER_UNIT,
-} from "../core/worldFrame";
-import { CLOUD_NOISE_FRAG } from "../shaders/cloudNoise.glsl";
-import { fullscreenVert } from "../shaders/fullscreen.glsl";
+} from "../../core/worldFrame";
+import { fullscreenVert } from "../../shaders/fullscreen.glsl";
 import {
   CLOUD_COMPOSITE_FRAG,
   CLOUD_RESOLVE_FRAG,
   VOLUMETRIC_FRAG,
-} from "../shaders/volumetricClouds.glsl";
-import { MAX_DT, RENDER_ORDER } from "../core/constants";
-import { CLOUD_MOON, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../core/palette";
+} from "../../shaders/volumetricClouds.glsl";
+import { MAX_DT, RENDER_ORDER } from "../../core/constants";
+import { CLOUD_MOON, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../../core/palette";
+import { getCloudNoise3D } from "./cloudNoise3D";
+import { fullscreenPass } from "./fullscreenPass";
+import { SHELL_KEYS, shellTargets, type ShellTargets } from "./shellTargets";
+
+/** Shell fields eased between weathers (1/s): ~95 % of the way in a second. */
+const SHELL_EASE = 3;
 
 interface VolumetricCloudsProps {
   params: SceneParams;
@@ -46,129 +44,6 @@ interface VolumetricCloudsProps {
 }
 
 const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
-
-/** An offscreen full-screen pass: one clip-space quad in its own scene. */
-function fullscreenPass(material: ShaderMaterial) {
-  const quad = new Mesh(new PlaneGeometry(2, 2), material);
-  quad.frustumCulled = false;
-  return {
-    material,
-    scene: new Scene().add(quad),
-    camera: new OrthographicCamera(),
-    dispose() {
-      material.dispose();
-      quad.geometry.dispose();
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// 3D noise: generated once per size on the GPU, slice by slice, then cached
-// for the page's lifetime (the quality tier can come back to it).
-const noiseCache = new Map<number, WebGL3DRenderTarget>();
-
-function getCloudNoise3D(gl: WebGLRenderer, size: number): Data3DTexture {
-  const cached = noiseCache.get(size);
-  if (cached) return cached.texture;
-  const target = new WebGL3DRenderTarget(size, size, size, {
-    depthBuffer: false,
-    minFilter: LinearFilter,
-    magFilter: LinearFilter,
-    generateMipmaps: false,
-  });
-  target.texture.wrapS = RepeatWrapping;
-  target.texture.wrapT = RepeatWrapping;
-  target.texture.wrapR = RepeatWrapping;
-
-  const pass = fullscreenPass(
-    new ShaderMaterial({
-      uniforms: { uSlice: { value: 0 } },
-      vertexShader: fullscreenVert(),
-      fragmentShader: CLOUD_NOISE_FRAG,
-      depthTest: false,
-      depthWrite: false,
-    }),
-  );
-  const previous = gl.getRenderTarget();
-  for (let z = 0; z < size; z++) {
-    pass.material.uniforms.uSlice.value = (z + 0.5) / size;
-    gl.setRenderTarget(target, z);
-    gl.render(pass.scene, pass.camera);
-  }
-  gl.setRenderTarget(previous);
-  pass.dispose();
-  noiseCache.set(size, target);
-  return target.texture;
-}
-
-// ---------------------------------------------------------------------------
-// Weather → shell parameters, from the cloud physics (weather/cloudPhysics.ts):
-// base/top from dew point, boundary layer and CAPE; density from the optical
-// depth (radiation-derived by day); cirrus height from the pressure levels.
-interface ShellTargets {
-  coverage: number;
-  /** 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1 cumulonimbus. */
-  type: number;
-  thickness: number;
-  base: number;
-  /** Extinction per metre at noise density 1. */
-  density: number;
-  /** Noise size multiplier, ≤ 1: cells shrink with a low deck's height. */
-  featureScale: number;
-  high: number;
-  cirrusAlt: number;
-  freezeAlt: number;
-}
-
-/** Mean fill of the shaped noise inside the shell — converts τ into extinction. */
-const SHELL_FILL = 0.35;
-/** Shell fields eased between weathers (1/s): ~95 % of the way in a second. */
-const SHELL_EASE = 3;
-/**
- * Deck mid-height the noise scales were tuned at (cumulus, m). A lower deck
- * is closer, so its cells shrink with it — at the full size a 150–400 m
- * deck was one cell across the whole frame, a featureless grey sheet.
- */
-const FEATURE_REF_M = 1200;
-const MIN_FEATURE_SCALE = 0.2;
-/** Eased fields; one missing here would silently freeze, so the Record makes it a type error. */
-const SHELL_KEY_SET = {
-  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
-} satisfies Record<keyof ShellTargets, 1>;
-const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
-
-function shellTargets(params: SceneParams): ShellTargets {
-  const { low, mid, high, total } = params.clouds;
-  const p = params.cloudPhysics;
-  // One shell: when the mid band clearly dominates (altocumulus sky), lift
-  // the shell to the mid level instead of the boundary-layer clouds — unless
-  // the air is convective, where the towers rise from the boundary layer.
-  const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3) && p.convection < 0.5;
-  let base = midDominant ? p.midAltM - 350 : p.baseM;
-  const top = midDominant ? p.midAltM + 450 : p.topM;
-  const thickness = MathUtils.clamp(top - base, 80, 12000);
-  const conv = p.convection;
-  const type = params.thunder
-    ? 1
-    : midDominant
-      ? 0.3
-      : low >= 0.85 && conv < 0.25
-        ? 0.06 + 0.2 * conv
-        : MathUtils.clamp(0.35 + 0.65 * conv, 0, 1);
-  return {
-    // The shell is the low/mid cloud; high cover is the cirrus layer, not
-    // cumulus. Total cover only stands in when no layer explains it.
-    coverage: MathUtils.clamp(Math.max(deckCover(params.clouds), low + mid + high < 0.05 ? total : 0), 0, 1),
-    type,
-    thickness,
-    base,
-    density: MathUtils.clamp(p.opticalDepth / (thickness * SHELL_FILL), 0.004, 0.15),
-    featureScale: MathUtils.clamp((base + thickness * 0.5) / FEATURE_REF_M, MIN_FEATURE_SCALE, 1),
-    high,
-    cirrusAlt: p.highAltM,
-    freezeAlt: p.freezingLevelM,
-  };
-}
 
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
 

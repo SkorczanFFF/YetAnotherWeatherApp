@@ -4,6 +4,15 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Changed (file organisation)
+- `services/weatherFormatter.ts` → `services/openMeteoMapper.ts` (API → app data only); `fetchWeather` is a named export.
+- `App.tsx` keeps state and layout; fetching, refresh and error text live in `hooks/useWeather`, the F7 / 5-tap toggle in `hooks/useDebugToggle`; `useGlassSpotlight` moved to `hooks/`.
+- `weather/sceneParams.ts` split into `sceneParams.ts`, `overrides.ts` and `frost.ts`.
+- Volumetric clouds split into `layers/clouds/` (renderer, `shellTargets`, `cloudNoise3D`, `fullscreenPass`); `WeatherSceneContainer` moved into `weather-scene/`.
+- Precipitation: one static table per kind; a system is rebuilt only when the set of kinds changes, rate/fall speed/colour/sway update live (a rate change no longer pops the particles).
+- The cloud noise cache is keyed by renderer, so a remount with a new WebGL context regenerates it instead of reusing a dead texture.
+- Named exports everywhere except `App`; README brought up to date.
+
 ### Changed (single sources of truth)
 - One WMO table (`weather/codes.ts`) for the scene, the labels and the icons. Fixes light freezing drizzle (56) and snow grains (77), which were treated as heavy (1 mm/h and 1.2 cm/h fallbacks).
 - Units, requested API fields, override and shell keys (type-checked), quality tiers, render orders, tone exposure, frame-delta cap, scene palette, shared GLSL helpers, display formatting (`utils/format.ts`), math helpers, the forecast day count and the default location each defined once.

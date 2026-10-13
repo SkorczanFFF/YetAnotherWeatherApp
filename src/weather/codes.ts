@@ -22,6 +22,9 @@ export interface CodeInfo {
   rime?: boolean;
 }
 
+/** WMO definition of fog: visibility under 1 km. */
+export const FOG_VISIBILITY_M = 1000;
+
 /** Cloud cover assumed under any precipitation code. */
 const WET = 0.85;
 

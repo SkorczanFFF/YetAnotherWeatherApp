@@ -17,7 +17,7 @@ const PAD_T = 26;
 const PAD_B = 28;
 const POINTS = 12;
 
-const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) => {
+export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) => {
   const slice = useMemo(() => {
     const nowSec = Date.now() / 1000;
     let startIdx = hourly.findIndex((h) => h.time >= nowSec);
@@ -115,5 +115,3 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
     </section>
   );
 };
-
-export default HourlyChart;

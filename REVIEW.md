@@ -266,7 +266,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
   - SCSS `_tokens.scss` / `_mixins.scss`: breakpoints, blur scale, `label` mixin, accent derivations. DebugMenu.scss moves onto the tokens.
   - One constant for the forecast day count.
 
-**Phase 3 — file reorganisation (moves and splits, no behaviour change)**
+**Phase 3 — file reorganisation (moves and splits, no behaviour change)** — ✅ done 2026-10-13. Deviations: the volumetric clouds went to `layers/clouds/` (like `layers/precip/`) and their shaders stay in `shaders/` with every other layer's; the noise cache is now keyed by renderer (P2 fix, free during the move); every component moved to named exports (only `App` default-exports); README rewritten (it still described the CRA-era engine).
 - Split `weatherFormatter.ts` into `services/openMeteoMapper.ts` + `weather/codes.ts` + `utils/format.ts`.
 - Split `sceneParams.ts` into `sceneParams.ts` + `overrides.ts` + `frost.ts`.
 - `App.tsx` → `hooks/useWeather.ts` + `hooks/useDebugToggle.ts`; `useGlassSpotlight` moves to `hooks/`.

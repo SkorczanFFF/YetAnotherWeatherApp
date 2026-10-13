@@ -13,7 +13,7 @@ interface WeeklyForecastProps {
   units: Units;
 }
 
-const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
+export const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
   return (
     <section
       className="forecast"
@@ -61,5 +61,3 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
     </section>
   );
 };
-
-export default WeeklyForecast;

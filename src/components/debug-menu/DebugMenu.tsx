@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
 import * as SunCalc from "suncalc";
 import { DateTime } from "luxon";
-import {
-  type Auto,
-  type QualityTier,
-  type BoolOverrideKey,
-  type SceneOverrides,
-  type SceneParams,
-  getFrostAmount,
-  QUALITY_TIERS,
-} from "../../weather/sceneParams";
+import { QUALITY_TIERS, type QualityTier, type SceneParams } from "../../weather/sceneParams";
+import type { Auto, BoolOverrideKey, SceneOverrides } from "../../weather/overrides";
+import { getFrostAmount } from "../../weather/frost";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
@@ -134,7 +128,7 @@ function PerfReadout() {
   );
 }
 
-const DebugMenu: React.FC<DebugMenuProps> = ({
+export const DebugMenu: React.FC<DebugMenuProps> = ({
   open,
   onClose,
   overrides,
@@ -375,5 +369,3 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
     </div>
   );
 };
-
-export default DebugMenu;

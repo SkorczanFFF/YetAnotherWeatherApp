@@ -22,7 +22,7 @@ const isValidCityName = (name: string): boolean => {
   return /^[\p{L}\s\-'.]+$/u.test(trimmed);
 };
 
-const Navbar: React.FC<NavbarProps> = ({
+export const Navbar: React.FC<NavbarProps> = ({
   setQuery,
   isDebugMode,
   onOpenMapPicker,
@@ -165,5 +165,3 @@ const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
-
-export default Navbar;

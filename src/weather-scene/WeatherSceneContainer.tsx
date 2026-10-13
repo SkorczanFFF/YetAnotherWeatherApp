@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import type { ReactNode } from "react";
-import type { SceneParams } from "../../weather/sceneParams";
+import type { SceneParams } from "../weather/sceneParams";
 import {
   WeatherScene as Scene3D,
   type WeatherSceneDebugProps,
-} from "../../weather-scene/WeatherScene";
+} from "./WeatherScene";
 
 class SceneErrorBoundary extends Component<
   { children: ReactNode },
@@ -24,7 +24,7 @@ interface WeatherSceneContainerProps extends WeatherSceneDebugProps {
   params: SceneParams;
 }
 
-const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
+export const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
   params,
   ...debug
 }) => {
@@ -36,5 +36,3 @@ const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
     </div>
   );
 };
-
-export default WeatherSceneContainer;

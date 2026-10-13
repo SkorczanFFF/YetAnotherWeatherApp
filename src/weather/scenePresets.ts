@@ -1,6 +1,7 @@
 /** Debug weather presets — one per row of the "weather catalogue" in SCENE_REFACTOR.md. */
 
-import { CLEAR_VISIBILITY_M, type SceneOverrides } from "./sceneParams";
+import type { SceneOverrides } from "./overrides";
+import { CLEAR_VISIBILITY_M } from "./sceneParams";
 
 /**
  * Every weather-describing override key; presets pin all of them so live data

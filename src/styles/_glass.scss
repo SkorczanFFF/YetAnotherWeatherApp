@@ -12,7 +12,7 @@ $glass-reveal: 160px;
 // just inside the border lights up wherever the mouse is near — hovered or
 // not, even from the gap between two cards — and brightens on :hover.
 // `--glass-spot: 1` marks the element for useGlassSpotlight
-// (styles/useGlassSpotlight.ts), which writes the cursor position to
+// (hooks/useGlassSpotlight.ts), which writes the cursor position to
 // `--mx` / `--my`. The mixin owns `::after`; it can't decorate replaced
 // elements (input, select, img). Pass `$position: null` when the element is
 // already positioned (absolute/fixed). Components that declare their own

@@ -26,36 +26,74 @@ interface PrecipitationProps {
   budget: QualityBudget;
 }
 
-/** Everything about one particle system that, when changed, requires rebuilding it. */
-interface SystemSpec {
-  key: string;
-  /** Simultaneous particles at full intensity. */
-  max: number;
-  /** 0..1 — scales emission without rebuilding. */
-  intensity: number;
-  fallMin: number;
-  fallMax: number;
+type Kind = "drizzle" | "rain" | "grains" | "snow" | "wet-snow" | "hail";
+
+/** What a particle system is built from — fixed per kind. */
+interface KindDef {
+  mode: RenderMode;
+  texture: () => Texture;
+  volume: PrecipVolume;
   windFactor: number;
   sizeMin: number;
   sizeMax: number;
-  mode: RenderMode;
-  texture: Texture;
-  color: [number, number, number, number];
-  volume: PrecipVolume;
-  tiles?: number;
-  /** Sway amplitude (scene units) for snow. */
-  sway?: number;
+  /** Fall speed range, m/s (rain overrides it by rate). */
+  fall: [number, number];
   /** Stretched billboards: streak length = |velocity| × stretch × size. */
   stretch?: number;
+  tiles?: number;
 }
 
 const RAIN_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 40, pad: 1.5 };
 const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
 
+const KINDS: Record<Kind, KindDef> = {
+  drizzle: {
+    mode: RenderMode.StretchedBillBoard, texture: getDotTexture, volume: RAIN_VOLUME,
+    windFactor: 0.9, sizeMin: 0.016, sizeMax: 0.024, fall: [6.5, 9], stretch: 0.9,
+  },
+  rain: {
+    mode: RenderMode.StretchedBillBoard, texture: getDotTexture, volume: RAIN_VOLUME,
+    windFactor: 0.7, sizeMin: 0.03, sizeMax: 0.045, fall: [14, 20], stretch: 1.1,
+  },
+  grains: {
+    mode: RenderMode.BillBoard, texture: getDotTexture, volume: SNOW_VOLUME,
+    windFactor: 0.5, sizeMin: 0.05, sizeMax: 0.08, fall: [3.5, 5],
+  },
+  snow: {
+    mode: RenderMode.BillBoard, texture: getSnowAtlas, volume: SNOW_VOLUME,
+    windFactor: 0.55, sizeMin: 0.16, sizeMax: 0.3, fall: [1.1, 2], tiles: SNOW_TILES,
+  },
+  // Wet flakes: smaller and faster.
+  "wet-snow": {
+    mode: RenderMode.BillBoard, texture: getSnowAtlas, volume: SNOW_VOLUME,
+    windFactor: 0.55, sizeMin: 0.12, sizeMax: 0.2, fall: [2.6, 3.6], tiles: SNOW_TILES,
+  },
+  // Short streaks — hail is fast enough to blur.
+  hail: {
+    mode: RenderMode.StretchedBillBoard, texture: getDotTexture, volume: SNOW_VOLUME,
+    windFactor: 0.4, sizeMin: 0.07, sizeMax: 0.12, fall: [22, 28], stretch: 0.3,
+  },
+};
+
+/** What changes with the weather — applied to the live system every frame. */
+interface SystemSpec {
+  kind: Kind;
+  /** Simultaneous particles at full intensity. */
+  max: number;
+  /** 0..1 — scales emission. */
+  intensity: number;
+  fallMin: number;
+  fallMax: number;
+  color: [number, number, number, number];
+  /** Sway amplitude (scene units) for snow. */
+  sway?: number;
+}
+
 function buildSpecs(params: SceneParams, budget: QualityBudget): SystemSpec[] {
   const { precip, wind } = params;
   const specs: SystemSpec[] = [];
   const sleet = precip.rainMmH > 0 && precip.snowCmH > 0;
+  const fall = (kind: Kind) => ({ fallMin: KINDS[kind].fall[0], fallMax: KINDS[kind].fall[1] });
 
   if (precip.rainMmH > 0) {
     const r = precip.rainMmH;
@@ -65,101 +103,50 @@ function buildSpecs(params: SceneParams, budget: QualityBudget): SystemSpec[] {
     specs.push(
       precip.drizzle
         ? {
-            key: "drizzle",
+            kind: "drizzle",
             max: budget.rain,
             intensity: clamp01(0.35 + (r / 1.5) * 0.65) * (sleet ? 0.6 : 1),
-            fallMin: 6.5,
-            fallMax: 9,
-            windFactor: 0.9,
-            sizeMin: 0.016,
-            sizeMax: 0.024,
-            stretch: 0.9,
-            mode: RenderMode.StretchedBillBoard,
-            texture: getDotTexture(),
+            ...fall("drizzle"),
             color,
-            volume: RAIN_VOLUME,
           }
         : {
-            key: "rain",
+            kind: "rain",
             max: budget.rain,
             intensity: clamp01(Math.pow(r / 10, 0.6) + 0.06) * (sleet ? 0.6 : 1),
-            fallMin: 14 + Math.min(r, 20) * 0.2,
-            fallMax: 20 + Math.min(r, 20) * 0.25,
-            windFactor: 0.7,
-            sizeMin: 0.03,
-            sizeMax: 0.045,
-            stretch: 1.1,
-            mode: RenderMode.StretchedBillBoard,
-            texture: getDotTexture(),
+            // Heavier rain, bigger and faster drops.
+            fallMin: KINDS.rain.fall[0] + Math.min(r, 20) * 0.2,
+            fallMax: KINDS.rain.fall[1] + Math.min(r, 20) * 0.25,
             color,
-            volume: RAIN_VOLUME,
           },
     );
   }
 
   if (precip.snowCmH > 0) {
-    const s = precip.snowCmH;
-    const intensity = clamp01(Math.pow(s / 3, 0.6) + 0.06);
-    specs.push(
-      precip.grains
-        ? {
-            key: "grains",
-            max: budget.snow,
-            intensity,
-            fallMin: 3.5,
-            fallMax: 5,
-            windFactor: 0.5,
-            sizeMin: 0.05,
-            sizeMax: 0.08,
-            mode: RenderMode.BillBoard,
-            texture: getDotTexture(),
-            color: [0.94, 0.96, 1, 0.85],
-            volume: SNOW_VOLUME,
-          }
-        : {
-            key: sleet ? "wet-snow" : "snow",
-            max: budget.snow,
-            intensity: sleet ? intensity * 0.7 : intensity,
-            // Wet flakes fall faster.
-            fallMin: sleet ? 2.6 : 1.1,
-            fallMax: sleet ? 3.6 : 2.0,
-            windFactor: 0.55,
-            sizeMin: sleet ? 0.12 : 0.16,
-            sizeMax: sleet ? 0.2 : 0.3,
-            mode: RenderMode.BillBoard,
-            texture: getSnowAtlas(),
-            color: [1, 1, 1, 0.95],
-            volume: SNOW_VOLUME,
-            tiles: SNOW_TILES,
-            sway: 0.3 + Math.min(wind.speedMs, 20) * 0.03,
-          },
-    );
+    const intensity = clamp01(Math.pow(precip.snowCmH / 3, 0.6) + 0.06);
+    if (precip.grains) {
+      specs.push({ kind: "grains", max: budget.snow, intensity, ...fall("grains"), color: [0.94, 0.96, 1, 0.85] });
+    } else {
+      const kind = sleet ? "wet-snow" : "snow";
+      specs.push({
+        kind,
+        max: budget.snow,
+        intensity: sleet ? intensity * 0.7 : intensity,
+        ...fall(kind),
+        color: [1, 1, 1, 0.95],
+        sway: 0.3 + Math.min(wind.speedMs, 20) * 0.03,
+      });
+    }
   }
 
   if (precip.hail) {
-    specs.push({
-      key: "hail",
-      max: budget.hail,
-      intensity: 0.6,
-      fallMin: 22,
-      fallMax: 28,
-      windFactor: 0.4,
-      sizeMin: 0.07,
-      sizeMax: 0.12,
-      // Short streaks — hail is fast enough to blur.
-      stretch: 0.3,
-      mode: RenderMode.StretchedBillBoard,
-      texture: getDotTexture(),
-      color: [0.97, 0.98, 1, 1],
-      volume: SNOW_VOLUME,
-    });
+    specs.push({ kind: "hail", max: budget.hail, intensity: 0.6, ...fall("hail"), color: [0.97, 0.98, 1, 1] });
   }
   return specs;
 }
 
 /** Initial guess for the mean particle life (calm air) — the emitter refines it as it spawns. */
 function initialMeanLife(frame: ViewFrame, spec: SystemSpec): number {
-  const { dNear, dFar, pad } = spec.volume;
+  const { dNear, dFar, pad } = KINDS[spec.kind].volume;
   // Mean distance of points uniform in the trapezoid (density ∝ d).
   const dMean = ((2 / 3) * (dFar ** 3 - dNear ** 3)) / (dFar ** 2 - dNear ** 2);
   const span = (frame.tanTop - frame.tanBottom) * dMean + 2 * pad;
@@ -170,34 +157,34 @@ interface LiveSystem {
   system: ParticleSystem;
   emitter: ViewVolumeEmitter;
   rate: ConstantValue;
+  color: Vector4;
+  sway: ConstantValue | null;
   material: MeshBasicMaterial;
 }
 
 /**
  * Rain, drizzle, snow, snow grains, sleet and hail on three.quarks. One
  * BatchedRenderer; each kind is a ParticleSystem with a ViewVolumeEmitter, so
- * particles exist only inside the frame. Intensity changes only retune the
- * emission rate; a system is rebuilt only when its structure changes.
- * Showers pulse the rate.
+ * particles exist only inside the frame. A system is rebuilt only when the
+ * set of kinds (or the frame) changes; rate, fall speed, colour and sway are
+ * updated live, so a changing rate never pops. Showers pulse the rate.
  */
 export function Precipitation({ params, frame, budget }: PrecipitationProps) {
   const s = useSceneSignals();
   const renderer = useMemo(() => new BatchedRenderer(), []);
   const specs = useMemo(() => buildSpecs(params, budget), [params, budget]);
-  const live = useRef(new Map<string, LiveSystem>());
+  const live = useRef(new Map<Kind, LiveSystem>());
   const specsRef = useRef(specs);
   specsRef.current = specs;
 
-  // Rebuild only on structural change; the key ignores intensity.
-  const structure = specs
-    .map((sp) => `${sp.key}:${sp.max}:${sp.fallMin.toFixed(1)}:${sp.fallMax.toFixed(1)}:${sp.color.join(",")}:${sp.sway ?? 0}`)
-    .join("|");
+  const kinds = specs.map((sp) => sp.kind).join("|");
 
   useEffect(() => {
     const created: LiveSystem[] = [];
     for (const spec of specsRef.current) {
+      const def = KINDS[spec.kind];
       const material = new MeshBasicMaterial({
-        map: spec.texture,
+        map: def.texture(),
         transparent: true,
         depthWrite: false,
         blending: NormalBlending,
@@ -206,18 +193,18 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
         fog: false,
       });
       const rate = new ConstantValue(0);
-      const behaviors = spec.sway
-        ? [new Noise(new ConstantValue(0.5), new ConstantValue(spec.sway), new ConstantValue(1))]
-        : [];
+      const color = new Vector4(...spec.color);
+      const sway = spec.sway != null ? new ConstantValue(spec.sway) : null;
+      const behaviors = sway ? [new Noise(new ConstantValue(0.5), sway, new ConstantValue(1))] : [];
       const emitter = new ViewVolumeEmitter(
         {
           frame,
-          volume: spec.volume,
+          volume: def.volume,
           fallMin: spec.fallMin,
           fallMax: spec.fallMax,
           wind: s.windVelocity,
-          windFactor: spec.windFactor,
-          tiles: spec.tiles,
+          windFactor: def.windFactor,
+          tiles: def.tiles,
         },
         initialMeanLife(frame, spec),
       );
@@ -229,26 +216,26 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
         shape: emitter,
         startLife: new ConstantValue(1), // overridden per particle by the emitter
         startSpeed: new ConstantValue(0),
-        startSize: new IntervalValue(spec.sizeMin, spec.sizeMax),
+        startSize: new IntervalValue(def.sizeMin, def.sizeMax),
         startRotation: new IntervalValue(0, Math.PI * 2),
-        startColor: new ConstantColor(new Vector4(...spec.color)),
+        startColor: new ConstantColor(color),
         emissionOverTime: rate,
         behaviors,
         material,
-        renderMode: spec.mode,
+        renderMode: def.mode,
         rendererEmitterSettings:
-          spec.mode === RenderMode.StretchedBillBoard
-            ? { speedFactor: spec.stretch ?? 1, lengthFactor: 0 }
+          def.mode === RenderMode.StretchedBillBoard
+            ? { speedFactor: def.stretch ?? 1, lengthFactor: 0 }
             : {},
-        uTileCount: spec.tiles ?? 1,
+        uTileCount: def.tiles ?? 1,
         vTileCount: 1,
         renderOrder: RENDER_ORDER.precipitation,
       });
-      const entry: LiveSystem = { system, emitter, rate, material };
+      const entry: LiveSystem = { system, emitter, rate, color, sway, material };
       rate.value = (spec.max * spec.intensity) / emitter.meanLife;
       renderer.addSystem(system);
       renderer.add(system.emitter);
-      live.current.set(spec.key, entry);
+      live.current.set(spec.kind, entry);
       created.push(entry);
     }
     return () => {
@@ -258,8 +245,8 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
       }
       live.current.clear();
     };
-    // `structure` captures everything spec-related that needs a rebuild.
-  }, [structure, frame, renderer, s]);
+    // `kinds` is the only spec-related input that needs a rebuild.
+  }, [kinds, frame, renderer, s]);
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
@@ -267,10 +254,13 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
       ? 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 0.21) * Math.sin(t * 0.077 + 1.3))
       : 1;
     for (const spec of specsRef.current) {
-      const entry = live.current.get(spec.key);
-      if (entry) {
-        entry.rate.value = (spec.max * spec.intensity * pulse) / Math.max(0.2, entry.emitter.meanLife);
-      }
+      const entry = live.current.get(spec.kind);
+      if (!entry) continue;
+      entry.rate.value = (spec.max * spec.intensity * pulse) / Math.max(0.2, entry.emitter.meanLife);
+      entry.emitter.options.fallMin = spec.fallMin;
+      entry.emitter.options.fallMax = spec.fallMax;
+      entry.color.set(...spec.color);
+      if (entry.sway && spec.sway != null) entry.sway.value = spec.sway;
     }
     renderer.update(delta);
     // quarks builds its own ShaderMaterial per batch and drops toneMapped;

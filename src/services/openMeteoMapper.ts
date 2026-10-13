@@ -14,7 +14,7 @@ import { type OpenMeteoResponse, PRESSURE_LEVELS } from "./weatherApi";
 /** `timezone=auto` returns location-local ISO strings without an offset. */
 const localSeconds = (iso: string, zone: string) => DateTime.fromISO(iso, { zone }).toSeconds();
 
-export const formatCurrentWeather = (
+export const mapCurrent = (
   data: OpenMeteoResponse,
   locationName?: string,
   countryCode?: string,
@@ -85,7 +85,7 @@ export const formatCurrentWeather = (
     rain,
     showers,
     snowfall,
-    atmosphere: formatAtmosphere(data),
+    atmosphere: mapAtmosphere(data),
   };
 };
 
@@ -93,7 +93,7 @@ const wind = (speed?: number, direction?: number) =>
   speed != null && direction != null ? { speed, direction } : undefined;
 
 /** Upper-air column for the scene's cloud physics; every field optional (model gaps). */
-const formatAtmosphere = (data: OpenMeteoResponse): AtmosphereData => {
+const mapAtmosphere = (data: OpenMeteoResponse): AtmosphereData => {
   const c = data.current;
   const levels: AtmosphereLevel[] = [];
   for (const pressure of PRESSURE_LEVELS) {
@@ -116,7 +116,7 @@ const formatAtmosphere = (data: OpenMeteoResponse): AtmosphereData => {
   };
 };
 
-export const formatWeeklyWeather = (
+export const mapForecast = (
   data: OpenMeteoResponse,
 ): Pick<WeatherData, "timezone" | "daily" | "hourly"> => {
   const { timezone, daily, hourly } = data;

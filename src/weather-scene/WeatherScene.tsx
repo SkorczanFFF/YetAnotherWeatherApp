@@ -17,7 +17,7 @@ import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
 import { FogLayer } from "./layers/FogLayer";
 import { CloudDeck } from "./layers/CloudDeck";
-import { VolumetricClouds } from "./layers/VolumetricClouds";
+import { VolumetricClouds } from "./layers/clouds/VolumetricClouds";
 import { Precipitation } from "./layers/precip/Precipitation";
 import { Thunder } from "./layers/Thunder";
 import { DiamondDust } from "./layers/DiamondDust";

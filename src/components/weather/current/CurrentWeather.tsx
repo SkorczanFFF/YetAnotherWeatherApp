@@ -56,7 +56,7 @@ const arcAt = (t: number) => ({
   y: (1 - t) * (1 - t) * ARC_Y + 2 * t * (1 - t) * ARC_PEAK_Y + t * t * ARC_Y,
 });
 
-const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
+export const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
   const [live, setLive] = useState(() => getLiveTimeParts(weather.timezone));
   const arcClipId = `arc-clip${useId()}`;
 
@@ -293,5 +293,3 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
     </section>
   );
 };
-
-export default CurrentWeather;

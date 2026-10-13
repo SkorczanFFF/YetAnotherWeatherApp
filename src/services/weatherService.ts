@@ -5,12 +5,12 @@ import { UNITS } from "../weather/units";
 import { WeatherError } from "./errors";
 import { geocodeCity, reverseGeocode } from "./geocoder";
 import { CURRENT_FIELDS, DAILY_FIELDS, getForecast, HOURLY_FIELDS } from "./weatherApi";
-import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
+import { mapCurrent, mapForecast } from "./openMeteoMapper";
 
 /** Forecast tiles after today. */
 const FORECAST_DAYS = 6;
 
-const getFormattedWeatherData = async (
+export const fetchWeather = async (
   searchParams: WeatherQuery & { units: Units },
 ): Promise<WeatherData> => {
   let lat = searchParams.lat;
@@ -63,14 +63,5 @@ const getFormattedWeatherData = async (
     forecast_days: FORECAST_DAYS + 1,
   });
 
-  const formattedCurrentWeather = formatCurrentWeather(
-    data,
-    locationName,
-    countryCode,
-  );
-  const formattedWeeklyWeather = formatWeeklyWeather(data);
-
-  return { ...formattedCurrentWeather, ...formattedWeeklyWeather };
+  return { ...mapCurrent(data, locationName, countryCode), ...mapForecast(data) };
 };
-
-export default getFormattedWeatherData;

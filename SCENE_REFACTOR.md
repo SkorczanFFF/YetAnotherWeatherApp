@@ -50,7 +50,7 @@ Wszystkie kroki 0–8 zrobione na `scene-rewrite` (commity `feat: …`, niepusho
 - drei `<Sky>` = three-stdlib Preetham (box z `gl_Position.z = w`), ma własny dysk słońca i tonemapping → `gl.toneMappingExposure` ~0.5, kamera `far` ≥ 3000 dla decku chmur.
 - Mgła horyzontu wchodzi do `SkyGrade` zamiast osobnego quada; obiekty 3D mgli `FogExp2` → o jeden draw mniej.
 - `cloud.png` pobrane z drei-assets do `public/effects/` (drei domyślnie ciągnie je z githack CDN).
-- Znalezione poza zakresem (nie ruszamy): `weatherFormatter` parsuje `current.time`/`sunrise` (czas lokalny miasta bez offsetu) w strefie przeglądarki → `dt`/`sunrise` przesunięte, gdy strefa użytkownika ≠ strefa miasta. Nowa scena liczy czas z `Date.now()` + suncalc, więc jej to nie dotyczy.
+- Znalezione poza zakresem (nie ruszamy; naprawione 2026-10-13 w `openMeteoMapper.ts::localSeconds`): `weatherFormatter` parsował `current.time`/`sunrise` (czas lokalny miasta bez offsetu) w strefie przeglądarki → `dt`/`sunrise` przesunięte, gdy strefa użytkownika ≠ strefa miasta. Nowa scena liczy czas z `Date.now()` + suncalc, więc jej to nie dotyczy.
 
 ## Kontekst
 
