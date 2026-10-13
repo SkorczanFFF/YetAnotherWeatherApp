@@ -16,11 +16,9 @@ interface NavbarProps {
   pending: LoadSource | null;
 }
 
-const isValidCityName = (name: string): boolean => {
-  const trimmed = name.trim();
-  if (!trimmed || trimmed.length < 2 || trimmed.length > 100) return false;
-  return /^[\p{L}\s\-'.]+$/u.test(trimmed);
-};
+/** Letters, spaces, hyphens, apostrophes and dots; 2–100 characters (already trimmed). */
+const isValidCityName = (name: string): boolean =>
+  name.length >= 2 && name.length <= 100 && /^[\p{L}\s\-'.]+$/u.test(name);
 
 export const Navbar: React.FC<NavbarProps> = ({
   setQuery,
@@ -149,6 +147,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             className={units === "metric" ? "on" : ""}
+            aria-pressed={units === "metric"}
             onClick={() => setUnits("metric")}
           >
             {UNITS.metric.tempSymbol}
@@ -156,6 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             className={units === "imperial" ? "on" : ""}
+            aria-pressed={units === "imperial"}
             onClick={() => setUnits("imperial")}
           >
             {UNITS.imperial.tempSymbol}

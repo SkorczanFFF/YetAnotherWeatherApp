@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Line } from "@react-three/drei";
-import { type Group, MathUtils, Vector3 } from "three";
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { type Group, type InterleavedBufferAttribute, MathUtils, Vector3 } from "three";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
 import { METRES_PER_UNIT } from "../core/worldFrame";
@@ -28,8 +30,11 @@ const SECOND_BUMP_CHANCE = 0.5;
 const STRIKE_NEAR = 120;
 const STRIKE_FAR = 450;
 
-/** `segments`: point pairs for drei <Line segments> — trunk + branches in one draw. */
+/** `segments`: point pairs — trunk + branches in one draw. */
 type Bolt = { main: Vector3[]; segments: Vector3[] };
+
+/** Trunk (2⁶ segments) + up to 3 branches (2⁴ each) fit with room to spare. */
+const MAX_SEGMENTS = 128;
 
 /** Jagged polyline from `a` to `b` by recursive midpoint displacement. */
 function jagged(a: Vector3, b: Vector3, roughness: number, depth: number, out: Vector3[]) {
@@ -80,8 +85,35 @@ function makeBolt(frame: ViewFrame, topY: number): Bolt {
  */
 export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: ThunderProps) {
   const s = useSceneSignals();
-  const [bolt, setBolt] = useState<Bolt | null>(null);
+  const size = useThree((state) => state.size);
   const group = useRef<Group>(null);
+
+  // One geometry for glow and core, written in place per strike: no new GPU
+  // buffers, no material (and shader) churn, no React render.
+  const lines = useMemo(() => {
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(new Float32Array(MAX_SEGMENTS * 6));
+    geometry.instanceCount = 0;
+    const make = (color: string, linewidth: number, opacity: number) => {
+      const material = new LineMaterial({ color, linewidth, transparent: true, opacity, toneMapped: false, fog: false });
+      const line = new LineSegments2(geometry, material);
+      line.frustumCulled = false;
+      return line;
+    };
+    return { geometry, glow: make("#c9d6ff", 7, 0.3), core: make("#f4f7ff", 2.4, 1) };
+  }, []);
+  useEffect(
+    () => () => {
+      lines.geometry.dispose();
+      lines.glow.material.dispose();
+      lines.core.material.dispose();
+    },
+    [lines],
+  );
+  useEffect(() => {
+    lines.glow.material.resolution.set(size.width, size.height);
+    lines.core.material.resolution.set(size.width, size.height);
+  }, [lines, size]);
   const next = useRef(-1);
   const start = useRef(-Infinity);
   const secondAt = useRef(-1);
@@ -99,7 +131,11 @@ export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: Thunder
     if (forced.current || (enabled && t >= next.current)) {
       forced.current = false;
       const b = makeBolt(frame, boltTopY(cloudBaseM));
-      setBolt(b);
+      const data = (lines.geometry.getAttribute("instanceStart") as InterleavedBufferAttribute).data;
+      const n = Math.min(MAX_SEGMENTS, b.segments.length / 2);
+      for (let i = 0; i < n * 2; i++) b.segments[i].toArray(data.array, i * 3);
+      data.needsUpdate = true;
+      lines.geometry.instanceCount = n;
       start.current = t;
       secondAt.current = Math.random() < SECOND_BUMP_CHANCE ? t + 0.09 : -1;
       const d = -b.main[0].z;
@@ -123,12 +159,10 @@ export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: Thunder
     if (group.current) group.current.visible = env > 0.12;
   });
 
-  if (!bolt) return null;
-
   return (
-    <group ref={group} renderOrder={RENDER_ORDER.thunder}>
-      <Line points={bolt.segments} segments color="#c9d6ff" lineWidth={7} transparent opacity={0.3} toneMapped={false} fog={false} />
-      <Line points={bolt.segments} segments color="#f4f7ff" lineWidth={2.4} transparent toneMapped={false} fog={false} />
+    <group ref={group} renderOrder={RENDER_ORDER.thunder} visible={false}>
+      <primitive object={lines.glow} />
+      <primitive object={lines.core} />
     </group>
   );
 }

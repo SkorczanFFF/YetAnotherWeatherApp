@@ -83,6 +83,7 @@ export function MapPicker({
   );
   useEffect(() => () => window.clearTimeout(tilesTimer.current), []);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const center = initialCenter ?? DEFAULT_CENTER;
   // Read on open only: App passes a new tuple every render.
@@ -143,7 +144,7 @@ export function MapPicker({
 
   useEffect(() => {
     if (!open) return;
-    const drawer = document.querySelector(".map-picker-drawer") as HTMLElement;
+    const drawer = drawerRef.current;
     if (!drawer) return;
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
@@ -189,6 +190,7 @@ export function MapPicker({
         aria-label="Close map panel"
       />
       <aside
+        ref={drawerRef}
         className={`map-picker-drawer ${open ? "map-picker-drawer--open" : ""}`}
         style={{ width: drawerWidth }}
         role="dialog"

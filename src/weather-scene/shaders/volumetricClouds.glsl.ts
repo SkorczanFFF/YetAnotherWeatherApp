@@ -15,6 +15,7 @@
 // Cloud output is premultiplied: rgb = in-scattered radiance (pre-tonemap,
 // "sky units"), a = 1 − transmittance.
 
+import { MAX_LIGHT_STEPS } from "../core/quality";
 import { CIRRUS_ALPHA, FBM_WEIGHTS, NOISE_RANK, REMAP } from "./chunks.glsl";
 
 /** Which pixel of each 2×2 block is marched on a given frame (shared by passes 1 and 2). */
@@ -195,7 +196,7 @@ float lightOpticalDepth(vec3 p) {
   float stepLen = uThickness * 0.45 / float(uLightSteps);
   float t = 0.0;
   float od = 0.0;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < ${MAX_LIGHT_STEPS}; i++) {
     if (i >= uLightSteps) break;
     float s = stepLen * (1.0 + float(i) * 0.7);
     t += s;

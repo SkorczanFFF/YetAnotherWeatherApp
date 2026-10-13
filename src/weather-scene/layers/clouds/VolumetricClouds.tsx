@@ -46,6 +46,7 @@ interface VolumetricCloudsProps {
 const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
 
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
+const scratch = { sun: new Vector3(), moon: new Vector3(), moonColor: new Color() };
 
 /**
  * Low-res raymarch + temporal resolve into ping-pong targets, then one full-screen
@@ -182,15 +183,12 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     windNoise: new Vector2(),
     read: 0,
     historyValid: false,
+    /** Targets the history belongs to; new targets have none to reuse. */
+    historyOf: null as object | null,
     prevViewProj: new Matrix4(),
     /** The shell actually drawn: eases towards targetsWanted. */
     shell: null as ShellTargets | null,
   });
-
-  // New render targets → no history to reuse.
-  useEffect(() => {
-    state.current.historyValid = false;
-  }, [targets]);
 
   const meshRef = useRef<Mesh>(null);
 
@@ -221,6 +219,10 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       return;
     }
 
+    if (st.historyOf !== targets) {
+      st.historyOf = targets;
+      st.historyValid = false;
+    }
     const camera = frameState.camera;
     const write = targets.history[1 - st.read];
     u.uNoise.value = noise;
@@ -260,21 +262,25 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     // (that's the red underside glow), then the moon takes over.
     const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
     const sunVis = MathUtils.smoothstep(sunAltDeg, -6, 2);
-    const lightColor = u.uLightColor.value as Color;
-    if (sunVis > 0.02 || s.moonIntensity < 0.01) {
-      // On-screen azimuth (so the glow sits around the visible sun) but the
-      // REAL altitude: the squeezed display altitude would light every cloud
-      // almost horizontally and outline it.
-      const relAz = Math.atan2(s.sunDir.x, -s.sunDir.z);
-      directionFromRelative(relAz, s.sunAlt, u.uLightDir.value as Vector3);
-      lightColor
-        .copy(CLOUD_SUN_LOW)
-        .lerp(CLOUD_SUN_HIGH, MathUtils.smoothstep(sunAltDeg, -3, 22))
-        .multiplyScalar(1.3 * sunVis);
-    } else {
-      (u.uLightDir.value as Vector3).copy(s.moonDir);
-      lightColor.copy(CLOUD_MOON).multiplyScalar(s.moonIntensity * 1.4);
-    }
+    // Sun and moon crossfade (a hard switch jumped ~6× in brightness at dusk).
+    // Both use the on-screen azimuth (the glow sits around the visible body)
+    // but the REAL altitude: the squeezed display altitude would light every
+    // cloud almost horizontally and outline it.
+    const sunEnergy = 1.3 * sunVis;
+    const moonEnergy = 1.4 * s.moonIntensity * (1 - sunVis);
+    const lightColor = (u.uLightColor.value as Color)
+      .copy(CLOUD_SUN_LOW)
+      .lerp(CLOUD_SUN_HIGH, MathUtils.smoothstep(sunAltDeg, -3, 22))
+      .multiplyScalar(sunEnergy);
+    lightColor.add(scratch.moonColor.copy(CLOUD_MOON).multiplyScalar(moonEnergy));
+    directionFromRelative(Math.atan2(s.sunDir.x, -s.sunDir.z), s.sunAlt, scratch.sun);
+    directionFromRelative(Math.atan2(s.moonDir.x, -s.moonDir.z), s.moonAlt, scratch.moon);
+    const lightDir = (u.uLightDir.value as Vector3)
+      .copy(scratch.sun)
+      .multiplyScalar(sunEnergy)
+      .addScaledVector(scratch.moon, moonEnergy);
+    if (lightDir.lengthSq() < 1e-8) lightDir.copy(scratch.sun);
+    lightDir.normalize();
     // Thick storm towers starve their own bases of light.
     const gloom = params.thunder ? 0.5 : params.precip.rainMmH > 4 ? 0.3 : 0;
     (u.uAmbientTop.value as Color).copy(s.hemiSky).multiplyScalar(1.35 * (1 - gloom));

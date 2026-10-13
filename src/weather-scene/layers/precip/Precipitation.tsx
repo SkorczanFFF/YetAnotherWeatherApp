@@ -169,13 +169,15 @@ interface LiveSystem {
  */
 export function Precipitation({ params, frame, budget }: PrecipitationProps) {
   const s = useSceneSignals();
-  const renderer = useMemo(() => new BatchedRenderer(), []);
   const specs = useMemo(() => buildSpecs(params, budget), [params, budget]);
   const live = useRef(new Map<Kind, LiveSystem>());
   const specsRef = useRef(specs);
   specsRef.current = specs;
 
   const kinds = specs.map((sp) => sp.kind).join("|");
+  // A fresh renderer per rebuild: quarks never drops a batch whose systems are
+  // gone, so reusing one would pile up a geometry + material per rebuild.
+  const renderer = useMemo(() => new BatchedRenderer(), [kinds, frame]);
 
   useEffect(() => {
     const created: LiveSystem[] = [];
@@ -240,6 +242,10 @@ export function Precipitation({ params, frame, budget }: PrecipitationProps) {
       for (const entry of created) {
         entry.system.dispose();
         entry.material.dispose();
+      }
+      for (const batch of renderer.batches) {
+        batch.dispose();
+        (batch.material as Material).dispose();
       }
       live.current.clear();
     };

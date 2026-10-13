@@ -28,6 +28,8 @@ const SHELL_FILL = 0.35;
  */
 const FEATURE_REF_M = 1200;
 const MIN_FEATURE_SCALE = 0.2;
+/** Shell base floor, m: a debug base of 0 would put the camera inside the shell. */
+const MIN_BASE_M = 30;
 /** Eased fields; one missing here would silently freeze, so the Record makes it a type error. */
 const SHELL_KEY_SET = {
   coverage: 1, type: 1, thickness: 1, base: 1, density: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
@@ -41,7 +43,7 @@ export function shellTargets(params: SceneParams): ShellTargets {
   // the shell to the mid level instead of the boundary-layer clouds — unless
   // the air is convective, where the towers rise from the boundary layer.
   const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3) && p.convection < 0.5;
-  const base = midDominant ? p.midAltM - 350 : p.baseM;
+  const base = Math.max(MIN_BASE_M, midDominant ? p.midAltM - 350 : p.baseM);
   const top = midDominant ? p.midAltM + 450 : p.topM;
   const thickness = MathUtils.clamp(top - base, 80, 12000);
   const conv = p.convection;

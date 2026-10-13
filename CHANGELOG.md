@@ -4,6 +4,17 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Changed (scene)
+- Clouds: sun and moon light crossfade at dusk instead of switching (a ~6× jump), and the moon lights them from its real altitude (no more rim-lit outlines under a bright moon); the shell base has a 30 m floor.
+- Potato tier: the deck draws its own exp² fog (identical look); `FogLayer` and the fog-density signal are gone.
+- Lightning reuses one line geometry instead of rebuilding a drei `<Line>` (and its shader) per strike.
+- Precipitation: a fresh particle renderer per rebuild, the old one fully disposed (emptied batches piled up before).
+- The 2D noise texture is baked only when frost or the potato deck first shows; the star field no longer reshuffles on resize.
+
+### Fixed
+- iOS: an orientation permission granted after the scene unmounted no longer leaves a listener behind.
+- Scene errors are logged; asset paths respect the deploy base; the °C/°F buttons expose `aria-pressed`.
+
 ### Changed (comments)
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
 

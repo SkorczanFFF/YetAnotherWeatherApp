@@ -6,8 +6,7 @@ import {
   Color,
   type Mesh,
   ShaderMaterial,
-  UniformsLib,
-  UniformsUtils,
+  SRGBColorSpace,
   Vector2,
 } from "three";
 import { deckCover } from "../../weather/cloudPhysics";
@@ -15,7 +14,14 @@ import type { SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, nearestVisibleDistance, type ViewFrame } from "../core/viewVolume";
-import { CLOUD_TIMELAPSE, DECK_FAR, DECK_Y, METRES_PER_UNIT } from "../core/worldFrame";
+import {
+  CLOUD_TIMELAPSE,
+  DECK_FAR,
+  DECK_Y,
+  effectiveVisibilityM,
+  fogDensityFor,
+  METRES_PER_UNIT,
+} from "../core/worldFrame";
 import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
 import { RENDER_ORDER } from "../core/constants";
 
@@ -71,38 +77,33 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
   const material = useMemo(
     () =>
       new ShaderMaterial({
-        uniforms: UniformsUtils.merge([
-          UniformsLib.fog,
-          {
-            uNoise: { value: null },
-            uDrift: { value: new Vector2() },
-            uDriftHigh: { value: new Vector2() },
-            uWindDir: { value: new Vector2(1, 0) },
-            uLow: { value: 0 },
-            uHigh: { value: 0 },
-            uLit: { value: new Color() },
-            uShade: { value: new Color() },
-            uHighColor: { value: new Color() },
-            uFadeFar: { value: DECK_FAR },
-            uFlash: { value: 0 },
-          },
-        ]),
+        uniforms: {
+          uNoise: { value: getCloudNoiseTexture() },
+          uDrift: { value: new Vector2() },
+          uDriftHigh: { value: new Vector2() },
+          uWindDir: { value: new Vector2(1, 0) },
+          uLow: { value: 0 },
+          uHigh: { value: 0 },
+          uLit: { value: new Color() },
+          uShade: { value: new Color() },
+          uHighColor: { value: new Color() },
+          uFadeFar: { value: DECK_FAR },
+          uFlash: { value: 0 },
+          uFogColor: { value: new Color() },
+          uFogDensity: { value: 0 },
+        },
         vertexShader: CLOUD_DECK_VERT,
         fragmentShader: CLOUD_DECK_FRAG,
         transparent: true,
         depthWrite: false,
-        fog: true,
       }),
     [],
   );
-  useEffect(() => {
-    // Assigned after merge — UniformsUtils.merge would clone the texture.
-    material.uniforms.uNoise.value = getCloudNoiseTexture();
-    return () => material.dispose();
-  }, [material]);
+  useEffect(() => () => material.dispose(), [material]);
 
   const { clouds, precip, thunder } = params;
   const storm = thunder ? 1 : Math.min(0.6, precip.rainMmH / 12 + precip.snowCmH / 6);
+  const fogDensity = fogDensityFor(effectiveVisibilityM(params.fog.visibilityM, params.temperatureC));
 
   useFrame(() => {
     const mesh = ref.current;
@@ -120,6 +121,9 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     u.uLow.value = deck;
     u.uHigh.value = clouds.high;
     u.uFlash.value = s.flash;
+    // Mixed after the sRGB conversion, so the colour is sRGB too (as three does for scene fog).
+    s.horizonColor.getRGB(u.uFogColor.value as Color, SRGBColorSpace);
+    u.uFogDensity.value = fogDensity;
 
     const lit = u.uLit.value as Color;
     lit.copy(NIGHT_LIT).lerp(DAY_LIT, s.day);

@@ -10,7 +10,7 @@ import {
 
 // Tileable 256×256 FBM (one channel), baked once on the CPU (~30 ms) and shared by
 // the potato-tier cloud deck and the frost glass; tiling lets UVs scroll seamlessly.
-// Assign it after UniformsUtils.merge, which would clone it.
+// Never pass it through UniformsUtils.merge, which would clone it.
 
 const TEX_SIZE = 256;
 const OCTAVES = 5;

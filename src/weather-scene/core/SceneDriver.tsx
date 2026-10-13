@@ -8,7 +8,8 @@ import type { ViewFrame } from "./viewVolume";
 import {
   directionFromRelative,
   facingFor,
-  METRES_PER_UNIT,
+  effectiveVisibilityM,
+  heatShimmer,
   MIN_DRIFT_MS,
   relativeAzimuth,
   windVelocity,
@@ -124,10 +125,8 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     );
 
     // --- haze & fog: Koschmieder — 95 % extinction at the visibility distance ---
-    const heat = smoothstep(temperatureC, 28, 38);
-    const visibility = Math.max(50, fog.visibilityM * (1 - heat * 0.5));
-    const visUnits = visibility / METRES_PER_UNIT;
-    s.fogDensity = MathUtils.clamp(1.73 / visUnits, 0.0004, 0.15);
+    const heat = heatShimmer(temperatureC);
+    const visibility = effectiveVisibilityM(fog.visibilityM, temperatureC);
     s.haze = MathUtils.clamp(1 - (Math.log10(visibility) - 2.5) / 1.9, 0, 1);
 
     const horizon = s.horizonColor.copy(DAY_HAZE).lerp(TWILIGHT, s.warmth);

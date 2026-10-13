@@ -72,6 +72,11 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   },
 };
 
+/** GLSL loop bound for the light march (loops need a constant bound). */
+export const MAX_LIGHT_STEPS = Math.max(
+  ...Object.values(QUALITY).map((b) => b.volumetric?.lightSteps ?? 0),
+);
+
 export function initialTier(isMobile: boolean): QualityTier {
   return isMobile ? "low" : "high";
 }

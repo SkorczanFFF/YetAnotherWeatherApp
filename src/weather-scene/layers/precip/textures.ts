@@ -80,7 +80,7 @@ export function getSnowAtlas(): DataTexture {
       }
       texture.needsUpdate = true;
     };
-    img.src = `/effects/snowflake${t + 1}.png`;
+    img.src = `${import.meta.env.BASE_URL}effects/snowflake${t + 1}.png`;
   }
   snow = texture;
   return texture;

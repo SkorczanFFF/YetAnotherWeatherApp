@@ -7,28 +7,24 @@
 //          layer.
 // The pre-baked tileable FBM (core/noiseTexture.ts) is sampled at world xz
 // minus the accumulated wind drift, so clouds move with the real wind.
-// FogExp2 chunks fade it into the horizon colour.
+// Exp² fog towards the horizon colour (same maths and order as three's fog chunks).
 
 import { CIRRUS_ALPHA, NOISE_RANK } from "./chunks.glsl";
 
 export const CLOUD_DECK_VERT = /* glsl */ `
-#include <common>
-#include <fog_pars_vertex>
 varying vec3 vWorld;
+varying float vFogDepth;
 
 void main() {
   vec4 worldPosition = modelMatrix * vec4(position, 1.0);
   vWorld = worldPosition.xyz;
   vec4 mvPosition = viewMatrix * worldPosition;
   gl_Position = projectionMatrix * mvPosition;
-  #include <fog_vertex>
+  vFogDepth = -mvPosition.z;
 }
 `;
 
 export const CLOUD_DECK_FRAG = /* glsl */ `
-#include <common>
-#include <fog_pars_fragment>
-
 uniform sampler2D uNoise;
 uniform vec2 uDrift;       // accumulated 850 hPa drift, world units (xz)
 uniform vec2 uDriftHigh;   // accumulated 300 hPa drift (cirrus), world units (xz)
@@ -40,8 +36,11 @@ uniform vec3 uShade;
 uniform vec3 uHighColor;
 uniform float uFadeFar;
 uniform float uFlash;
+uniform vec3 uFogColor;
+uniform float uFogDensity;  // exp² density per scene unit
 
 varying vec3 vWorld;
+varying float vFogDepth;
 
 const float LOW_SCALE = 1.0 / 220.0;
 const vec2 HIGH_SCALE = vec2(1.0 / 700.0, 1.0 / 160.0);
@@ -85,6 +84,7 @@ void main() {
 
   gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>
-  #include <fog_fragment>
+  float fogFactor = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);
 }
 `;

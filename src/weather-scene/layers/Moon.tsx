@@ -24,7 +24,7 @@ const SIZE = 2 * DISTANCE * Math.tan(ANGULAR_DIAMETER / 2);
 export function Moon() {
   const s = useSceneSignals();
   const ref = useRef<Mesh>(null);
-  const map = useTexture("/effects/moon.jpg");
+  const map = useTexture(`${import.meta.env.BASE_URL}effects/moon.jpg`);
   const scratch = useMemo(
     () => ({ sun: new Vector3(), moon: new Vector3(), dir2d: new Vector2() }),
     [],

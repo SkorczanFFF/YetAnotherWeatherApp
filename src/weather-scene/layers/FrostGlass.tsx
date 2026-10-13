@@ -47,10 +47,7 @@ export function FrostGlass({ params }: FrostGlassProps) {
       }),
     [],
   );
-  useEffect(() => {
-    material.uniforms.uNoise.value = getCloudNoiseTexture();
-    return () => material.dispose();
-  }, [material]);
+  useEffect(() => () => material.dispose(), [material]);
 
   const target = getFrostAmount(params);
 
@@ -64,6 +61,8 @@ export function FrostGlass({ params }: FrostGlassProps) {
     mesh.visible = amount.current > 0.003;
     if (!mesh.visible) return;
     const u = material.uniforms;
+    // Baked (~30 ms CPU) the first time frost shows, not on every page load.
+    u.uNoise.value ??= getCloudNoiseTexture();
     u.uAmount.value = amount.current;
     u.uAspect.value = size.width / Math.max(1, size.height);
     (u.uTint.value as Color).copy(DAY_TINT).lerp(NIGHT_TINT, s.night * 0.8);

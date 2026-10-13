@@ -21,8 +21,19 @@ export const LOOK_DISTANCE = 30;
 /** Camera translation (scene units) at parallaxAmount = 1. */
 export const PARALLAX_RANGE = 1.5;
 
-/** One scene unit ≈ 20 m; decides how visibility in metres maps onto FogExp2. */
+/** One scene unit ≈ 20 m; decides how visibility in metres maps onto fog density. */
 export const METRES_PER_UNIT = 20;
+
+/** 0..1 heat shimmer (28 → 38 °C): hazes the horizon and shortens the visibility. */
+export const heatShimmer = (temperatureC: number) => MathUtils.smoothstep(temperatureC, 28, 38);
+
+/** Visibility the scene draws, m. */
+export const effectiveVisibilityM = (visibilityM: number, temperatureC: number) =>
+  Math.max(50, visibilityM * (1 - heatShimmer(temperatureC) * 0.5));
+
+/** Exp² fog density per scene unit: Koschmieder, 95 % extinction at the visibility (√3 ≈ 1.73). */
+export const fogDensityFor = (visibilityM: number) =>
+  MathUtils.clamp(1.73 / (visibilityM / METRES_PER_UNIT), 0.0004, 0.15);
 
 /** Fallback ("potato" tier) cloud deck plane height (≈ 1.2 km). */
 export const DECK_Y = 60;

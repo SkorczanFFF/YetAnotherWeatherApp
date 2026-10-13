@@ -28,7 +28,6 @@ export interface SceneSignals {
   cloudFill: number;
   /** 0..1 horizon haze / fog strength (sky overlay). */
   haze: number;
-  fogDensity: number;
   horizonColor: Color;
   sunColor: Color;
   moonIntensity: number;
@@ -64,7 +63,6 @@ export function createSceneSignals(): SceneSignals {
     overcast: 0,
     cloudFill: 0,
     haze: 0,
-    fogDensity: 0,
     horizonColor: new Color(),
     sunColor: new Color(),
     moonIntensity: 0,

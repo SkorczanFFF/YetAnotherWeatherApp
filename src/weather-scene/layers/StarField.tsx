@@ -20,6 +20,16 @@ interface StarFieldProps {
 
 const RADIUS = 1500;
 
+/** mulberry32: a fixed sequence, so a resize reshapes the patch but keeps each star in place within it. */
+function seededRandom(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
  * Stars only inside the frame's patch of sky, with continuous opacity — drei <Stars>
  * fills a whole sphere and can't fade.
@@ -37,17 +47,18 @@ export function StarField({ frame, count }: StarFieldProps) {
     const sinMin = Math.sin(patch.elevMin);
     const sinMax = Math.sin(patch.elevMax);
     const dir = directionFromRelative(0, 0);
+    const random = seededRandom(1);
     for (let i = 0; i < count; i++) {
-      const relAz = (Math.random() * 2 - 1) * patch.relAzMax;
+      const relAz = (random() * 2 - 1) * patch.relAzMax;
       // Area-uniform in elevation.
-      const alt = Math.asin(sinMin + Math.random() * (sinMax - sinMin));
+      const alt = Math.asin(sinMin + random() * (sinMax - sinMin));
       directionFromRelative(relAz, alt, dir).multiplyScalar(RADIUS);
       pos[i * 3] = dir.x;
       pos[i * 3 + 1] = dir.y;
       pos[i * 3 + 2] = dir.z;
       // Many faint, few bright.
-      size[i] = 1 + Math.pow(Math.random(), 6) * 3.2;
-      phase[i] = Math.random();
+      size[i] = 1 + Math.pow(random(), 6) * 3.2;
+      phase[i] = random();
     }
     const geom = new BufferGeometry();
     geom.setAttribute("position", new BufferAttribute(pos, 3));

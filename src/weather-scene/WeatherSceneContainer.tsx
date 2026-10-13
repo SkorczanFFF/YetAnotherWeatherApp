@@ -6,7 +6,7 @@ import {
   type WeatherSceneDebugProps,
 } from "./WeatherScene";
 
-/** Renders nothing on a scene error — if the scene vanishes in dev, check DevTools. */
+/** Renders nothing on a scene error (the UI works without it); the error goes to the console. */
 class SceneErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }
@@ -14,6 +14,9 @@ class SceneErrorBoundary extends Component<
   state = { hasError: false };
   static getDerivedStateFromError() {
     return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error("Weather scene crashed:", error);
   }
   render() {
     if (this.state.hasError) return null;

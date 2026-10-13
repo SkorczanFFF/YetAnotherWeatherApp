@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { MathUtils } from "three";
 
 const TILT_RANGE = 30;
@@ -21,43 +21,43 @@ export function useDeviceOrientation(): React.MutableRefObject<DeviceOrientation
     available: false,
   });
 
-  const handleOrientation = useCallback((e: DeviceOrientationEvent) => {
-    if (e.beta === null || e.gamma === null) return;
-
-    const angle =
-      (window.screen?.orientation?.angle as number) ??
-      (window.orientation as number) ??
-      0;
-
-    let tiltX: number;
-    let tiltY: number;
-
-    switch (angle) {
-      case 90:
-        tiltX = e.beta - 90;
-        tiltY = -e.gamma;
-        break;
-      case 270:
-      case -90:
-        tiltX = -(e.beta - 90);
-        tiltY = e.gamma;
-        break;
-      case 180:
-        tiltX = -e.gamma;
-        tiltY = -(e.beta - 90);
-        break;
-      default:
-        tiltX = e.gamma;
-        tiltY = e.beta - 90;
-    }
-
-    orientation.current.x = MathUtils.clamp(tiltX / TILT_RANGE, -1, 1);
-    orientation.current.y = MathUtils.clamp(-tiltY / TILT_RANGE, -1, 1);
-    orientation.current.available = true;
-  }, []);
-
   useEffect(() => {
-    if (typeof window === "undefined" || !window.DeviceOrientationEvent) return;
+    if (!window.DeviceOrientationEvent) return;
+
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return;
+
+      const angle =
+        (window.screen?.orientation?.angle as number) ??
+        (window.orientation as number) ??
+        0;
+
+      let tiltX: number;
+      let tiltY: number;
+
+      switch (angle) {
+        case 90:
+          tiltX = e.beta - 90;
+          tiltY = -e.gamma;
+          break;
+        case 270:
+        case -90:
+          tiltX = -(e.beta - 90);
+          tiltY = e.gamma;
+          break;
+        case 180:
+          tiltX = -e.gamma;
+          tiltY = -(e.beta - 90);
+          break;
+        default:
+          tiltX = e.gamma;
+          tiltY = e.beta - 90;
+      }
+
+      orientation.current.x = MathUtils.clamp(tiltX / TILT_RANGE, -1, 1);
+      orientation.current.y = MathUtils.clamp(-tiltY / TILT_RANGE, -1, 1);
+      orientation.current.available = true;
+    };
 
     const needsPermission =
       typeof (DeviceOrientationEvent as any).requestPermission === "function";
@@ -70,6 +70,7 @@ export function useDeviceOrientation(): React.MutableRefObject<DeviceOrientation
 
     // iOS 13+: request permission on first user tap
     let requested = false;
+    let disposed = false;
     const onFirstInteraction = async () => {
       if (requested) return;
       requested = true;
@@ -77,7 +78,7 @@ export function useDeviceOrientation(): React.MutableRefObject<DeviceOrientation
         const result = await (
           DeviceOrientationEvent as any
         ).requestPermission();
-        if (result === "granted") {
+        if (result === "granted" && !disposed) {
           window.addEventListener("deviceorientation", handleOrientation);
         }
       } catch {
@@ -91,11 +92,12 @@ export function useDeviceOrientation(): React.MutableRefObject<DeviceOrientation
     document.addEventListener("touchend", onFirstInteraction, { once: true });
 
     return () => {
+      disposed = true;
       document.removeEventListener("click", onFirstInteraction);
       document.removeEventListener("touchend", onFirstInteraction);
       window.removeEventListener("deviceorientation", handleOrientation);
     };
-  }, [handleOrientation]);
+  }, []);
 
   return orientation;
 }

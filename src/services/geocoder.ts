@@ -17,13 +17,7 @@ interface ReverseGeocodeResult {
   countryCode: string;
 }
 
-const getPreferredLanguage = (): string => {
-  if (typeof navigator === "undefined") return "en";
-  const lang =
-    navigator.language ||
-    (navigator as { userLanguage?: string }).userLanguage;
-  return (lang || "en").split("-")[0].toLowerCase();
-};
+const getPreferredLanguage = (): string => (navigator.language || "en").split("-")[0].toLowerCase();
 
 /** Geocode city name to coordinates. Ranks by PPLC/PPLA then population; language fallback. */
 export const geocodeCity = async (
@@ -39,7 +33,6 @@ export const geocodeCity = async (
     url.searchParams.append("name", trimmed);
     url.searchParams.append("count", "25");
     url.searchParams.append("language", language);
-    url.searchParams.append("format", "json");
 
     const response = await fetch(url.toString());
     if (!response.ok) {

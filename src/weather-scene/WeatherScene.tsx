@@ -15,7 +15,6 @@ import { SkyLayer } from "./layers/SkyLayer";
 import { SkyGrade } from "./layers/SkyGrade";
 import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
-import { FogLayer } from "./layers/FogLayer";
 import { CloudDeck } from "./layers/CloudDeck";
 import { VolumetricClouds } from "./layers/clouds/VolumetricClouds";
 import { Precipitation } from "./layers/precip/Precipitation";
@@ -81,11 +80,7 @@ function SceneRoot({
       {budget.volumetric ? (
         <VolumetricClouds params={params} budget={budget.volumetric} />
       ) : (
-        <>
-          {/* The deck is the only material that opts into scene fog. */}
-          <FogLayer />
-          <CloudDeck params={params} frame={frame} />
-        </>
+        <CloudDeck params={params} frame={frame} />
       )}
 
       <Precipitation params={params} frame={frame} budget={budget} />

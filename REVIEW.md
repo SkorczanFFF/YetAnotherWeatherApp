@@ -279,7 +279,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
 - Shorten the file headers to 1–3 lines and point to CLAUDE.md for the long form.
 - Fix the stale CLAUDE.md lines.
 
-**Phase 5 — simplifications with visual risk (screenshot before/after)**
+**Phase 5 — simplifications with visual risk (screenshot before/after)** — ✅ done 2026-10-13. Potato fog folded into the deck shader (matched three's FogExp2 incl. its sRGB fog colour; before/after identical); Thunder on one persistent `LineSegments2` (looks identical); sun/moon crossfade + moon from its real altitude (visible at full moon: no more rim-lit outlines); shell base floor; history invalidation in `useFrame`; GLSL light loop bound from the budgets; a fresh quarks renderer per rebuild (batches leaked before); lazy 2D noise; seeded stars; plus §6 guards (SSR/IE/`format=json`, `useCallback`), the iOS orientation listener leak, MapPicker focus trap via ref, error boundary logging, `BASE_URL` asset paths, `aria-pressed`. Potato tier kept: it is the only path for GPUs that can't afford the raymarch at all, and dropping it needs real-device numbers first. Observed, not changed: cirrus draws as dark, blocky streaks at dusk (lit like the low deck, at low resolution); night cloud edges band into brown rings; the bolt's glow beads where segment caps overlap.
 - Fold the potato-tier fog into the CloudDeck shader; delete `FogLayer` and `s.fogDensity`.
 - Thunder: persistent line geometry updated in place, no React state per strike.
 - Clouds: sun/moon light crossfade, moon lit from its real altitude, noise cache keyed by renderer, base floor, history invalidation in `useFrame`, particle renderer disposal.
