@@ -135,7 +135,6 @@ interface WeatherIconProps {
   /** Night swaps the sun for the moon. */
   isDay?: boolean;
   className?: string;
-  strokeWidth?: number;
   /** Sun, moon and lightning in the warm accent; the rest in `currentColor`. */
   tinted?: boolean;
 }
@@ -151,10 +150,10 @@ export const WeatherIcon = ({
   code,
   isDay = true,
   className,
-  strokeWidth = 1.5,
   tinted = false,
 }: WeatherIconProps): React.ReactElement => {
-  const maskId = `wi-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const strokeWidth = 1.5;
+  const maskId = `wi${useId()}`;
   const warm = tinted ? { stroke: "var(--accent-warm)" } : undefined;
   const c = Math.floor(code);
 

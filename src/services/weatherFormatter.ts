@@ -184,8 +184,6 @@ export const formatWeeklyWeather = (
   const hourlyData: HourlyForecast[] = (hourly?.time || []).map((iso, i) => ({
     time: localSeconds(iso, timezone),
     temp: hourly.temperature_2m[i],
-    precip_prob: hourly.precipitation_probability?.[i] ?? 0,
-    weather_code: hourly.weather_code?.[i] ?? 0,
   }));
 
   return { timezone, daily: weeklyData, hourly: hourlyData };

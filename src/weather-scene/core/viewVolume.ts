@@ -92,7 +92,7 @@ export function sampleDistance(dNear: number, dFar: number, u = Math.random()): 
 }
 
 /** Star patch: angular bounds of the frame on the sky sphere. */
-export interface SkyPatch {
+interface SkyPatch {
   relAzMax: number;
   elevMin: number;
   elevMax: number;

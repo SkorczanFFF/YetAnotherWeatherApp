@@ -30,8 +30,6 @@ export interface HourlyForecast {
   /** Unix seconds */
   time: number;
   temp: number;
-  precip_prob: number;
-  weather_code: number;
 }
 
 export interface WeatherData {

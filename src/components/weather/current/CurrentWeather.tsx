@@ -57,7 +57,7 @@ const arcAt = (t: number) => ({
 
 const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
   const [live, setLive] = useState(() => getLiveTimeParts(weather.timezone));
-  const arcClipId = `arc-clip-${useId().replace(/:/g, "")}`;
+  const arcClipId = `arc-clip${useId()}`;
 
   useEffect(() => {
     const tick = () => setLive(getLiveTimeParts(weather.timezone));
@@ -123,15 +123,13 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }) => {
 
   return (
     <section className="hero">
-      <div className="hero-head">
-        <div className="meta-row">
-          <span className="pin">
-            <PinIcon strokeWidth={2} />
-          </span>
-          <span>{live.datePart}</span>
-          <span className="sep" aria-hidden="true" />
-          <span>{live.timePart}</span>
-        </div>
+      <div className="meta-row">
+        <span className="pin">
+          <PinIcon strokeWidth={2} />
+        </span>
+        <span>{live.datePart}</span>
+        <span className="sep" aria-hidden="true" />
+        <span>{live.timePart}</span>
       </div>
 
       <div className="hero-core">

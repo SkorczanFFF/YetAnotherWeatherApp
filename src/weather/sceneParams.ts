@@ -1,7 +1,6 @@
 /** WeatherData + units + debug overrides → SceneParams (continuous values, SI units, no React). */
 
 import { DateTime } from "luxon";
-import * as SunCalc from "suncalc";
 import type { Intensity, Units, WeatherData } from "./types";
 import {
   getCloudCoverFromWeatherCode,
@@ -19,7 +18,7 @@ import {
 export type QualityTier = "potato" | "low" | "medium" | "high";
 export type Auto<T> = T | "auto";
 
-export interface CloudLayers {
+interface CloudLayers {
   /** All values 0..1. */
   total: number;
   low: number;
@@ -27,7 +26,7 @@ export interface CloudLayers {
   high: number;
 }
 
-export interface PrecipState {
+interface PrecipState {
   /** Liquid precipitation (rain + showers), mm/h. */
   rainMmH: number;
   /** Snowfall, cm/h. Both > 0 = sleet. */
@@ -184,11 +183,7 @@ const FALLBACK_SNOW_CM_H: Record<Intensity, number> = {
 const SNOW_CM_PER_MM = 0.7;
 
 /** Upper bound on visibility for fog codes — the API reading is often optimistic. */
-const FOG_MAX_VISIBILITY_M: Record<Intensity, number> = {
-  light: 1500,
-  moderate: 700,
-  heavy: 300,
-};
+const FOG_MAX_VISIBILITY_M = 700;
 
 export const CLEAR_VISIBILITY_M = 24000;
 
@@ -358,7 +353,7 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
 
   let visibilityM = weather.visibility ?? CLEAR_VISIBILITY_M;
   if (traits.fog) {
-    visibilityM = Math.min(visibilityM, FOG_MAX_VISIBILITY_M[traits.intensity]);
+    visibilityM = Math.min(visibilityM, FOG_MAX_VISIBILITY_M);
   }
 
   const humidity = clamp01((weather.humidity ?? 60) / 100);
@@ -549,11 +544,6 @@ export function mapToSceneParams(
 ): SceneParams {
   const base = weather ? fromWeather(weather, units) : DEFAULT_PARAMS;
   return overrides ? applyOverrides(base, overrides) : base;
-}
-
-/** Sun altitude (radians) at the given instant and location. */
-export function getSunAltitude(timeMs: number, lat: number, lon: number): number {
-  return SunCalc.getPosition(new Date(timeMs), lat, lon).altitude;
 }
 
 /** Temperature at which the frosted-glass effect reaches full strength, °C. */

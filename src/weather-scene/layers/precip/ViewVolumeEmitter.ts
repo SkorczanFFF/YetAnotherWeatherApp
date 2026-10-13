@@ -9,7 +9,7 @@ import {
   type ViewFrame,
 } from "../../core/viewVolume";
 
-export interface ViewVolumeEmitterOptions {
+interface ViewVolumeEmitterOptions {
   frame: ViewFrame;
   volume: PrecipVolume;
   /** Fall speed range, scene units/s. */

@@ -3,7 +3,7 @@
 import type { Units, WeatherData, WeatherQuery } from "../weather/types";
 import { WeatherError } from "./errors";
 import { geocodeCity, reverseGeocode } from "./geocoder";
-import { getWeatherData, PRESSURE_LEVELS } from "./weatherApi";
+import { getForecast, PRESSURE_LEVELS } from "./weatherApi";
 import { formatCurrentWeather, formatWeeklyWeather } from "./weatherFormatter";
 
 /** Upper-air, stability and radiation fields for the scene's cloud physics. */
@@ -56,7 +56,7 @@ const getFormattedWeatherData = async (
         countryCode = reverse.countryCode;
       }
     } catch {
-      // Reverse geocode is optional — fall back to coordinates
+      // Optional: the formatter falls back to the timezone name.
     }
   }
 
@@ -67,7 +67,7 @@ const getFormattedWeatherData = async (
     wind_speed_unit = "mph";
   }
 
-  const data = await getWeatherData("forecast", {
+  const data = await getForecast({
     latitude: lat,
     longitude: lon,
     timezone: "auto",
@@ -76,10 +76,11 @@ const getFormattedWeatherData = async (
     current:
       "temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m,wind_direction_10m,is_day,cloud_cover,visibility,uv_index,dew_point_2m,precipitation,rain,showers,snowfall,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_gusts_10m," +
       ATMOSPHERE_FIELDS,
-    hourly: "temperature_2m,precipitation_probability,weather_code",
+    hourly: "temperature_2m",
     daily:
       "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max",
-    forecast_hours: 25,
+    // From the current hour: 12 upcoming points + slack until the next refresh.
+    forecast_hours: 14,
     forecast_days: 8,
   });
 

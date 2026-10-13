@@ -274,7 +274,6 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
           depthWrite: false,
         }),
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
   useEffect(() => () => march.dispose(), [march]);

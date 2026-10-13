@@ -2,10 +2,9 @@
 
 import { WeatherError } from "./errors";
 
-const BASE_URL = "https://api.open-meteo.com/v1";
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-export interface OpenMeteoCurrentData {
-  time: string;
+interface OpenMeteoCurrentData {
   temperature_2m: number;
   apparent_temperature: number;
   relative_humidity_2m: number;
@@ -44,14 +43,12 @@ export interface OpenMeteoCurrentData {
 /** Pressure levels requested for the cloud column, hPa (surface → upper troposphere). */
 export const PRESSURE_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250] as const;
 
-export interface OpenMeteoHourlyData {
+interface OpenMeteoHourlyData {
   time: string[];
   temperature_2m: number[];
-  precipitation_probability: number[];
-  weather_code: number[];
 }
 
-export interface OpenMeteoDailyData {
+interface OpenMeteoDailyData {
   time: string[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
@@ -68,16 +65,13 @@ export interface OpenMeteoResponse {
   latitude: number;
   longitude: number;
   timezone: string;
-  timezone_abbreviation: string;
   elevation: number;
   current: OpenMeteoCurrentData;
   hourly: OpenMeteoHourlyData;
   daily: OpenMeteoDailyData;
-  current_units: Record<string, string>;
-  daily_units: Record<string, string>;
 }
 
-export interface OpenMeteoQueryParams {
+interface OpenMeteoQueryParams {
   latitude: number;
   longitude: number;
   timezone: string;
@@ -90,11 +84,10 @@ export interface OpenMeteoQueryParams {
   forecast_days?: number;
 }
 
-export const getWeatherData = async (
-  endpoint: string,
+export const getForecast = async (
   searchParams: OpenMeteoQueryParams,
 ): Promise<OpenMeteoResponse> => {
-  const url = new URL(BASE_URL + "/" + endpoint);
+  const url = new URL(FORECAST_URL);
   Object.entries(searchParams).forEach(([key, value]) => {
     if (value !== undefined) {
       url.searchParams.append(key, value.toString());

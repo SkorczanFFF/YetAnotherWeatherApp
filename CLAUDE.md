@@ -182,3 +182,4 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - The Vite `>500 KB` chunk warning is Leaflet + three.js (+ three.quarks); not worth chasing yet.
 - The pre-baked cloud noise texture spends ~30 ms CPU on first scene mount.
 - The `THREE.Clock` deprecation warning in the console comes from R3F/drei internals.
+- `quarks.core` is never imported but stays pinned: `three.quarks` depends on `quarks.core: *`.

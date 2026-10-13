@@ -10,7 +10,7 @@ import { MathUtils, Vector3 } from "three";
 //
 // Azimuths follow suncalc: radians from SOUTH, positive towards WEST.
 
-export type Facing = "south" | "north";
+type Facing = "south" | "north";
 
 export const CAMERA_FOV = 50;
 export const CAMERA_NEAR = 0.5;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./components/navbar/Navbar";
 import CurrentWeather from "./components/weather/current/CurrentWeather";
 import HourlyChart from "./components/weather/hourly/HourlyChart";

@@ -23,7 +23,7 @@
 
 import type { AtmosphereData, Units } from "./types";
 
-export interface WindVector {
+interface WindVector {
   speedMs: number;
   /** Compass bearing the wind blows FROM. */
   fromDeg: number;
@@ -55,12 +55,12 @@ export interface CloudPhysics {
   windHigh: WindVector;
 }
 
-export interface CloudPhysicsInput {
+interface CloudPhysicsInput {
   /** Atmosphere in SI (see toAtmosphereSI). */
   atmosphere: AtmosphereSI | null;
   temperatureC: number;
   dewPointC: number;
-  clouds: { total: number; low: number; mid: number };
+  clouds: { low: number; mid: number };
   surfaceWind: WindVector;
   thunder: boolean;
   showers: boolean;

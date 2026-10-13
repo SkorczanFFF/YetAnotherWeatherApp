@@ -4,6 +4,11 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Removed
+- Unread API fields (hourly precipitation probability and weather code, geocoder ids, response units), the generic endpoint parameter, the dead `NETWORK_ERROR` path and `getSunAltitude`.
+- `react-dom/server` from the bundle (map marker is a static Leaflet `divIcon`): −197 kB (−60 kB gzip).
+- The missing `logo192.png` link, the CRA `browserslist` and a second Toastify stylesheet (v11 injects its own).
+
 ### Fixed
 - Sunrise/sunset, hourly labels and forecast day names were shifted by the difference between the browser's and the location's time zone.
 - Clouds slid sideways whenever the low-deck noise scale changed, worse the longer the page was open; the frame counter no longer grows without bound (banding after hours, unmarched pixels after ~77 h).

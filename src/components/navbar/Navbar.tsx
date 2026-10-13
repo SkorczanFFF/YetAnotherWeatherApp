@@ -7,12 +7,12 @@ import "./Navbar.scss";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery, source: LoadSource) => void;
-  isDebugMode?: boolean;
-  onOpenMapPicker?: () => void;
+  isDebugMode: boolean;
+  onOpenMapPicker: () => void;
   units: Units;
   setUnits: (units: Units) => void;
   /** Source of the weather fetch in flight, if any. */
-  pending?: LoadSource | null;
+  pending: LoadSource | null;
 }
 
 const isValidCityName = (name: string): boolean => {
@@ -23,11 +23,11 @@ const isValidCityName = (name: string): boolean => {
 
 const Navbar: React.FC<NavbarProps> = ({
   setQuery,
-  isDebugMode = false,
+  isDebugMode,
   onOpenMapPicker,
   units,
   setUnits,
-  pending = null,
+  pending,
 }) => {
   const [city, setCity] = useState<string>("");
   const [locating, setLocating] = useState(false);
@@ -129,20 +129,18 @@ const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
         </div>
-        {onOpenMapPicker && (
-          <button
-            type="button"
-            className="icon-btn map-btn"
-            onClick={onOpenMapPicker}
-            aria-label="Pick location from map"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 3 3 5.5v15.5L9 18l6 3 6-2.5V3l-6 2.5L9 3Z" />
-              <path d="M9 3v15" />
-              <path d="M15 5.5V21" />
-            </svg>
-          </button>
-        )}
+        <button
+          type="button"
+          className="icon-btn map-btn"
+          onClick={onOpenMapPicker}
+          aria-label="Pick location from map"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 3 3 5.5v15.5L9 18l6 3 6-2.5V3l-6 2.5L9 3Z" />
+            <path d="M9 3v15" />
+            <path d="M15 5.5V21" />
+          </svg>
+        </button>
       </form>
 
       <div className="tools">

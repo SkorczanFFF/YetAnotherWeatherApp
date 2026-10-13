@@ -226,7 +226,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
 7. Rain bump only for pinned thunder/hail; CAPE pin keeps the convection floors; the shallow cap ignores cirrus levels.
 8. Periodic refetch (15–30 min) so the hourly chart and current data never go stale.
 
-**Phase 1 — dead code and config (no behaviour change)**
+**Phase 1 — dead code and config (no behaviour change)** — ✅ done 2026-10-13. Deviations: `forecast_hours: 14` (12 points + slack until the 15-min refresh); constant uniforms kept (GLSL consts would duplicate JS constants or need linear-colour literals); `.tools` and `.sun-end` kept (grid items in the mobile layouts); `getSunAltitude` inlined into DebugMenu.
 - Data:
   - Drop the hourly fields nobody reads (`precipitation_probability`, `weather_code`); `forecast_hours: 13`.
   - Drop the unused API, geocoder and physics fields.

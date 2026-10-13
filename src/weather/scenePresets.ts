@@ -34,7 +34,7 @@ const CALM: Required<
   cape: 50,
 };
 
-export interface WeatherPreset {
+interface WeatherPreset {
   id: string;
   label: string;
   overrides: SceneOverrides;

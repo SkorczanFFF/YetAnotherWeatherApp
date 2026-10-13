@@ -66,7 +66,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
 
   useFrame((state, delta) => {
     const time = params.time ?? Date.now();
-    s.facing = facingFor(params.lat);
+    const facing = facingFor(params.lat);
 
     // --- celestial (throttled; params/frame changes force a recompute) ---
     if (
@@ -91,12 +91,12 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     const kAz = Math.min(1, (0.8 * frame.hHalfRaw) / AZ_SQUEEZE_RANGE);
     const kAlt = (frame.topElevRaw - 5 * MathUtils.DEG2RAD) / (Math.PI / 2);
     directionFromRelative(
-      relativeAzimuth(sunAz.current, s.facing) * kAz,
+      relativeAzimuth(sunAz.current, facing) * kAz,
       s.sunAlt * kAlt,
       s.sunDir,
     );
     directionFromRelative(
-      relativeAzimuth(moonAz.current, s.facing) * kAz,
+      relativeAzimuth(moonAz.current, facing) * kAz,
       s.moonAlt * kAlt,
       s.moonDir,
     );
@@ -158,13 +158,13 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       MIN_DRIFT_MS,
       speedMs + (gustMs - speedMs) * Math.min(1, gustEnvelope(t)),
     );
-    windVelocity(fromDeg, speed, s.facing, s.windVelocity);
+    windVelocity(fromDeg, speed, facing, s.windVelocity);
     const dt = Math.min(delta, 0.1);
 
     // Clouds ride the winds aloft, not the surface wind (cloudPhysics.ts).
     const { windLow, windHigh } = params.cloudPhysics;
-    windVelocity(windLow.fromDeg, Math.max(MIN_DRIFT_MS, windLow.speedMs), s.facing, s.windVelocityLow);
-    windVelocity(windHigh.fromDeg, Math.max(MIN_DRIFT_MS, windHigh.speedMs), s.facing, s.windVelocityHigh);
+    windVelocity(windLow.fromDeg, Math.max(MIN_DRIFT_MS, windLow.speedMs), facing, s.windVelocityLow);
+    windVelocity(windHigh.fromDeg, Math.max(MIN_DRIFT_MS, windHigh.speedMs), facing, s.windVelocityHigh);
     s.windOffsetLow.addScaledVector(s.windVelocityLow, dt);
     s.windOffsetHigh.addScaledVector(s.windVelocityHigh, dt);
   });

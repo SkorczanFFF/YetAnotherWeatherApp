@@ -1,6 +1,5 @@
 import { createContext, useContext } from "react";
 import { Color, Vector3 } from "three";
-import type { Facing } from "./worldFrame";
 
 // Per-frame shared state. Written once per frame by <SceneDriver> (mounted
 // right after the camera rig) — except `flash` / `flashPosition`, written by
@@ -8,7 +7,6 @@ import type { Facing } from "./worldFrame";
 // Plain mutable objects — never React state — so nothing re-renders at 60 fps.
 
 export interface SceneSignals {
-  facing: Facing;
   /** Display directions (compressed into the frame), unit vectors. */
   sunDir: Vector3;
   moonDir: Vector3;
@@ -51,34 +49,34 @@ export interface SceneSignals {
   flashPosition: Vector3;
 }
 
+/** Placeholder values: <SceneDriver> overwrites them before any layer reads them. */
 export function createSceneSignals(): SceneSignals {
   return {
-    facing: "south",
-    sunDir: new Vector3(0, 0.3, -1).normalize(),
-    moonDir: new Vector3(0, 0.3, -1).normalize(),
-    sunAlt: 0.5,
-    moonAlt: -0.5,
-    moonPhase: 0.5,
-    moonFraction: 1,
-    day: 1,
+    sunDir: new Vector3(0, 0, -1),
+    moonDir: new Vector3(0, 0, -1),
+    sunAlt: 0,
+    moonAlt: 0,
+    moonPhase: 0,
+    moonFraction: 0,
+    day: 0,
     night: 0,
     warmth: 0,
     overcast: 0,
     cloudFill: 0,
     haze: 0,
-    fogDensity: 0.001,
-    horizonColor: new Color("#c8d8e6"),
-    sunColor: new Color("#fff3df"),
+    fogDensity: 0,
+    horizonColor: new Color(),
+    sunColor: new Color(),
     moonIntensity: 0,
-    hemiSky: new Color("#a9c6e8"),
-    hemiGround: new Color("#5b5a55"),
+    hemiSky: new Color(),
+    hemiGround: new Color(),
     windVelocity: new Vector3(),
     windVelocityLow: new Vector3(),
     windVelocityHigh: new Vector3(),
     windOffsetLow: new Vector3(),
     windOffsetHigh: new Vector3(),
     flash: 0,
-    flashPosition: new Vector3(0, 40, -200),
+    flashPosition: new Vector3(),
   };
 }
 

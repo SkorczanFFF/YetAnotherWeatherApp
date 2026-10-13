@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -13,25 +12,17 @@ const DRAWER_WIDTH_MAX = 800;
 const PIN_SIZE = 36;
 const TILES_LOADER_DELAY_MS = 250;
 
-function createMarkerIcon(pinSvgHtml: string): L.DivIcon {
-  return L.divIcon({
-    className: "map-picker-marker",
-    html: pinSvgHtml,
-    iconSize: [PIN_SIZE, PIN_SIZE],
-    iconAnchor: [PIN_SIZE / 2, PIN_SIZE],
-  });
-}
-
-const PinSvg = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path
-      d={PIN_PATH}
-      fill="oklch(0.82 0.14 62)"
-      stroke="oklch(0.34 0.06 240)"
-    />
-    <circle cx="12" cy="9" r="2.6" fill="oklch(0.34 0.06 240)" stroke="none" />
-  </svg>
-);
+const MARKER_ICON = L.divIcon({
+  className: "map-picker-marker",
+  html:
+    `<span aria-hidden="true" class="map-picker-marker__pin" style="width:${PIN_SIZE}px;height:${PIN_SIZE}px;display:block">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
+    `<path d="${PIN_PATH}" fill="oklch(0.82 0.14 62)" stroke="oklch(0.34 0.06 240)" />` +
+    `<circle cx="12" cy="9" r="2.6" fill="oklch(0.34 0.06 240)" />` +
+    `</svg></span>`,
+  iconSize: [PIN_SIZE, PIN_SIZE],
+  iconAnchor: [PIN_SIZE / 2, PIN_SIZE],
+});
 
 const DEFAULT_CENTER: [number, number] = [52, 21];
 const DEFAULT_ZOOM = 4;
@@ -119,20 +110,6 @@ export function MapPicker({
     document.body.style.userSelect = "none";
   }, [drawerWidth]);
 
-  const pinIconHtml = useMemo(
-    () =>
-      renderToStaticMarkup(
-        <span
-          aria-hidden="true"
-          className="map-picker-marker__pin"
-          style={{ width: PIN_SIZE, height: PIN_SIZE, display: "block" }}
-        >
-          <PinSvg />
-        </span>
-      ),
-    []
-  );
-  const markerIcon = useMemo(() => createMarkerIcon(pinIconHtml), [pinIconHtml]);
 
   const handlePick = useCallback((lat: number, lon: number) => {
     setPicked({ lat, lon });
@@ -263,7 +240,7 @@ export function MapPicker({
                   <Marker
                     key={`${picked.lat}-${picked.lon}`}
                     position={[picked.lat, picked.lon]}
-                    icon={markerIcon}
+                    icon={MARKER_ICON}
                   >
                     <Popup>
                       {picked.lat.toFixed(4)}, {picked.lon.toFixed(4)}

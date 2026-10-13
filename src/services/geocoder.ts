@@ -5,14 +5,11 @@ import { WeatherError } from "./errors";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 
-export interface GeocodingResult {
-  id: number;
+interface GeocodingResult {
   name: string;
   latitude: number;
   longitude: number;
-  country: string;
   country_code: string;
-  timezone: string;
 }
 
 interface ReverseGeocodeResult {
@@ -70,13 +67,10 @@ export const geocodeCity = async (
 
     const best = results[0];
     return {
-      id: best.id,
       name: best.name,
       latitude: best.latitude,
       longitude: best.longitude,
-      country: best.country,
       country_code: best.country_code,
-      timezone: best.timezone,
     };
   };
 
@@ -93,57 +87,44 @@ export const reverseGeocode = async (
   lat: number,
   lon: number,
 ): Promise<ReverseGeocodeResult | null> => {
-  try {
-    const url = new URL(NOMINATIM_REVERSE_URL);
-    url.searchParams.set("lat", lat.toString());
-    url.searchParams.set("lon", lon.toString());
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
+  const url = new URL(NOMINATIM_REVERSE_URL);
+  url.searchParams.set("lat", lat.toString());
+  url.searchParams.set("lon", lon.toString());
+  url.searchParams.set("format", "json");
+  url.searchParams.set("addressdetails", "1");
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        "User-Agent":
-          "YetAnotherWeatherApp/1.0 (weather app; reverse geocode for display name)",
-      },
-    });
+  const response = await fetch(url.toString(), {
+    headers: {
+      "User-Agent":
+        "YetAnotherWeatherApp/1.0 (weather app; reverse geocode for display name)",
+    },
+  });
 
-    if (!response.ok) {
-      throw new WeatherError(
-        `Reverse geocode error: ${response.status} ${response.statusText}`,
-        "GEOCODE_FAILED",
-      );
-    }
-    const data = (await response.json()) as {
-      address?: {
-        city?: string;
-        town?: string;
-        village?: string;
-        municipality?: string;
-        state?: string;
-        country?: string;
-        country_code?: string;
-      };
+  if (!response.ok) return null;
+  const data = (await response.json()) as {
+    address?: {
+      city?: string;
+      town?: string;
+      village?: string;
+      municipality?: string;
+      state?: string;
+      country?: string;
+      country_code?: string;
     };
-    const addr = data?.address;
-    if (!addr) return null;
+  };
+  const addr = data?.address;
+  if (!addr) return null;
 
-    const name =
-      addr.city ??
-      addr.town ??
-      addr.village ??
-      addr.municipality ??
-      addr.state ??
-      addr.country ??
-      null;
-    const countryCode = (addr.country_code ?? "").toUpperCase();
-    if (!name) return null;
+  const name =
+    addr.city ??
+    addr.town ??
+    addr.village ??
+    addr.municipality ??
+    addr.state ??
+    addr.country ??
+    null;
+  const countryCode = (addr.country_code ?? "").toUpperCase();
+  if (!name) return null;
 
-    return { name, countryCode };
-  } catch (error) {
-    if (error instanceof WeatherError) throw error;
-    throw new WeatherError(
-      `Reverse geocode failed: ${error instanceof Error ? error.message : String(error)}`,
-      "NETWORK_ERROR",
-    );
-  }
+  return { name, countryCode };
 };

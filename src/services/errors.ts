@@ -1,4 +1,5 @@
-export type WeatherErrorCode = "GEOCODE_FAILED" | "API_ERROR" | "NETWORK_ERROR";
+/** Anything else thrown (fetch TypeError) is shown as a network error. */
+type WeatherErrorCode = "GEOCODE_FAILED" | "API_ERROR";
 
 export class WeatherError extends Error {
   constructor(

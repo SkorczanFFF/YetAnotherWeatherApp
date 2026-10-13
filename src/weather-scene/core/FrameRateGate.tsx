@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 
 interface FrameRateGateProps {
-  /** Target fps cap. Defaults to 60. Set to 30 for further battery saving. */
-  fps?: number;
+  /** Target fps cap. */
+  fps: number;
 }
 
 /** Ignore rAF gaps longer than this when measuring the display (tab switches, hitches). */
@@ -30,7 +30,7 @@ const MAX_SAMPLE_MS = 100;
  * The gate lives INSIDE the Canvas so `useThree` can reach the store. It
  * does not render any geometry.
  */
-export function FrameRateGate({ fps = 60 }: FrameRateGateProps) {
+export function FrameRateGate({ fps }: FrameRateGateProps) {
   const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {

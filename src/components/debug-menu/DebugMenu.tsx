@@ -7,7 +7,6 @@ import {
   type SceneOverrides,
   type SceneParams,
   getFrostAmount,
-  getSunAltitude,
 } from "../../weather/sceneParams";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
@@ -167,7 +166,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({
   };
 
   const time = e.time ?? Date.now();
-  const sunAlt = (getSunAltitude(time, e.lat, e.lon) * 180) / Math.PI;
+  const sunAlt = (SunCalc.getPosition(new Date(time), e.lat, e.lon).altitude * 180) / Math.PI;
   const moon = SunCalc.getMoonIllumination(new Date(time));
   const facing = facingFor(e.lat);
   const hourValue = typeof o.hour === "number" ? o.hour : null;

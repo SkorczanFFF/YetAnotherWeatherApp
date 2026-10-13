@@ -21,15 +21,10 @@
 
   > * { position: relative; z-index: 1; }
 
-  .hero-head {
-    display: flex;
-    align-items: center;
-    margin-bottom: calc(var(--pad) * 0.5);
-  }
-
   .meta-row {
     display: flex;
     align-items: center;
+    margin-bottom: calc(var(--pad) * 0.5);
     gap: 10px;
     font-family: var(--font-mono);
     font-size: 11px;

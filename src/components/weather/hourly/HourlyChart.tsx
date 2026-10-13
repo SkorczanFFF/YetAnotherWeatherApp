@@ -74,18 +74,16 @@ const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) =>
               <stop offset="100%" stopColor="oklch(0.82 0.14 62)" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <g>
-            {chart.grid.map((y, i) => (
-              <line
-                key={i}
-                className="grid-line"
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={y}
-                y2={y}
-              />
-            ))}
-          </g>
+          {chart.grid.map((y, i) => (
+            <line
+              key={i}
+              className="grid-line"
+              x1={PAD_L}
+              x2={W - PAD_R}
+              y1={y}
+              y2={y}
+            />
+          ))}
           <path className="area" d={chart.areaPath} />
           <path className="line" d={chart.linePath} />
         </svg>
