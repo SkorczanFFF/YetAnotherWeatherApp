@@ -154,10 +154,10 @@ function band(levels: AtmosphereSI["levels"], lo: number, hi: number): Band | nu
   return weight > 0 ? { meanM: sum / weight, topM: top } : null;
 }
 
-/** Highest level with at least `minCover` cloud, m above ground (0 when none). */
-function highestCloud(levels: AtmosphereSI["levels"], minCover: number): number {
+/** Highest level below `belowM` with at least `minCover` cloud, m above ground (0 when none). */
+function highestCloud(levels: AtmosphereSI["levels"], minCover: number, belowM: number): number {
   let top = 0;
-  for (const l of levels) if (l.cover >= minCover) top = Math.max(top, l.heightM);
+  for (const l of levels) if (l.cover >= minCover && l.heightM < belowM) top = Math.max(top, l.heightM);
   return top;
 }
 
@@ -169,6 +169,8 @@ function lowestClearAbove(levels: AtmosphereSI["levels"], minM: number): number 
 
 /** A deck under an inversion right above its base (lifting fog, thin stratus), m. */
 const THIN_DECK_M = 100;
+/** Pressure levels from here up count as the cirrus band, m above ground. */
+const HIGH_BAND_M = 6500;
 /** Convection without showers or a storm: cumulus at most (type ≈ 0.74). */
 const SHALLOW_CONVECTION = 0.6;
 
@@ -196,10 +198,10 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   );
   const li = atm?.liftedIndex ?? null;
   const stabilityDamp = li == null ? 1 : li < 0 ? 1 : li < 3 ? 0.75 : 0.45;
-  let convection = smoothstep(cape, 80, 1500) * stabilityDamp;
+  // A pinned CAPE is taken at face value, but showers and storms keep their floor.
+  let convection = smoothstep(cape, 80, 1500) * (override?.cape != null ? 1 : stabilityDamp);
   if (input.thunder) convection = Math.max(convection, 0.85);
   else if (input.showers) convection = Math.max(convection, 0.55);
-  if (override?.cape != null) convection = smoothstep(cape, 80, 1500);
   // CAPE is only potential (a cap or dry air can keep it unused). Deep
   // towers need showers or a storm; without them the sky gets cumulus,
   // never a cumulonimbus.
@@ -235,8 +237,8 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   let convectiveTop = Math.min(TROPOPAUSE_M, baseM + 500 + 4.2 * cape);
   if (!deep) {
     // The towers reach no higher than the model puts any cloud in the
-    // column; with none up there, fair-weather to moderate cumulus.
-    const columnTop = highestCloud(levels, 0.05);
+    // column (cirrus aside); with none up there, fair-weather to moderate cumulus.
+    const columnTop = highestCloud(levels, 0.05, HIGH_BAND_M);
     const shallowTop = baseM + 800 + 0.6 * Math.min(cape, 2000);
     convectiveTop = Math.min(convectiveTop, Math.max(shallowTop, columnTop + 300));
   }
@@ -244,10 +246,10 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   topM = Math.max(override?.topM ?? topM, baseM + 150);
 
   // --- layer heights -----------------------------------------------------
-  const midBand = band(levels, 2500, 6500);
-  const highBand = band(levels, 6500, 14000);
+  const midBand = band(levels, 2500, HIGH_BAND_M);
+  const highBand = band(levels, HIGH_BAND_M, 14000);
   const midAltM = midBand?.meanM ?? 4000;
-  const highAltM = clamp(highBand?.meanM ?? 8500, 6500, 12500);
+  const highAltM = clamp(highBand?.meanM ?? 8500, HIGH_BAND_M, 12500);
 
   // --- optical depth -----------------------------------------------------
   const thicknessKm = (topM - baseM) / 1000;

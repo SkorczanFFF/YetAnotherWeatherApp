@@ -102,13 +102,11 @@ export const getWeatherData = async (
   });
 
   const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new WeatherError(`API error: ${response.status} ${response.statusText}`, "API_ERROR");
-  }
-
-  const data = await response.json();
-  if (data.error) {
-    throw new WeatherError(`API returned error: ${data.reason || "Unknown error"}`, "API_ERROR");
+  // Open-Meteo reports bad requests as HTTP 400 with { error: true, reason }.
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data || data.error) {
+    const reason = data?.reason ?? `${response.status} ${response.statusText}`;
+    throw new WeatherError(`API error: ${reason}`, "API_ERROR");
   }
 
   return data;

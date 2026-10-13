@@ -320,6 +320,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   const targetsWanted = useMemo(() => shellTargets(params), [params]);
   const state = useRef({
     frame: 0,
+    /** Low/mid drift integrated in noise space (m ÷ featureScale). */
+    windNoise: new Vector2(),
     read: 0,
     historyValid: false,
     prevViewProj: new Matrix4(),
@@ -349,6 +351,9 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     const sh = (st.shell ??= { ...targetsWanted });
     const dt = Math.min(delta, 0.1);
     for (const key of SHELL_KEYS) sh[key] = MathUtils.damp(sh[key], targetsWanted[key], SHELL_EASE, dt);
+    const drift = (CLOUD_TIMELAPSE * dt) / sh.featureScale;
+    st.windNoise.x += s.windVelocityLow.x * drift;
+    st.windNoise.y += s.windVelocityLow.z * drift;
 
     const empty = sh.coverage < 0.015 && sh.high < 0.01;
     mesh.visible = !empty;
@@ -383,10 +388,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uMaxDist.value = budget.maxDistance;
 
     // Low/mid clouds ride the 850 hPa wind, cirrus the 300 hPa wind.
-    (u.uWind.value as Vector2).set(
-      s.windOffsetLow.x * CLOUD_TIMELAPSE,
-      s.windOffsetLow.z * CLOUD_TIMELAPSE,
-    );
+    (u.uWind.value as Vector2).copy(st.windNoise);
     (u.uWindHigh.value as Vector2).set(
       s.windOffsetHigh.x * CLOUD_TIMELAPSE,
       s.windOffsetHigh.z * CLOUD_TIMELAPSE,
@@ -457,7 +459,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
 
     composite.uniforms.uClouds.value = write.texture;
     st.read = 1 - st.read;
-    st.frame++;
+    st.frame = (st.frame + 1) % 4096; // a multiple of 4; float precision stays exact
     st.historyValid = true;
     st.prevViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   });

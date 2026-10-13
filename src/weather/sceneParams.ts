@@ -290,9 +290,7 @@ function precipFromWeather(
 ): PrecipState {
   const gaugeTotal = Math.max(0, weather.precipitation ?? 0);
   const hasSplit =
-    weather.rain !== undefined ||
-    weather.showers !== undefined ||
-    weather.snowfall !== undefined;
+    weather.rain != null || weather.showers != null || weather.snowfall != null;
 
   let rainMmH = hasSplit
     ? Math.max(0, (weather.rain ?? 0) + (weather.showers ?? 0))
@@ -430,15 +428,17 @@ function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
   const grains = pick(o.grains, base.precip.grains);
   const showers = pick(o.showers, base.precip.showers);
 
-  // Pinning a precipitation flag without a rate should still show something.
+  // Pinning a precipitation flag without a rate should still show something;
+  // measured weather (e.g. dry thundersnow) keeps its rates.
+  const pinned = (v: Auto<boolean> | undefined) => isSet(v) && v;
   let baseRain = base.precip.rainMmH;
   if (baseRain === 0 && !isSet(o.snow)) {
-    if (thunder || hail) baseRain = 6;
-    else if (drizzle) baseRain = 0.5;
-    else if (isSet(o.freezing) && o.freezing) baseRain = 2;
+    if (pinned(o.thunder) || pinned(o.hail)) baseRain = 6;
+    else if (pinned(o.drizzle)) baseRain = 0.5;
+    else if (pinned(o.freezing)) baseRain = 2;
   }
   let baseSnow = base.precip.snowCmH;
-  if (baseSnow === 0 && grains && !isSet(o.rain)) baseSnow = 0.4;
+  if (baseSnow === 0 && pinned(o.grains) && !isSet(o.rain)) baseSnow = 0.4;
 
   const rainMmH = Math.max(0, pick(o.rain, baseRain));
   const snowCmH = Math.max(0, pick(o.snow, baseSnow));

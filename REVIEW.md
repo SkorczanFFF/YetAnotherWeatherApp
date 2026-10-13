@@ -65,7 +65,7 @@ The codebase is in good mechanical shape: `tsc --noUnusedLocals --noUnusedParame
 - `NETWORK_ERROR` is only thrown inside `reverseGeocode`, whose only caller swallows every error, so the try/catch wrapping there is dead too (`errors.ts`, `geocoder.ts:96-148`).
 - `getSunAltitude` (`sceneParams.ts:554`) is a one-line suncalc wrapper with one caller (DebugMenu), which already imports suncalc.
 - SceneSignals:
-  - `facing` and `windVelocityLow` are only used inside SceneDriver.
+  - `facing` is only used inside SceneDriver (`windVelocityLow` is now read by VolumetricClouds for the noise-space drift; `windOffsetLow` is left to CloudDeck).
   - The initial colours/vectors in `createSceneSignals` are overwritten on frame 1 (and repeat SceneDriver's hex values).
 - `FrameRateGate` default `fps = 60`: the only caller always passes it.
 - Constant uniforms that could be GLSL consts: `uTint` (Moon), `uNightZenith/uNightHorizon` (SkyGrade), `uFadeFar` (CloudDeck), `uEarthR`.
@@ -216,7 +216,7 @@ Don't move: `weather-scene/core/*` (cohesive), `layers/*` (one file per layer wo
 
 Each phase is one or a few commits, behaviour-preserving unless marked, and verified with `npm run build` plus the headless screenshot harness used in this session (Ponte de Sor 10:45 and fair-weather cumulus at 50 %; worth committing as `scripts/shot.mjs`, dev-only).
 
-**Phase 0 — bug fixes (behaviour changes, small, highest value)**
+**Phase 0 — bug fixes (behaviour changes, small, highest value)** — ✅ done 2026-10-13
 1. Timezone-aware ISO parsing (`{ zone }` / `timeformat=unixtime`); fix the CLAUDE.md note.
 2. Cloud drift in noise space (fixes the featureScale slide); wrap the frame counter.
 3. MapPicker: memoised `initialCenter`, focus logic on open transitions only, `inert` when closed.
@@ -234,7 +234,7 @@ Each phase is one or a few commits, behaviour-preserving unless marked, and veri
   - Drop `NETWORK_ERROR` and the `reverseGeocode` error wrapping.
   - Collapse `FOG_MAX_VISIBILITY_M` to one value.
 - Scene:
-  - `SceneSignals.facing` and `windVelocityLow` become locals; plain initial values in `createSceneSignals`.
+  - `SceneSignals.facing` becomes a local; plain initial values in `createSceneSignals`.
   - Make the `FrameRateGate` prop required.
   - Constant uniforms become GLSL consts.
   - Remove the eslint comment.

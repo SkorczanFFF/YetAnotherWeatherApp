@@ -48,7 +48,7 @@ export const geocodeCity = async (
     if (!response.ok) {
       throw new WeatherError(
         `Geocoding API error: ${response.status} ${response.statusText}`,
-        "GEOCODE_FAILED",
+        "API_ERROR",
       );
     }
 

@@ -129,7 +129,7 @@ export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: Thunder
   return (
     <group ref={group} renderOrder={5}>
       <Line points={bolt.segments} segments color="#c9d6ff" lineWidth={7} transparent opacity={0.3} toneMapped={false} fog={false} />
-      <Line points={bolt.segments} segments color="#f4f7ff" lineWidth={2.4} toneMapped={false} fog={false} />
+      <Line points={bolt.segments} segments color="#f4f7ff" lineWidth={2.4} transparent toneMapped={false} fog={false} />
     </group>
   );
 }

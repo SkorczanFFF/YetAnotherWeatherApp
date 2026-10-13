@@ -27,6 +27,8 @@ import {
 } from "./weather/types";
 
 const MIN_LOADING_MS = 500;
+/** Current conditions and the hourly chart's "now" go stale without a refetch. */
+const REFRESH_MS = 15 * 60_000;
 /** Phones have no F7: this many quick taps on the footer status toggle the debug menu. */
 const DEBUG_TAPS = 5;
 const DEBUG_TAP_GAP_MS = 600;
@@ -127,6 +129,7 @@ const App = (): React.ReactElement => {
         setWeatherUnits(units);
       } catch (err: unknown) {
         if (cancelled) return;
+        console.error(err);
         const code = err instanceof WeatherError ? err.code : null;
         const message =
           code === "GEOCODE_FAILED"
@@ -152,6 +155,26 @@ const App = (): React.ReactElement => {
     fetchWeather();
     return () => {
       cancelled = true;
+    };
+  }, [query, units]);
+
+  // Silent refresh: no loader, and a failure keeps the shown data.
+  useEffect(() => {
+    let cancelled = false;
+    const id = window.setInterval(async () => {
+      try {
+        const data = await getFormattedWeatherData({ ...query, units });
+        if (cancelled) return;
+        setWeather(data);
+        setWeatherUnits(units);
+        setError(null);
+      } catch (err) {
+        console.warn(err);
+      }
+    }, REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
     };
   }, [query, units]);
 

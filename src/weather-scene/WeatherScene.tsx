@@ -162,7 +162,10 @@ export function WeatherScene({
         <PerformanceMonitor
           bounds={() => [budget.fps * 0.75, 10_000]}
           flipflops={3}
-          onDecline={() => setAutoTier(lowerTier)}
+          onDecline={() => {
+            // A pinned tier's fps says nothing about the auto one.
+            if (!params.quality) setAutoTier(lowerTier);
+          }}
         />
         <SceneRoot
           params={params}

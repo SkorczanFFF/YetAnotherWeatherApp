@@ -50,7 +50,7 @@ uniform float uCoverage;     // 0..1
 uniform float uType;         // 0 stratus · 0.5 cumulus · 1 cumulonimbus
 uniform float uDensity;      // extinction per metre at density 1
 uniform float uFeatureScale; // noise size multiplier, ≤ 1 — a low deck gets smaller cells
-uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), m (xz)
+uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), in noise space (xz)
 uniform vec2 uWindHigh;      // accumulated drift at cirrus level (300 hPa), m (xz)
 uniform vec2 uHighWindDir;   // unit, xz — cirrus streaks stretch along it
 uniform float uCirrusAlt;    // m above ground
@@ -146,8 +146,9 @@ float density(vec3 p, float hf, bool detail) {
   if (hf < 0.0 || hf > 1.0) return 0.0;
   // Noise space is metres ÷ uFeatureScale: a deck low overhead gets smaller
   // cells, so it keeps the angular size of one at cumulus height instead of
-  // a single cell filling the frame.
-  vec2 xz = (p.xz - uWind) / uFeatureScale;
+  // a single cell filling the frame. The drift is already in noise space, so
+  // a changing scale zooms around the camera, not around the far-off drift.
+  vec2 xz = p.xz / uFeatureScale - uWind;
   float y = p.y / uFeatureScale;
   float c = uCoverage;
   float rank = coverRank(xz, hf);

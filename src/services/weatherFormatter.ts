@@ -54,6 +54,9 @@ const describeCode = (code: number) => weatherDescriptions[code] ?? "Unknown";
 const cloudCode = (code: number, cover: number | undefined) =>
   code > 3 || typeof cover !== "number" ? code : cover < 20 ? 0 : cover < 50 ? 1 : cover < 80 ? 2 : 3;
 
+/** `timezone=auto` returns location-local ISO strings without an offset. */
+const localSeconds = (iso: string, zone: string) => DateTime.fromISO(iso, { zone }).toSeconds();
+
 export const formatCurrentWeather = (
   data: OpenMeteoResponse,
   locationName?: string,
@@ -85,9 +88,9 @@ export const formatCurrentWeather = (
   const { temperature_2m_max, temperature_2m_min, sunrise, sunset } = daily;
   const weather_code = cloudCode(modelCode, cloud_cover);
   const details = describeCode(weather_code);
-  const sunrise_time = DateTime.fromISO(sunrise[0]).toSeconds();
-  const sunset_time = DateTime.fromISO(sunset[0]).toSeconds();
-  const next_sunrise = sunrise[1] ? DateTime.fromISO(sunrise[1]).toSeconds() : undefined;
+  const sunrise_time = localSeconds(sunrise[0], timezone);
+  const sunset_time = localSeconds(sunset[0], timezone);
+  const next_sunrise = sunrise[1] ? localSeconds(sunrise[1], timezone) : undefined;
   const temp_max = temperature_2m_max[0];
   const temp_min = temperature_2m_min[0];
   const name =
@@ -163,7 +166,7 @@ export const formatWeeklyWeather = (
   const weeklyData = daily.time.slice(1, 8).map((date, index) => {
     const i = index + 1;
     const code = daily.weather_code[i];
-    const dtSec = DateTime.fromISO(date).toSeconds();
+    const dtSec = localSeconds(date, timezone);
     return {
       title: formatToLocalTime(dtSec, timezone, "ccc"),
       date: formatToLocalTime(dtSec, timezone, "dd LLL"),
@@ -179,7 +182,7 @@ export const formatWeeklyWeather = (
   });
 
   const hourlyData: HourlyForecast[] = (hourly?.time || []).map((iso, i) => ({
-    time: DateTime.fromISO(iso).toSeconds(),
+    time: localSeconds(iso, timezone),
     temp: hourly.temperature_2m[i],
     precip_prob: hourly.precipitation_probability?.[i] ?? 0,
     weather_code: hourly.weather_code?.[i] ?? 0,
@@ -193,8 +196,11 @@ export const formatToLocalTime = (secs: number, zone: string, format: string): s
 
 export const tempSymbol = (units: Units): string => (units === "metric" ? "°C" : "°F");
 
+/** Rounded degrees without a unit; `|| 0` turns −0 into 0. */
+export const formatDegrees = (value: number): string => `${Math.round(value) || 0}°`;
+
 export const formatTemperature = (value: number, units: Units): string =>
-  `${value.toFixed()}${tempSymbol(units)}`;
+  `${Math.round(value) || 0}${tempSymbol(units)}`;
 
 export const formatSpeed = (value: number, units: Units): string =>
   `${value.toFixed()} ${units === "metric" ? "km/h" : "mph"}`;

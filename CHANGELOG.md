@@ -4,6 +4,16 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Fixed
+- Sunrise/sunset, hourly labels and forecast day names were shifted by the difference between the browser's and the location's time zone.
+- Clouds slid sideways whenever the low-deck noise scale changed, worse the longer the page was open; the frame counter no longer grows without bound (banding after hours, unmarched pixels after ~77 h).
+- Map picker: the picked point and focus no longer reset on every app re-render; the closed drawer is out of the tab order.
+- "-0°" for temperatures just below zero.
+- A pinned quality tier no longer lowers the automatic one; the lightning bolt core is no longer greyed by the sky.
+- Open-Meteo error reasons are kept (logged); a failing geocoder reports a service error, not "City not found"; measured precipitation with null rain/showers/snowfall is no longer dropped.
+- Debug: pinning e.g. the hour no longer adds rain to measured thunder or hail; a pinned CAPE keeps the shower/storm convection floor; cirrus no longer lifts the fair-weather cumulus cap to ~9 km.
+- Weather refreshes silently every 15 minutes, so current conditions and the hourly chart don't go stale.
+
 ### Scene
 - Camera pitched up 22° (was 16°): the frame spans −3°…+47°, a thin horizon strip and mostly sky.
 - Low decks: cloud noise (cover, shape, detail) scales with the deck's height (`uFeatureScale`, 0.2–1 of the cumulus size), so a 150–300 m deck is no longer one cell filling the frame.

@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  formatDegrees,
   formatSpeed,
   toCardinal,
 } from "../../../services/weatherFormatter";
@@ -27,8 +28,8 @@ const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) => {
             <div className="day-body">
               <WeatherIcon className="day-icon" code={d.code} tinted />
               <div className="day-temps">
-                <span className="day-hi">{`${d.temp.toFixed()}°`}</span>
-                <span className="day-lo">{`${d.temp_min.toFixed()}°`}</span>
+                <span className="day-hi">{formatDegrees(d.temp)}</span>
+                <span className="day-lo">{formatDegrees(d.temp_min)}</span>
               </div>
             </div>
             <div className="day-extra">

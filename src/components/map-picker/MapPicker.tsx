@@ -92,6 +92,9 @@ export function MapPicker({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const center = initialCenter ?? DEFAULT_CENTER;
+  // Read on open only: App passes a new tuple every render.
+  const centerRef = useRef(initialCenter);
+  centerRef.current = initialCenter;
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -153,12 +156,11 @@ export function MapPicker({
       }
     } else {
       triggerRef.current = document.activeElement as HTMLElement;
-      if (initialCenter) {
-        setPicked({ lat: initialCenter[0], lon: initialCenter[1] });
-      }
+      const c = centerRef.current;
+      if (c) setPicked({ lat: c[0], lon: c[1] });
       requestAnimationFrame(() => closeButtonRef.current?.focus());
     }
-  }, [open, initialCenter]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -199,6 +201,7 @@ export function MapPicker({
     <div
       className={`map-picker-backdrop ${open ? "map-picker-backdrop--open" : ""}`}
       aria-hidden={!open}
+      inert={!open}
     >
       <button
         type="button"
