@@ -15,6 +15,8 @@ export interface VolumetricBudget {
   noiseSize: number;
   /** Rays stop here (m); beyond it clouds have faded into the haze. */
   maxDistance: number;
+  /** Samples per pixel of the god-ray pass (radial march towards the sun). */
+  raySamples: number;
 }
 
 export interface QualityBudget {
@@ -33,7 +35,7 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   high: {
     dprMax: 1.5,
     fps: 60,
-    volumetric: { scale: 0.5, steps: 64, lightSteps: 6, noiseSize: 128, maxDistance: 60000 },
+    volumetric: { scale: 0.5, steps: 64, lightSteps: 6, noiseSize: 128, maxDistance: 60000, raySamples: 32 },
     rain: 1800,
     snow: 1100,
     hail: 260,
@@ -43,7 +45,7 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   medium: {
     dprMax: 1.25,
     fps: 60,
-    volumetric: { scale: 0.4, steps: 48, lightSteps: 5, noiseSize: 96, maxDistance: 50000 },
+    volumetric: { scale: 0.4, steps: 48, lightSteps: 5, noiseSize: 96, maxDistance: 50000, raySamples: 24 },
     rain: 1000,
     snow: 650,
     hail: 150,
@@ -53,7 +55,7 @@ export const QUALITY: Record<QualityTier, QualityBudget> = {
   low: {
     dprMax: 1,
     fps: 30,
-    volumetric: { scale: 0.33, steps: 32, lightSteps: 4, noiseSize: 64, maxDistance: 40000 },
+    volumetric: { scale: 0.33, steps: 32, lightSteps: 4, noiseSize: 64, maxDistance: 40000, raySamples: 16 },
     rain: 450,
     snow: 300,
     hail: 80,
@@ -84,3 +86,8 @@ export function initialTier(isMobile: boolean): QualityTier {
 export function lowerTier(tier: QualityTier): QualityTier {
   return QUALITY_TIERS[Math.max(0, QUALITY_TIERS.indexOf(tier) - 1)];
 }
+
+/** GLSL loop bound for the god-ray march. */
+export const MAX_RAY_SAMPLES = Math.max(
+  ...Object.values(QUALITY).map((b) => b.volumetric?.raySamples ?? 0),
+);

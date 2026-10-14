@@ -29,9 +29,11 @@ export interface ViewFrame {
   tanTop: number;
   tanBottom: number;
   tanH: number;
+  /** Half-width of the page's content column ÷ the canvas half-width (0 = none) — celestial placement. */
+  coverHalf: number;
 }
 
-export function createViewFrame(aspect: number, parallaxAmount: number): ViewFrame {
+export function createViewFrame(aspect: number, parallaxAmount: number, coverHalf = 0): ViewFrame {
   const vHalf = MathUtils.degToRad(CAMERA_FOV / 2);
   const hHalfRaw = Math.atan(Math.tan(vHalf) * aspect);
   const parallaxAngle = Math.atan(
@@ -50,6 +52,7 @@ export function createViewFrame(aspect: number, parallaxAmount: number): ViewFra
     tanTop: Math.tan(topElev),
     tanBottom: Math.tan(bottomElev),
     tanH: Math.tan(hHalf),
+    coverHalf,
   };
 }
 

@@ -153,12 +153,22 @@ const HIGH_BAND_M = 6500;
 /** Convection without showers or a storm: cumulus, never a cumulonimbus. */
 const SHALLOW_CONVECTION = 0.6;
 
-/** Clear-sky clearness index (global / top-of-atmosphere) for a mid-latitude atmosphere. */
+/** Clear-sky clearness index (global / top-of-atmosphere) with the sun overhead. */
 const CLEAR_SKY_KT = 0.74;
-/** Two-stream diffuse transmittance T = 1 / (1 + (1 − g)·0.75·τ), g = 0.85. */
-const TWO_STREAM_K = 0.1125;
-/** Thinnest low/mid cloud we draw — a fair-weather cumulus is τ ≈ 5. */
+/** …dimming with the air mass (≈ 1/μ0, capped): ~0.6 at a 17° sun. */
+const CLEAR_SKY_AIRMASS_K = 0.09;
+const MAX_AIRMASS = 6;
+/** W/m² — top-of-atmosphere on a horizontal surface ÷ this ≈ μ0, the sine of the sun's altitude. */
+const SOLAR_CONSTANT = 1361;
+/** Cloud droplet asymmetry parameter (Eddington two-stream below). */
+const ASYMMETRY = 0.85;
+/** Thinnest low/mid cloud we draw — a fair-weather cumulus is τ ≈ 5… */
 const MIN_OPTICAL_DEPTH = 3;
+/** …and a closed deck: overcast stratus is τ ≈ 10–40. */
+const MIN_DECK_OPTICAL_DEPTH = 10;
+/** Optical depth per km of a dry cloud: broken cumulus … closed stratiform deck. */
+const TAU_PER_KM_CUMULUS = 16;
+const TAU_PER_KM_DECK = 30;
 /** …and of one that precipitates (nimbostratus, cumulonimbus are τ ≳ 20). */
 const MIN_RAIN_OPTICAL_DEPTH = 15;
 const TROPOPAUSE_M = 11500;
@@ -230,11 +240,12 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
 
   // --- optical depth -----------------------------------------------------
   const thicknessKm = (topM - baseM) / 1000;
-  const estimated = clamp(
-    thicknessKm * (input.precipitating ? 35 : 16) * (input.thunder ? 1.6 : 1),
-    0.5,
-    250,
-  );
+  // Only low/mid cloud dims the sun much — cirrus is τ ≲ 1 — so the
+  // radiation is attributed to that cover alone.
+  const deck = Math.max(clouds.low, clouds.mid);
+  const closed = smoothstep(deck, 0.8, 1);
+  const tauPerKm = input.precipitating ? 35 : lerp(TAU_PER_KM_CUMULUS, TAU_PER_KM_DECK, closed);
+  const estimated = clamp(thicknessKm * tauPerKm * (input.thunder ? 1.6 : 1), 0.5, 250);
   let opticalDepth = estimated;
   let opticalDepthMeasured = false;
   let directFraction: number | null = null;
@@ -243,23 +254,29 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   if (sw != null && sw > 20 && atm?.direct != null) {
     directFraction = clamp(atm.direct / sw, 0, 1);
   }
-  // Only low/mid cloud dims the sun much — cirrus is τ ≲ 1 — so the
-  // radiation is attributed to that cover alone.
-  const deck = Math.max(clouds.low, clouds.mid);
   if (input.trustRadiation && sw != null && toa != null && toa > 60 && deck > 0.1) {
-    const relative = clamp(sw / toa / CLEAR_SKY_KT, 0, 1.1);
+    // A low sun crosses more air and more cloud: assuming it overhead read
+    // autumn mornings as τ 100–250 (black decks) under plain stratus.
+    const mu0 = clamp(toa / SOLAR_CONSTANT, 0.05, 1);
+    const clearKt = CLEAR_SKY_KT * Math.exp(-CLEAR_SKY_AIRMASS_K * (Math.min(1 / mu0, MAX_AIRMASS) - 1));
+    const relative = clamp(sw / toa / clearKt, 0, 1.1);
     // Global light = clear part + cloudy part × cloud transmittance.
     const cloudT = clamp((relative - (1 - deck)) / deck, 0.02, 1);
-    const measured = Math.max(MIN_OPTICAL_DEPTH, (1 / cloudT - 1) / TWO_STREAM_K);
+    // Eddington two-stream, conservative scattering: T = (2/3 + μ0) / (4/3 + (1 − g)·τ).
+    const measured = Math.max(MIN_OPTICAL_DEPTH, ((2 / 3 + mu0) / cloudT - 4 / 3) / (1 - ASYMMETRY));
     // One point reading can't tell a gap over the sun from thin cloud (or a
-    // shower core from a deck), so it is trusted only as the deck closes;
-    // below that the thickness estimate leads (blended in log space).
-    const trust = smoothstep(deck, 0.5, 0.9);
+    // shower core from a deck), so it is trusted only as the deck closes, and
+    // not with the sun near the horizon (mostly diffuse light, hourly means
+    // straddling sunrise); otherwise the thickness estimate leads (log space).
+    const trust = smoothstep(deck, 0.5, 0.9) * smoothstep(mu0, 0.1, 0.35);
     opticalDepth = Math.exp(lerp(Math.log(estimated), Math.log(measured), trust));
     opticalDepthMeasured = trust >= 0.5;
   }
   // A cloud that rains is never thin, whatever a sunny gap told the sensor.
-  opticalDepth = clamp(opticalDepth, input.precipitating ? MIN_RAIN_OPTICAL_DEPTH : MIN_OPTICAL_DEPTH, 250);
+  const minDepth = input.precipitating
+    ? MIN_RAIN_OPTICAL_DEPTH
+    : lerp(MIN_OPTICAL_DEPTH, MIN_DECK_OPTICAL_DEPTH, closed);
+  opticalDepth = clamp(opticalDepth, minDepth, 250);
   if (override?.opticalDepth != null) {
     opticalDepth = override.opticalDepth;
     opticalDepthMeasured = false;

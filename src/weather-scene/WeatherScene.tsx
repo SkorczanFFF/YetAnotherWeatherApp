@@ -10,6 +10,7 @@ import { createSceneSignals, SceneSignalsProvider } from "./core/sceneSignals";
 import { SceneDriver } from "./core/SceneDriver";
 import { UiBacklight } from "./core/UiBacklight";
 import { createViewFrame } from "./core/viewVolume";
+import { useCoverColumn } from "./core/useCoverColumn";
 import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR } from "./core/worldFrame";
 import { SkyLayer } from "./layers/SkyLayer";
 import { SkyGrade } from "./layers/SkyGrade";
@@ -59,9 +60,10 @@ function SceneRoot({
   const signals = useMemo(createSceneSignals, []);
   const size = useThree((s) => s.size);
   const aspect = size.width / Math.max(1, size.height);
+  const coverHalf = useCoverColumn(size.width);
   const frame = useMemo(
-    () => createViewFrame(aspect, params.parallaxAmount),
-    [aspect, params.parallaxAmount],
+    () => createViewFrame(aspect, params.parallaxAmount, coverHalf),
+    [aspect, params.parallaxAmount, coverHalf],
   );
 
   return (

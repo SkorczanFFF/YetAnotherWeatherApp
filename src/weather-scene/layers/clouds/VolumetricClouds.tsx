@@ -11,6 +11,7 @@ import {
   ShaderMaterial,
   Vector2,
   Vector3,
+  Vector4,
   WebGLRenderTarget,
 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
@@ -26,6 +27,7 @@ import {
 import { fullscreenVert } from "../../shaders/fullscreen.glsl";
 import {
   CLOUD_COMPOSITE_FRAG,
+  CLOUD_RAYS_FRAG,
   CLOUD_RESOLVE_FRAG,
   VOLUMETRIC_FRAG,
 } from "../../shaders/volumetricClouds.glsl";
@@ -46,7 +48,24 @@ interface VolumetricCloudsProps {
 const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
 
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
-const scratch = { sun: new Vector3(), moon: new Vector3(), moonColor: new Color() };
+/** God-ray brightness at full strength, display space (tuned by eye). */
+const RAY_GAIN = 2.2;
+/** Share of RAY_GAIN left as glare around the disc in a sky without shafts. */
+const RAY_CLEAR_FLOOR = 0.25;
+/**
+ * Under a closed deck the eye adapts: by day the cloud light is raised by
+ * (1 + 0.1125·τ)^ADAPT_POWER, at most ADAPT_MAX — thick decks stay darker
+ * than thin ones, but grey, not black. The horizon haze isn't raised, so the
+ * deck overhead ends up brighter than at the horizon, as a real overcast sky.
+ */
+const ADAPT_POWER = 0.35;
+const ADAPT_MAX = 2.2;
+const scratch = {
+  sun: new Vector3(),
+  moon: new Vector3(),
+  moonColor: new Color(),
+  clip: new Vector4(),
+};
 
 /**
  * Low-res raymarch + temporal resolve into ping-pong targets, then one full-screen
@@ -77,6 +96,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     };
     return {
       march: new WebGLRenderTarget(Math.ceil(width / 2), Math.ceil(height / 2), options),
+      rays: new WebGLRenderTarget(Math.ceil(width / 2), Math.ceil(height / 2), options),
       history: [
         new WebGLRenderTarget(width, height, options),
         new WebGLRenderTarget(width, height, options),
@@ -86,6 +106,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   useEffect(
     () => () => {
       targets.march.dispose();
+      targets.rays.dispose();
       targets.history.forEach((t) => t.dispose());
     },
     [targets],
@@ -108,6 +129,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
             uCoverage: { value: 0 },
             uType: { value: 0.45 },
             uDensity: { value: 0.03 },
+            uDeckTau: { value: 10 },
             uFeatureScale: { value: 1 },
             uWind: { value: new Vector2() },
             uWindHigh: { value: new Vector2() },
@@ -117,6 +139,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
             uEvolve: { value: 0 },
             uHigh: { value: 0 },
             uLightDir: { value: new Vector3(0, 1, 0) },
+            uPhaseDir: { value: new Vector3(0, 0, -1) },
             uLightColor: { value: new Color() },
             uAmbientTop: { value: new Color() },
             uAmbientBottom: { value: new Color() },
@@ -162,13 +185,40 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   );
   useEffect(() => () => resolve.dispose(), [resolve]);
 
+  const rays = useMemo(
+    () =>
+      fullscreenPass(
+        new ShaderMaterial({
+          uniforms: {
+            uClouds: { value: null },
+            uSunUv: { value: new Vector2() },
+            uAspect: { value: 1 },
+            uHorizonV: { value: 0 },
+            uSamples: { value: budget.raySamples },
+          },
+          vertexShader: fullscreenVert(),
+          fragmentShader: CLOUD_RAYS_FRAG,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      ),
+    [],
+  );
+  useEffect(() => () => rays.dispose(), [rays]);
+
   const composite = useMemo(
     () =>
       new ShaderMaterial({
-        uniforms: { uClouds: { value: null } },
+        uniforms: {
+          uClouds: { value: null },
+          uRays: { value: null },
+          uRayColor: { value: new Color(0, 0, 0) },
+        },
         vertexShader: fullscreenVert(1),
         fragmentShader: CLOUD_COMPOSITE_FRAG,
         transparent: true,
+        // The shader writes premultiplied colour: cloud × alpha + additive rays.
+        premultipliedAlpha: true,
         depthTest: false,
         depthWrite: false,
       }),
@@ -240,6 +290,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uCoverage.value = sh.coverage;
     u.uType.value = sh.type;
     u.uDensity.value = sh.density;
+    u.uDeckTau.value = sh.opticalDepth;
     u.uFeatureScale.value = sh.featureScale;
     u.uHigh.value = sh.high;
     u.uCirrusAlt.value = sh.cirrusAlt;
@@ -263,9 +314,10 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
     const sunVis = MathUtils.smoothstep(sunAltDeg, -6, 2);
     // Sun and moon crossfade (a hard switch jumped ~6× in brightness at dusk).
-    // Both use the on-screen azimuth (the glow sits around the visible body)
-    // but the REAL altitude: the squeezed display altitude would light every
-    // cloud almost horizontally and outline it.
+    // The light march uses the on-screen azimuth but the REAL altitude: the
+    // squeezed display altitude would light every cloud almost horizontally and
+    // outline it. The phase (silver lining, forward glow) uses the full display
+    // direction, so it sits around the visible disc, not off-frame above it.
     const sunEnergy = 1.3 * sunVis;
     const moonEnergy = 1.4 * s.moonIntensity * (1 - sunVis);
     const lightColor = (u.uLightColor.value as Color)
@@ -281,14 +333,25 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
       .addScaledVector(scratch.moon, moonEnergy);
     if (lightDir.lengthSq() < 1e-8) lightDir.copy(scratch.sun);
     lightDir.normalize();
+    const phaseDir = (u.uPhaseDir.value as Vector3)
+      .copy(s.sunDir)
+      .multiplyScalar(sunEnergy)
+      .addScaledVector(s.moonDir, moonEnergy);
+    if (phaseDir.lengthSq() < 1e-8) phaseDir.copy(s.sunDir);
+    phaseDir.normalize();
+    // Daylight adaptation under a closed deck (see ADAPT_POWER).
+    const closed = MathUtils.smoothstep(sh.coverage, 0.8, 1);
+    const adapt =
+      1 + closed * s.day * (Math.min(ADAPT_MAX, Math.pow(1 + 0.1125 * sh.opticalDepth, ADAPT_POWER)) - 1);
+    lightColor.multiplyScalar(adapt);
     // Thick storm towers starve their own bases of light.
     const gloom = params.thunder ? 0.5 : params.precip.rainMmH > 4 ? 0.3 : 0;
-    (u.uAmbientTop.value as Color).copy(s.hemiSky).multiplyScalar(1.35 * (1 - gloom));
+    (u.uAmbientTop.value as Color).copy(s.hemiSky).multiplyScalar(1.35 * (1 - gloom) * adapt);
     const ambientBottom = (u.uAmbientBottom.value as Color)
       .copy(s.hemiGround)
       .multiplyScalar(0.45)
       .lerp(s.hemiSky, 0.4)
-      .multiplyScalar(1 - gloom);
+      .multiplyScalar((1 - gloom) * adapt);
     // Night: undersides pick up a faint warm glow from towns below.
     ambientBottom.r += NIGHT_GLOW.r * s.night;
     ambientBottom.g += NIGHT_GLOW.g * s.night;
@@ -320,9 +383,46 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     gl.render(march.scene, march.camera);
     gl.setRenderTarget(write);
     gl.render(resolve.scene, resolve.camera);
+
+    // God rays: only with the sun up and near the frame. Without clouds to cut
+    // them into shafts the same pass is a soft glare around the disc (a floor
+    // of RAY_CLEAR_FLOOR) — the bare Preetham disc read as a flat white dot.
+    const clip = scratch.clip
+      .set(s.sunDir.x, s.sunDir.y, s.sunDir.z, 0)
+      .applyMatrix4(camera.matrixWorldInverse)
+      .applyMatrix4(camera.projectionMatrix);
+    const sunU = (clip.x / clip.w) * 0.5 + 0.5;
+    const sunV = (clip.y / clip.w) * 0.5 + 0.5;
+    const offFrame = Math.max(-sunU, sunU - 1, -sunV, sunV - 1, 0);
+    const rayStrength =
+      clip.w > 0
+        ? MathUtils.smoothstep(sunAltDeg, -1, 6) *
+          (1 - MathUtils.smoothstep(offFrame, 0, 0.4)) *
+          MathUtils.lerp(RAY_CLEAR_FLOOR, 1, MathUtils.smoothstep(sh.coverage, 0.08, 0.35)) *
+          // Haze makes the shafts visible; fog swallows them.
+          (0.75 + 0.5 * s.haze) *
+          (1 - MathUtils.smoothstep(s.haze, 0.7, 1))
+        : 0;
+    const rayColor = composite.uniforms.uRayColor.value as Color;
+    if (rayStrength > 0.002) {
+      const ru = rays.material.uniforms;
+      ru.uClouds.value = write.texture;
+      (ru.uSunUv.value as Vector2).set(sunU, sunV);
+      ru.uAspect.value = write.width / write.height;
+      // Horizon: straight ahead at elevation 0.
+      clip.set(0, 0, -1, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+      ru.uHorizonV.value = (clip.y / clip.w) * 0.5 + 0.5;
+      ru.uSamples.value = budget.raySamples;
+      gl.setRenderTarget(targets.rays);
+      gl.render(rays.scene, rays.camera);
+      rayColor.copy(s.sunColor).convertLinearToSRGB().multiplyScalar(rayStrength * RAY_GAIN);
+    } else {
+      rayColor.setRGB(0, 0, 0);
+    }
     gl.setRenderTarget(previous);
 
     composite.uniforms.uClouds.value = write.texture;
+    composite.uniforms.uRays.value = targets.rays.texture;
     st.read = 1 - st.read;
     st.frame = (st.frame + 1) % 4096; // a multiple of 4; float precision stays exact
     st.historyValid = true;

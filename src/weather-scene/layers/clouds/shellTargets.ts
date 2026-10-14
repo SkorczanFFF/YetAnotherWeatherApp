@@ -13,6 +13,8 @@ export interface ShellTargets {
   base: number;
   /** Extinction per metre at noise density 1. */
   density: number;
+  /** Optical depth of the whole deck (cloudPhysics) — diffuse light and exposure. */
+  opticalDepth: number;
   /** Noise size multiplier, ≤ 1: cells shrink with a low deck's height. */
   featureScale: number;
   high: number;
@@ -32,7 +34,7 @@ const MIN_FEATURE_SCALE = 0.2;
 const MIN_BASE_M = 30;
 /** Eased fields; one missing here would silently freeze, so the Record makes it a type error. */
 const SHELL_KEY_SET = {
-  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
+  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, opticalDepth: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
 } satisfies Record<keyof ShellTargets, 1>;
 export const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
 
@@ -62,6 +64,7 @@ export function shellTargets(params: SceneParams): ShellTargets {
     thickness,
     base,
     density: MathUtils.clamp(p.opticalDepth / (thickness * SHELL_FILL), 0.004, 0.15),
+    opticalDepth: p.opticalDepth,
     featureScale: MathUtils.clamp((base + thickness * 0.5) / FEATURE_REF_M, MIN_FEATURE_SCALE, 1),
     high,
     cirrusAlt: p.highAltM,

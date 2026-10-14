@@ -10,12 +10,14 @@
 //      reprojected by view direction (the camera only rotates a little) and
 //      clipped to the variance of the freshly marched neighbourhood, so moving
 //      or morphing clouds don't leave ghosts; the march is upsampled into it.
-//   3. CLOUD_COMPOSITE_FRAG tone-maps the result over the sky.
+//   3. CLOUD_RAYS_FRAG (only with the sun up and gaps to shine through)
+//      radially blurs the open sky by the sun into god rays, half × half.
+//   4. CLOUD_COMPOSITE_FRAG tone-maps the clouds over the sky, adds the rays.
 //
 // Cloud output is premultiplied: rgb = in-scattered radiance (pre-tonemap,
 // "sky units"), a = 1 − transmittance.
 
-import { MAX_LIGHT_STEPS } from "../core/quality";
+import { MAX_LIGHT_STEPS, MAX_RAY_SAMPLES } from "../core/quality";
 import { CIRRUS_ALPHA, FBM_WEIGHTS, NOISE_RANK, REMAP } from "./chunks.glsl";
 
 /** Which pixel of each 2×2 block is marched on a given frame (shared by passes 1 and 2). */
@@ -53,6 +55,7 @@ uniform float uThickness;    // shell thickness, m
 uniform float uCoverage;     // 0..1
 uniform float uType;         // 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1 cumulonimbus
 uniform float uDensity;      // extinction per metre at density 1
+uniform float uDeckTau;      // optical depth of the whole deck
 uniform float uFeatureScale; // noise size multiplier, ≤ 1 — a low deck gets smaller cells
 uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), in noise space (xz)
 uniform vec2 uWindHigh;      // accumulated drift at cirrus level (300 hPa), m (xz)
@@ -62,7 +65,8 @@ uniform float uFreezeAlt;    // 0 °C level above ground, m — ice above it
 uniform float uEvolve;       // slow morphing offset
 uniform float uHigh;         // cirrus cover 0..1
 
-uniform vec3 uLightDir;
+uniform vec3 uLightDir;      // light march: real altitude
+uniform vec3 uPhaseDir;      // phase: on-screen sun/moon, where the silver lining sits
 uniform vec3 uLightColor;    // radiance incl. intensity
 uniform vec3 uAmbientTop;
 uniform vec3 uAmbientBottom;
@@ -231,6 +235,19 @@ float sunEnergy(float od, float cosTheta) {
   return sum * mix(1.0, powder, 0.5 * (0.5 - 0.5 * cosTheta));
 }
 
+// Sunlight diffused down through a thick deck. Two-stream transmission falls
+// as 1/τ, the octaves above exponentially — without this floor every overcast
+// base went black. Through a horizontal deck light forgets its slant, so the
+// depth is the deck's τ above the sample (at most the march's); it needs medium
+// to build up (no white rims) and scales with the irradiance of a low sun.
+const float TWO_STREAM_K = 0.1125;   // (1 − g)·0.75, g = 0.85
+const float DIFFUSE_GAIN = 1.1;
+float diffuseLight(float od, float hf) {
+  float tauAbove = min(od, uDeckTau * (1.0 - hf));
+  float mu = mix(0.35, 1.0, clamp(uLightDir.y / 0.7, 0.0, 1.0));
+  return DIFFUSE_GAIN * mu * (1.0 - exp(-od * 1.5)) / (1.0 + TWO_STREAM_K * tauAbove);
+}
+
 // Adaptive march: cheap 3× steps (no detail, no lighting) through empty air,
 // back up one and go fine on a hit; the fine step grows with distance (a far
 // sample covers more per pixel). uSteps caps the lit samples, not the iterations.
@@ -254,7 +271,7 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
   vec3 scat = vec3(0.0);
   float T = 1.0;
   float tFirst = -1.0;
-  float cosTheta = dot(rd, uLightDir);
+  float cosTheta = dot(rd, uPhaseDir);
 
   if (tStart < tEnd) {
     float minStep = max(25.0, uThickness / float(uSteps));
@@ -290,8 +307,8 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         float sigma = d * uDensity;
         float od = lightOpticalDepth(p);
         // Denser pockets are darker — gives a closed deck its mottled base.
-        vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.2, 0.5, d);
-        vec3 L = uLightColor * sunEnergy(od, cosTheta) + ambient;
+        vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.15, 0.7, d);
+        vec3 L = uLightColor * max(sunEnergy(od, cosTheta), diffuseLight(od, hf)) + ambient;
         // Lightning lights the cloud from inside.
         L += vec3(0.8, 0.85, 1.0) * uFlash * 6.0 * exp(-distance(p, uFlashPos) / 1800.0);
         float tr = exp(-sigma * dt);
@@ -413,17 +430,93 @@ void main() {
 }
 `;
 
+// God rays: a radial march from each pixel towards the on-screen sun over the
+// resolved clouds' transmittance (Mitchell, GPU Gems 3 ch. 13). The source is
+// open sky near the disc, so gaps by the sun cast streaks outwards and the
+// clouds' shadows cut dark lanes between them. Half × half target, like the march.
+export const CLOUD_RAYS_FRAG = /* glsl */ `
+precision highp float;
+
+uniform sampler2D uClouds;    // resolved cloud target, a = 1 − transmittance
+uniform vec2 uSunUv;          // on-screen sun; may lie off the frame
+uniform float uAspect;        // width / height
+uniform float uHorizonV;      // screen v of the horizon — the ground occludes below
+uniform int uSamples;
+
+varying vec2 vUv;
+
+const float RAY_REACH = 0.9;      // share of the way to the sun the march covers
+const float DECAY = 0.96;         // per sample, away from the pixel
+const float GLOW_FALLOFF = 4.0;   // per frame height — how far from the disc the sky lights the air
+// An open sun gives glare, not shafts (they show when it hides behind a
+// cloud): the whole result scales from this up to 1 with the disc's cover.
+const float OPEN_SUN = 0.15;
+const float DISC_TAP = 0.02;      // frame heights — taps around the disc for its cover
+// The sky by the disc is already bright: shafts start out here (frame heights)
+// instead of piling onto it and blowing it out white.
+const vec2 SHAFT_START = vec2(0.04, 0.3);
+
+float ign(vec2 p) {
+  return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
+}
+
+// Light the sun puts into the air at this point of the frame.
+float source(vec2 uv) {
+  float clear = 1.0 - texture2D(uClouds, uv).a;
+  float sky = smoothstep(uHorizonV - 0.01, uHorizonV + 0.02, uv.y);
+  float d = length((uv - uSunUv) * vec2(uAspect, 1.0));
+  return clear * sky * exp(-d * GLOW_FALLOFF);
+}
+
+void main() {
+  vec2 stepUv = (uSunUv - vUv) * (RAY_REACH / float(uSamples));
+  // Fixed per-pixel jitter (no history here): smooth after the bilinear upsample.
+  vec2 uv = vUv + stepUv * ign(gl_FragCoord.xy);
+  float sum = 0.0;
+  float norm = 0.0;
+  float w = 1.0;
+  for (int i = 0; i < ${MAX_RAY_SAMPLES}; i++) {
+    if (i >= uSamples) break;
+    sum += source(uv) * w;
+    norm += w;
+    w *= DECAY;
+    uv += stepUv;
+  }
+  vec2 tap = vec2(DISC_TAP / uAspect, DISC_TAP);
+  float hidden = (texture2D(uClouds, clamp(uSunUv, 0.0, 1.0)).a
+    + texture2D(uClouds, clamp(uSunUv + vec2(tap.x, 0.0), 0.0, 1.0)).a
+    + texture2D(uClouds, clamp(uSunUv - vec2(tap.x, 0.0), 0.0, 1.0)).a
+    + texture2D(uClouds, clamp(uSunUv + vec2(0.0, tap.y), 0.0, 1.0)).a
+    + texture2D(uClouds, clamp(uSunUv - vec2(0.0, tap.y), 0.0, 1.0)).a) * 0.2;
+  float away = smoothstep(SHAFT_START.x, SHAFT_START.y, length((vUv - uSunUv) * vec2(uAspect, 1.0)));
+  gl_FragColor = vec4(sum / norm * mix(OPEN_SUN, 1.0, hidden) * away, 0.0, 0.0, 1.0);
+}
+`;
+
 export const CLOUD_COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D uClouds;
+uniform sampler2D uRays;
+uniform vec3 uRayColor;       // display space, × strength (black = no shafts)
 varying vec2 vUv;
 void main() {
-  // Un-premultiply BEFORE tone mapping and sRGB encoding: encoding premultiplied
-  // colour inflates thin edges (sRGB's linear toe is ×12.92) into white outlines.
   vec4 c = texture2D(uClouds, vUv);
   float a = c.a;
-  if (a < 0.002) discard;
-  gl_FragColor = vec4(c.rgb / a, a);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
+  // Shafts are lit air in front of the sky and, more faintly, of the clouds.
+  // Soft cap: faint shafts keep their slope, bright ones saturate at RAY_MAX
+  // instead of whiting out the sky they cross.
+  const float RAY_MAX = 0.3;
+  vec3 rays = RAY_MAX * (1.0 - exp(-uRayColor * texture2D(uRays, vUv).r / RAY_MAX)) * (1.0 - 0.6 * a);
+  if (a < 0.002 && max(rays.r, max(rays.g, rays.b)) < 0.002) discard;
+  // Un-premultiply BEFORE tone mapping and sRGB encoding: encoding premultiplied
+  // colour inflates thin edges (sRGB's linear toe is ×12.92) into white outlines.
+  vec3 cloud = c.rgb / max(a, 1e-4);
+  #ifdef TONE_MAPPING
+  cloud = toneMapping(cloud);
+  #endif
+  cloud = linearToOutputTexel(vec4(cloud, 1.0)).rgb;
+  // Premultiplied output (blend ONE, ONE_MINUS_SRC_ALPHA): the encoded cloud
+  // over the sky exactly as before, plus the shafts added in display space —
+  // encoding them would lift every faint value by the sRGB toe.
+  gl_FragColor = vec4(cloud * a + rays, a);
 }
 `;

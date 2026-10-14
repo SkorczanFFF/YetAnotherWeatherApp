@@ -44,6 +44,53 @@ const AZ_SQUEEZE_RANGE = 135 * MathUtils.DEG2RAD;
 
 const smoothstep = MathUtils.smoothstep;
 
+/**
+ * Real altitude → on-screen altitude, zenith at `top`. sin() lifts the mid-sky
+ * body (45° → ~30° instead of ~21°, near the frame's centre) — the linear
+ * squeeze kept the sun in the lower third most of the day. Below the horizon
+ * it stays linear: Preetham's sky dies at −2.3° display, a steeper slope would end dusk early.
+ */
+function displayAltitude(alt: number, top: number): number {
+  return alt >= 0 ? top * Math.sin(alt) : alt * (top / (Math.PI / 2));
+}
+
+/** On-screen sun/moon keep this far (NDC) outside the page's content column… */
+const COVER_MARGIN = 0.07;
+/** …and inside this, short of the frame edge. */
+const EDGE_NDC = 0.92;
+/** A narrower gutter (NDC) isn't worth it: the body keeps the plain squeeze. */
+const MIN_GUTTER_NDC = 0.1;
+/** The body crosses behind the column within this share of ±135° (~±16°, about an hour around noon). */
+const CROSS_SHARE = 0.12;
+
+/**
+ * Relative azimuth → on-screen azimuth at display altitude `alt`. With side
+ * gutters next to the content column the body runs in them (morning left,
+ * afternoon right, a quick crossing around noon) — in the middle it sat behind
+ * the cards all day. The azimuth is solved for the pitched base camera so a
+ * high body lands on the same screen x as a low one. No gutters: ±135° → 80 %
+ * of the half-frame.
+ */
+function displayAzimuth(rel: number, alt: number, frame: ViewFrame): number {
+  const g0 = frame.coverHalf + COVER_MARGIN;
+  if (frame.coverHalf <= 0 || EDGE_NDC - g0 < MIN_GUTTER_NDC) {
+    return rel * Math.min(1, (0.8 * frame.hHalfRaw) / AZ_SQUEEZE_RANGE);
+  }
+  const u = MathUtils.clamp(rel / AZ_SQUEEZE_RANGE, -1, 1);
+  const a = Math.abs(u);
+  const x =
+    a < CROSS_SHARE
+      ? (u / CROSS_SHARE) * g0
+      : Math.sign(u) * (g0 + ((EDGE_NDC - g0) * (a - CROSS_SHARE)) / (1 - CROSS_SHARE));
+  // x·tanH·(cosφ·cos e·cos p + sin e·sin p) = sinφ·cos e, solved for φ.
+  const k = x * Math.tan(frame.hHalfRaw);
+  const ce = Math.cos(alt);
+  const A = ce;
+  const B = k * ce * Math.cos(frame.pitch);
+  const C = k * Math.sin(alt) * Math.sin(frame.pitch);
+  return Math.atan2(B, A) + Math.asin(MathUtils.clamp(C / Math.hypot(A, B), -1, 1));
+}
+
 /** Smooth pseudo-random gust envelope, 0..1, mostly near 0 with occasional peaks. */
 function gustEnvelope(t: number): number {
   const n =
@@ -91,16 +138,17 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       s.moonFraction = illum.fraction;
     }
     // Display direction: the zenith maps 5° under the frame's top edge, so the disc stays in view.
-    const kAz = Math.min(1, (0.8 * frame.hHalfRaw) / AZ_SQUEEZE_RANGE);
-    const kAlt = (frame.topElevRaw - 5 * MathUtils.DEG2RAD) / (Math.PI / 2);
+    const altTop = frame.topElevRaw - 5 * MathUtils.DEG2RAD;
+    const sunAltD = displayAltitude(s.sunAlt, altTop);
+    const moonAltD = displayAltitude(s.moonAlt, altTop);
     directionFromRelative(
-      relativeAzimuth(sunAz.current, facing) * kAz,
-      s.sunAlt * kAlt,
+      displayAzimuth(relativeAzimuth(sunAz.current, facing), sunAltD, frame),
+      sunAltD,
       s.sunDir,
     );
     directionFromRelative(
-      relativeAzimuth(moonAz.current, facing) * kAz,
-      s.moonAlt * kAlt,
+      displayAzimuth(relativeAzimuth(moonAz.current, facing), moonAltD, frame),
+      moonAltD,
       s.moonDir,
     );
 

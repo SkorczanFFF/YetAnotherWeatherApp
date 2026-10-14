@@ -88,7 +88,12 @@ const App = (): React.ReactElement => {
           pending={loading ? loadSource : null}
         />
         <main className="main">
-          <div className={`stack${refreshing ? " is-refreshing" : ""}`} aria-busy={loading}>
+          <div
+            className={`stack${refreshing ? " is-refreshing" : ""}`}
+            aria-busy={loading}
+            // The scene keeps the sun and moon out from behind this column.
+            data-scene-cover
+          >
             {initialLoading && (
               <LoaderPanel
                 label="Fetching weather"
