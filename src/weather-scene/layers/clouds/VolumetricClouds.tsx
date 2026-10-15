@@ -141,6 +141,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
             uWindHigh: { value: new Vector2() },
             uHighWindDir: { value: new Vector2(1, 0) },
             uCirrusAlt: { value: 8500 },
+            uMid: { value: 0 },
+            uMidAlt: { value: 4000 },
             uFreezeAlt: { value: 3000 },
             uEvolve: { value: 0 },
             uHigh: { value: 0 },
@@ -330,7 +332,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
 
     // Below the shader's own cut-offs (cover fades in over 0..0.05, cirrus is skipped under 0.01).
     // A clear sky skips the march but keeps the glare round the sun.
-    if (sh.coverage < 0.015 && sh.high < 0.01) {
+    if (sh.coverage < 0.015 && sh.high < 0.01 && sh.midLayer < 0.01) {
       st.historyValid = false;
       composite.uniforms.uClouds.value = clearSky;
       mesh.visible = drawRays(gl, camera, clearSky, sh.coverage);
@@ -361,6 +363,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uDeckTau.value = sh.opticalDepth;
     u.uFeatureScale.value = sh.featureScale;
     u.uHigh.value = sh.high;
+    u.uMid.value = sh.midLayer;
+    u.uMidAlt.value = sh.midAlt;
     u.uCirrusAlt.value = sh.cirrusAlt;
     u.uFreezeAlt.value = sh.freezeAlt;
     u.uSteps.value = budget.steps;

@@ -5,8 +5,9 @@ import { MathUtils, type ShaderMaterial, type Vector3 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { RENDER_ORDER } from "../core/constants";
 
-/** Sun disc radius. Preetham's real ~0.53° is a dot at FOV 50 on a phone. */
-const SUN_RADIUS = 1.4 * MathUtils.DEG2RAD;
+/** Sun disc radius, degrees. Preetham's real ~0.53° is a dot at FOV 50 on a phone. */
+export const SUN_DISC_DEG = 1.4;
+const SUN_RADIUS = SUN_DISC_DEG * MathUtils.DEG2RAD;
 const SUN_COS = Math.cos(SUN_RADIUS);
 /** Soft rim, the same share of the radius as Preetham's (+0.00002 on 1 − 0.9999567). */
 const SUN_EDGE = (1 - SUN_COS) * 0.46;

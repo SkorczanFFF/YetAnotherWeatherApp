@@ -272,6 +272,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
               {e.cloudPhysics.midDeck
                 ? `mid deck ~${fmt(e.cloudPhysics.midAltM, 0)} m (LCL ${fmt(e.cloudPhysics.baseM, 0)} m)`
                 : `clouds ${fmt(e.cloudPhysics.baseM, 0)}–${fmt(e.cloudPhysics.topM, 0)} m`}
+              {e.cloudPhysics.midLayer && ` + mid layer ~${fmt(e.cloudPhysics.midAltM, 0)} m`}
               {` · τ ${fmt(e.cloudPhysics.opticalDepth)}`}
               {e.cloudPhysics.opticalDepthMeasured ? " (radiation)" : " (estimated)"} · convection {Math.round(e.cloudPhysics.convection * 100)}%
               {e.cloudPhysics.liftedIndex != null && ` · LI ${fmt(e.cloudPhysics.liftedIndex)}`}

@@ -14,6 +14,7 @@ import { useCoverColumn } from "./core/useCoverColumn";
 import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR } from "./core/worldFrame";
 import { SkyLayer } from "./layers/SkyLayer";
 import { SkyGrade } from "./layers/SkyGrade";
+import { SunGlow } from "./layers/SunGlow";
 import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
 import { CloudDeck } from "./layers/CloudDeck";
@@ -75,6 +76,7 @@ function SceneRoot({
 
       <SkyLayer />
       <SkyGrade />
+      <SunGlow />
       <StarField frame={frame} count={budget.stars} />
       <Suspense fallback={null}>
         <Moon />

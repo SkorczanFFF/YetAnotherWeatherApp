@@ -4,6 +4,7 @@
 export const RENDER_ORDER = {
   sky: -2,
   skyGrade: -1,
+  sunGlow: -0.5,
   stars: 0,
   moon: 1,
   clouds: 2,

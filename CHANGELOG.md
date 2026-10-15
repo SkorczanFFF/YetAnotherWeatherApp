@@ -5,6 +5,10 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 ## Unreleased
 
 ### Changed (scene)
+- The sun glows: a rim and halo of light round the disc (`SunGlow`), full by a low sun, gentle high up so the disc keeps its edge; off under overcast and fog.
+- A low deck under a mid sky gets a thin mid layer (altocumulus/altostratus sheet) above it — both layers show instead of the mid cover folded into the low deck.
+- No more floating cotton balls: the fine part of the cover noise only shapes the rims of cells, isolated islands of it are gone.
+- Tall towers: the light march covers a near cone plus one long step, jittered — no terraces or stripes along lit flanks.
 - Overcast and rain decks are mottled from below: the diffuse light under a closing deck follows the local column thickness (its lumpy-base factor), so thinner patches are brighter — it was one flat grey once nearby clouds rendered at all.
 - God rays read: clouds now cut shadow lanes into the bright air round the sun (the composite dims the sky behind them through its alpha), the clear share of each ray is contrast-raised, only thick cloud occludes (cirrus no longer greys the whole sky), and a 4-tap tent hides the jitter. A clear sky keeps the glare round the sun (the whole pass used to be skipped with no clouds).
 - Sun disc 0.95° → 1.4° radius.

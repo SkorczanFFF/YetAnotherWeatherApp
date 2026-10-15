@@ -23,6 +23,8 @@ export interface CloudPhysics {
   midAltM: number;
   /** The one drawn deck sits in the mid band (altocumulus) instead of at baseM–topM. */
   midDeck: boolean;
+  /** The deck stays low and the mid cover is drawn as its own thin layer at midAltM. */
+  midLayer: boolean;
   /** Cirrus level above ground, m. */
   highAltM: number;
   /** Optical depth of the low layer. */
@@ -148,6 +150,8 @@ const THIN_DECK_M = 100;
 /** Cover of the one low/mid deck the scene draws (high cover is the cirrus), 0..1. */
 export const deckCover = (clouds: { low: number; mid: number }) => Math.max(clouds.low, clouds.mid * 0.85);
 
+/** Mid cover from which a low deck gets a mid layer above it, 0..1. */
+const MID_LAYER_MIN = 0.1;
 /** Pressure levels below this count as the low band, m above ground. */
 const LOW_BAND_M = 2500;
 /** Standard-atmosphere temperature lapse rate. */
@@ -252,6 +256,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     (clouds.low < 0.3 || lowLevelsClear) &&
     clouds.mid > Math.max(0.15, clouds.low * 1.3) &&
     convection < 0.5;
+  const midLayer = !midDeck && clouds.mid >= MID_LAYER_MIN;
 
   // --- optical depth -----------------------------------------------------
   const thicknessKm = (topM - baseM) / 1000;
@@ -314,6 +319,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     topM,
     midAltM,
     midDeck,
+    midLayer,
     highAltM,
     opticalDepth,
     opticalDepthMeasured,

@@ -17,6 +17,9 @@ export interface ShellTargets {
   opticalDepth: number;
   /** Noise size multiplier, ≤ 1: cells shrink with a low deck's height. */
   featureScale: number;
+  /** Cover of the thin mid layer above a low deck (0 when the shell is the mid deck). */
+  midLayer: number;
+  midAlt: number;
   high: number;
   cirrusAlt: number;
   freezeAlt: number;
@@ -34,7 +37,7 @@ const MIN_FEATURE_SCALE = 0.2;
 const MIN_BASE_M = 30;
 /** Eased fields; one missing here would silently freeze, so the Record makes it a type error. */
 const SHELL_KEY_SET = {
-  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, opticalDepth: 1, featureScale: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
+  coverage: 1, type: 1, thickness: 1, base: 1, density: 1, opticalDepth: 1, featureScale: 1, midLayer: 1, midAlt: 1, high: 1, cirrusAlt: 1, freezeAlt: 1,
 } satisfies Record<keyof ShellTargets, 1>;
 export const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
 
@@ -54,15 +57,22 @@ export function shellTargets(params: SceneParams): ShellTargets {
         ? 0.06 + 0.2 * conv
         : MathUtils.clamp(0.35 + 0.65 * conv, 0, 1);
   return {
-    // The shell is the low/mid cloud; high cover is the cirrus layer, not
-    // cumulus. Total cover only stands in when no layer explains it.
-    coverage: MathUtils.clamp(Math.max(deckCover(params.clouds), low + mid + high < 0.05 ? total : 0), 0, 1),
+    // The shell is the low/mid cloud — low alone when the mid cover has its
+    // own layer; high cover is the cirrus layer, not cumulus. Total cover
+    // only stands in when no layer explains it.
+    coverage: MathUtils.clamp(
+      Math.max(p.midLayer ? low : deckCover(params.clouds), low + mid + high < 0.05 ? total : 0),
+      0,
+      1,
+    ),
     type,
     thickness,
     base,
     density: MathUtils.clamp(p.opticalDepth / (thickness * SHELL_FILL), 0.004, 0.15),
     opticalDepth: p.opticalDepth,
     featureScale: MathUtils.clamp((base + thickness * 0.5) / FEATURE_REF_M, MIN_FEATURE_SCALE, 1),
+    midLayer: p.midLayer ? mid : 0,
+    midAlt: p.midAltM,
     high,
     cirrusAlt: p.highAltM,
     freezeAlt: p.freezingLevelM,

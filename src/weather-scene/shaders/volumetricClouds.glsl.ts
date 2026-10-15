@@ -64,6 +64,8 @@ uniform float uCirrusAlt;    // m above ground
 uniform float uFreezeAlt;    // 0 °C level above ground, m — ice above it
 uniform float uEvolve;       // slow morphing offset
 uniform float uHigh;         // cirrus cover 0..1
+uniform float uMid;          // cover of the thin mid layer above a low deck, 0..1
+uniform float uMidAlt;       // its height above ground, m
 
 uniform vec3 uLightDir;      // light march: real altitude
 uniform vec3 uPhaseDir;      // phase: on-screen sun/moon, where the silver lining sits
@@ -136,19 +138,28 @@ float heightGradient(float hf) {
 // gives an even 0..1 rank and cover c keeps exactly c of the area.
 // Re-measure if cloudNoise.glsl changes.
 const vec2 COVER_NOISE = vec2(0.624, 0.050);   // mean, standard deviation
+const vec2 COVER_NOISE_LOW = vec2(0.659, 0.056);   // its large-scale part alone
 const vec2 CIRRUS_NOISE = vec2(0.490, 0.081);
 const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
+// How far under the cover threshold (in rank) the large-scale field may sit
+// for the fine component to still raise cloud: it shapes the rims of cells
+// but spawns no isolated islands — each floated as a smooth round ball.
+const float ISLAND_REACH = 0.12;
+// Mid layer: cover cells ~2.5× smaller than the shell's (noise space ×), peak opacity.
+const float MID_CELL_SCALE = 2.5;
+const float MID_ALPHA = 0.8;
 
-// Rank (0..1) of the slowly scrolling weather noise; the top uCoverage share is cloud.
-float coverRank(vec2 xz, float hf) {
+// Rank (0..1) of the slowly scrolling weather noise — the top uCoverage share
+// is cloud — and (y) the rank of its large-scale part alone.
+vec2 coverRank(vec2 xz, float hf) {
   vec2 q = xz * WEATHER_SCALE;
   // Perlin-Worley + Worley at two scales — irregular cells, not round blobs.
   // Drifting through the third axis with height makes rims lean and bulge
   // instead of extruding into vertical curtains; every slice has the same stats.
-  float n = noise3(vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
-          + noise3(vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25
-          + noise3(vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
-  return noiseRank(n, COVER_NOISE);
+  float large = noise3(vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
+              + noise3(vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25;
+  float n = large + noise3(vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
+  return vec2(noiseRank(n, COVER_NOISE), noiseRank(large / 0.8, COVER_NOISE_LOW));
 }
 
 // Column thickness of a closing deck at the last density() sample, relative
@@ -164,10 +175,12 @@ float density(vec3 p, float hf, bool detail) {
   vec2 xz = p.xz / uFeatureScale - uWind;
   float y = p.y / uFeatureScale;
   float c = uCoverage;
-  float rank = coverRank(xz, hf);
+  vec2 ranks = coverRank(xz, hf);
+  float rank = ranks.x;
   // Deliberately wide edge: the cover falling off at a cell's rim rounds its
   // top; a sharp mask extrudes into vertical walls.
-  float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, rank) * smoothstep(0.0, 0.05, c);
+  float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, rank) * smoothstep(0.0, 0.05, c)
+    * smoothstep(1.0 - c - ISLAND_REACH - 0.1, 1.0 - c - ISLAND_REACH, ranks.y);
   // Convective towers narrow with height (stacked, rounded tops), so even a
   // tall cumulonimbus isn't its cell's footprint extruded into a column.
   cov *= 1.0 - 0.45 * smoothstep(0.35, 0.9, uType) * smoothstep(0.15, 1.0, hf);
@@ -210,10 +223,16 @@ float hg(float c, float g) {
   return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * c, 1.5); // ×4π-normalised
 }
 
-// Optical depth towards the light, cone-ish growing steps.
-float lightOpticalDepth(vec3 p) {
-  float stepLen = uThickness * 0.45 / float(uLightSteps);
-  float t = 0.0;
+// Optical depth towards the light: growing steps through a near cone, then
+// one long step for the bulk of a tall cell. Spreading the steps over a
+// whole 4–5 km tower (first step ~350 m) quantised where the light ray left
+// the cloud into terraces along the lit flank.
+// The start is jittered (as the view march is): a fixed pattern laddered a
+// low sun's lit flanks with bright stripes; the temporal resolve averages it.
+const float LIGHT_CONE_M = 1000.0;
+float lightOpticalDepth(vec3 p, float jitter) {
+  float stepLen = min(uThickness * 0.45, LIGHT_CONE_M) / float(uLightSteps);
+  float t = stepLen * (jitter - 0.5);
   float od = 0.0;
   for (int i = 0; i < ${MAX_LIGHT_STEPS}; i++) {
     if (i >= uLightSteps) break;
@@ -223,6 +242,13 @@ float lightOpticalDepth(vec3 p) {
     float hf = heightFraction(q);
     if (hf > 1.0 || hf < 0.0) break;
     od += density(q, hf, i < 2) * s;
+  }
+  // The rest of the old full-thickness reach (1.24 × thickness at 6 steps).
+  float far = uThickness * 0.45 * (1.0 + 0.35 * float(uLightSteps - 1)) - t;
+  if (far > 1.0) {
+    vec3 q = p + uLightDir * (t + far * 0.5);
+    float hf = heightFraction(q);
+    if (hf >= 0.0 && hf <= 1.0) od += density(q, hf, false) * far;
   }
   return od * uDensity;
 }
@@ -323,7 +349,7 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         if (tFirst < 0.0) tFirst = t;
         float sigma = d * uDensity;
         float column = gColumn;
-        float od = lightOpticalDepth(p);
+        float od = lightOpticalDepth(p, fract(jitter + float(lit) * 0.618034));
         // Denser pockets are darker — gives a closed deck its mottled base.
         vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.15, 0.7, d);
         vec3 L = uLightColor * max(sunEnergy(od, cosTheta), diffuseLight(od, hf, column)) + ambient;
@@ -349,6 +375,31 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
     float edge = smoothstep(uMaxDist * 0.45, uMaxDist, tFirst);
     scat *= 1.0 - edge;
     T = mix(T, 1.0, edge);
+  }
+
+  // Mid layer (altocumulus / altostratus) above a low deck: a thin sheet like
+  // the cirrus, behind the volume. Its cells come from the same calibrated
+  // cover field at a larger scale; a finer Worley breaks them into the
+  // cell-and-gap texture, thinner where the cover thins out.
+  if (uMid > 0.01 && T > 0.02) {
+    float tm = raySphere(ro, rd, uEarthR + uMidAlt).y;
+    if (tm > 0.0 && tm < 120000.0) {
+      vec2 xz = (ro + rd * tm).xz - uWindHigh * 0.5;
+      vec2 ranks = coverRank(xz * MID_CELL_SCALE, 0.5);
+      float c = uMid;
+      float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, ranks.x)
+        * smoothstep(1.0 - c - ISLAND_REACH - 0.1, 1.0 - c - ISLAND_REACH, ranks.y);
+      cov = clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
+      float cells = noise3(vec3(xz / 1600.0, 0.83)).g;
+      float a = smoothstep(0.05, 0.95, cov * mix(0.45, 1.25, cells)) * MID_ALPHA
+        * (1.0 - smoothstep(60000.0, 120000.0, tm));
+      // Thicker cores shade themselves; the forward lobe lights the sunward rims.
+      vec3 col = (uLightColor * mix(hg(cosTheta, 0.55), 1.0, 0.55) * mix(0.95, 0.55, a)
+        + mix(uAmbientBottom, uAmbientTop, 0.6) * 1.15) * mix(0.62, 1.05, cells);
+      col = mix(col, uHazeColor, 1.0 - exp(-tm / (uHazeDist * 2.0)));
+      scat += T * col * a;
+      T *= 1.0 - a;
+    }
   }
 
   // Cirrus: thin streaks on a high shell, stretched along the wind, behind the volume.
