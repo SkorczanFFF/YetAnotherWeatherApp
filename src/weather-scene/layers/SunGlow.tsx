@@ -45,7 +45,7 @@ export function SunGlow() {
     const mesh = ref.current;
     if (!mesh) return;
     const strength =
-      MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -2, 3) *
+      MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -1, 1.5) *
       (1 - s.overcast) *
       (1 - MathUtils.smoothstep(s.haze, 0.55, 1));
     mesh.visible = strength > 0.01;

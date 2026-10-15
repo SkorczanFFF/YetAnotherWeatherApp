@@ -5,6 +5,12 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 ## Unreleased
 
 ### Changed (scene)
+- Twilight: a deep blue sky over a warm horizon glow through the blue hour, instead of a dull grey with a pale band at the bottom.
+- The moon no longer spends the middle of the night behind the cards (it crosses the content column in minutes, not hours), stays on the far side from the sun through the whole twilight, and fades out when low over the horizon by day.
+- Overcast at dusk: the horizon and the sky veil under the red-lit deck turn dark and warm instead of a pale grey band; the sun's disc no longer shows through the ground haze after sunset.
+- Lens flare for the sun (and a bright moon at night): aperture ghosts along the axis through the frame's centre, a faint rainbow ring and diffraction spikes; clouds over the source put it out.
+- Sun and moon no longer huddle in one gutter: with both up on the same side, the moon nearer the middle moves to the other side — the evening's waxing crescent rises on the left while the sun sets on the right, and glides back after sunset.
+- Rain and hail spawn further from the camera: no more single drops slashing across the frame or blurred hailstones in front of the lens.
 - The sun glows: a rim and halo of light round the disc (`SunGlow`), full by a low sun, gentle high up so the disc keeps its edge; off under overcast and fog.
 - A low deck under a mid sky gets a thin mid layer (altocumulus/altostratus sheet) above it — both layers show instead of the mid cover folded into the low deck.
 - No more floating cotton balls: the fine part of the cover noise only shapes the rims of cells, isolated islands of it are gone.

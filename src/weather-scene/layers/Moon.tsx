@@ -55,7 +55,11 @@ export function Moon() {
     // Daytime moon is pale and only shows when enough of it is lit (a thin
     // crescent next to the sun is lost in the glare); clouds and haze hide it.
     const above = MathUtils.smoothstep(s.moonAlt * MathUtils.RAD2DEG, -1, 2);
-    const dayVisibility = 0.45 * MathUtils.smoothstep(s.moonFraction, 0.05, 0.35);
+    // Low over the horizon a daytime moon is lost in the haze altogether.
+    const dayVisibility =
+      0.45 *
+      MathUtils.smoothstep(s.moonFraction, 0.05, 0.35) *
+      MathUtils.smoothstep(s.moonAlt * MathUtils.RAD2DEG, 2, 12);
     const opacity =
       above *
       MathUtils.lerp(dayVisibility, 1, s.night) *

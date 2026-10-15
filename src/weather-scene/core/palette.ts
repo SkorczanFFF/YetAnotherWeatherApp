@@ -11,6 +11,8 @@ export const NIGHT_HAZE = new Color("#141c30");
 /** Darker than the sky's overcast veil: the horizon sits under far more cloud. */
 export const HAZE_OVERCAST_DAY = new Color("#a3abb5");
 export const HAZE_OVERCAST_NIGHT = new Color("#1b1f28");
+/** Under a deck whose base glows at sunset: a dimmed, desaturated cousin of the cloud light. */
+export const HAZE_OVERCAST_DUSK = new Color("#6e4038");
 export const RIME_FOG = new Color("#e2e8ef");
 export const HEAT_HAZE = new Color("#dccdb0");
 
@@ -30,6 +32,7 @@ export const SKY_NIGHT_ZENITH = new Color("#05081a");
 export const SKY_NIGHT_HORIZON = new Color("#172443");
 export const SKY_OVERCAST_DAY = new Color("#b2bac4");
 export const SKY_OVERCAST_NIGHT = new Color("#1a1e27");
+export const SKY_OVERCAST_DUSK = new Color("#6a3a33");
 
 // Cloud key light (VolumetricClouds). Redder low end than the sun disc, over
 // −3…22°: light reaching a cloud base at dusk has crossed far more air.

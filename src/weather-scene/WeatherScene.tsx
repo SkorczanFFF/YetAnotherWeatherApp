@@ -15,6 +15,7 @@ import { CAMERA_FAR, CAMERA_FOV, CAMERA_NEAR } from "./core/worldFrame";
 import { SkyLayer } from "./layers/SkyLayer";
 import { SkyGrade } from "./layers/SkyGrade";
 import { SunGlow } from "./layers/SunGlow";
+import { LensFlare } from "./layers/LensFlare";
 import { StarField } from "./layers/StarField";
 import { Moon } from "./layers/Moon";
 import { CloudDeck } from "./layers/CloudDeck";
@@ -96,6 +97,8 @@ function SceneRoot({
         isMobile={isMobile}
       />
       <DiamondDust params={params} frame={frame} count={budget.sparkles} />
+      <LensFlare source="sun" />
+      <LensFlare source="moon" />
       <FrostGlass params={params} />
 
       {showPerf && (

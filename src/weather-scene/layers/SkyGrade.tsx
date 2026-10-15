@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { BackSide, Color, type Mesh, ShaderMaterial } from "three";
+import { BackSide, Color, type Mesh, MathUtils, ShaderMaterial } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { SKY_GRADE_FRAG, SKY_GRADE_VERT } from "../shaders/skyGrade.glsl";
 import { RENDER_ORDER } from "../core/constants";
-import { SKY_NIGHT_HORIZON, SKY_NIGHT_ZENITH, SKY_OVERCAST_DAY, SKY_OVERCAST_NIGHT } from "../core/palette";
+import {
+  SKY_NIGHT_HORIZON,
+  SKY_NIGHT_ZENITH,
+  SKY_OVERCAST_DAY,
+  SKY_OVERCAST_DUSK,
+  SKY_OVERCAST_NIGHT,
+} from "../core/palette";
 
 /** One-draw sky overlay over drei <Sky> (see shaders/skyGrade.glsl.ts). */
 export function SkyGrade() {
@@ -38,11 +44,17 @@ export function SkyGrade() {
   useFrame((state) => {
     ref.current?.position.copy(state.camera.position);
     const u = material.uniforms;
-    u.uNight.value = s.night;
+    // Blue hour: the night gradient comes in from sunset (≤ 75 % by −6°) —
+    // Preetham's sky alone went a dull dark grey in late twilight.
+    const blueHour = 1 - MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -6, -0.5);
+    u.uNight.value = Math.max(s.night, 0.75 * blueHour);
     u.uOvercast.value = s.overcast * 0.9;
     u.uHaze.value = s.haze;
     u.uFlash.value = s.flash;
-    (u.uOvercastColor.value as Color).copy(SKY_OVERCAST_DAY).lerp(SKY_OVERCAST_NIGHT, s.night);
+    (u.uOvercastColor.value as Color)
+      .copy(SKY_OVERCAST_DAY)
+      .lerp(SKY_OVERCAST_DUSK, s.lowSun)
+      .lerp(SKY_OVERCAST_NIGHT, s.night);
     (u.uHazeColor.value as Color).copy(s.horizonColor);
   });
 

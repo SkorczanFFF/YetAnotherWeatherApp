@@ -27,9 +27,15 @@ export function SkyLayer() {
     if (!sky) return;
     sky.renderOrder = RENDER_ORDER.sky;
     const mat = sky.material as ShaderMaterial;
-    mat.fragmentShader = mat.fragmentShader
-      .replace(/sunAngularDiameterCos = [\d.]+;/, `sunAngularDiameterCos = ${SUN_COS.toFixed(10)};`)
-      .replace("sunAngularDiameterCos + 0.00002", `sunAngularDiameterCos + ${SUN_EDGE.toFixed(10)}`);
+    if (!mat.fragmentShader.includes("uDiscVisible")) {
+      mat.fragmentShader =
+        "uniform float uDiscVisible;\n" +
+        mat.fragmentShader
+          .replace(/sunAngularDiameterCos = [\d.]+;/, `sunAngularDiameterCos = ${SUN_COS.toFixed(10)};`)
+          .replace("sunAngularDiameterCos + 0.00002", `sunAngularDiameterCos + ${SUN_EDGE.toFixed(10)}`)
+          .replace("* sundisk;", "* sundisk * uDiscVisible;");
+    }
+    mat.uniforms.uDiscVisible = { value: 1 };
     mat.needsUpdate = true;
   }, []);
 
@@ -43,6 +49,9 @@ export function SkyLayer() {
     u.turbidity.value = 1.6 + 6 * s.haze + 4 * s.overcast;
     u.rayleigh.value = MathUtils.lerp(1.6, 3.0, s.warmth);
     u.mieCoefficient.value = 0.0025 + 0.02 * s.haze;
+    // The disc goes with the REAL sun: below the horizon its squeezed display
+    // position still sat in the ground haze's soft edge and shone through it.
+    if (u.uDiscVisible) u.uDiscVisible.value = MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -1, 0.5);
   });
 
   return <Sky ref={ref} distance={3000} mieDirectionalG={0.86} />;

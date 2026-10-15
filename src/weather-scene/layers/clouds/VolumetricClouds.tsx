@@ -243,6 +243,13 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     return t;
   }, []);
   useEffect(() => () => clearSky.dispose(), [clearSky]);
+  // The potato deck has no cloud target: readers fall back to no occlusion.
+  useEffect(
+    () => () => {
+      s.cloudCover = null;
+    },
+    [s],
+  );
 
   // God rays: only with the sun up and near the frame. Without clouds to cut
   // them into shafts the same pass is a soft glare around the disc (a floor
@@ -335,6 +342,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     if (sh.coverage < 0.015 && sh.high < 0.01 && sh.midLayer < 0.01) {
       st.historyValid = false;
       composite.uniforms.uClouds.value = clearSky;
+      s.cloudCover = clearSky;
       mesh.visible = drawRays(gl, camera, clearSky, sh.coverage);
       return;
     }
@@ -458,6 +466,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     drawRays(gl, camera, write.texture, sh.coverage);
 
     composite.uniforms.uClouds.value = write.texture;
+    s.cloudCover = write.texture;
     st.read = 1 - st.read;
     st.frame = (st.frame + 1) % 4096; // a multiple of 4; float precision stays exact
     st.historyValid = true;

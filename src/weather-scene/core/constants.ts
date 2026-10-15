@@ -11,6 +11,7 @@ export const RENDER_ORDER = {
   precipitation: 4,
   thunder: 5,
   diamondDust: 6,
+  lensFlare: 7,
   frost: 30,
 } as const;
 

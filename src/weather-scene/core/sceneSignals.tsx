@@ -1,9 +1,10 @@
 import { createContext, useContext } from "react";
-import { Color, Vector3 } from "three";
+import { Color, type Texture, Vector3 } from "three";
 
 // Per-frame shared state. Written once per frame by <SceneDriver> (mounted
 // right after the camera rig) — except `flash` / `flashPosition`, written by
-// <Thunder> — and read by every layer inside its own useFrame.
+// <Thunder>, and `cloudCover`, written by <VolumetricClouds> — and read by
+// every layer inside its own useFrame.
 // Plain mutable objects — never React state — so nothing re-renders at 60 fps.
 
 export interface SceneSignals {
@@ -24,6 +25,8 @@ export interface SceneSignals {
   warmth: number;
   /** 0..1 how much the cloud deck hides the sky. */
   overcast: number;
+  /** 0 with the sun ≥ 10° … 1 at or below the horizon: an overcast's dusk tint (night takes over after). */
+  lowSun: number;
   /** 0..1 how much of the frame low/mid cloud fills (UI backlight). */
   cloudFill: number;
   /** 0..1 horizon haze / fog strength (sky overlay). */
@@ -46,6 +49,8 @@ export interface SceneSignals {
   flash: number;
   /** World position of the current bolt (for lighting the right cloud), valid while flash > 0. */
   flashPosition: Vector3;
+  /** This frame's resolved cloud target (a = cover over the screen), null on the potato deck. */
+  cloudCover: Texture | null;
 }
 
 /** Placeholder values: <SceneDriver> overwrites them before any layer reads them. */
@@ -61,6 +66,7 @@ export function createSceneSignals(): SceneSignals {
     night: 0,
     warmth: 0,
     overcast: 0,
+    lowSun: 0,
     cloudFill: 0,
     haze: 0,
     horizonColor: new Color(),
@@ -75,6 +81,7 @@ export function createSceneSignals(): SceneSignals {
     windOffsetHigh: new Vector3(),
     flash: 0,
     flashPosition: new Vector3(),
+    cloudCover: null,
   };
 }
 

@@ -43,8 +43,11 @@ interface KindDef {
   tiles?: number;
 }
 
-const RAIN_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 40, pad: 1.5 };
+// Streaks start further out than flakes: a drop 1.5 units away stretched
+// across ~30° of the frame as one long white slash.
+const RAIN_VOLUME: PrecipVolume = { dNear: 3, dFar: 40, pad: 1.5 };
 const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
+const HAIL_VOLUME: PrecipVolume = { dNear: 3, dFar: 30, pad: 1 };
 
 const KINDS: Record<Kind, KindDef> = {
   drizzle: {
@@ -70,7 +73,7 @@ const KINDS: Record<Kind, KindDef> = {
   },
   // Short streaks — hail is fast enough to blur.
   hail: {
-    mode: RenderMode.StretchedBillBoard, texture: getDotTexture, volume: SNOW_VOLUME,
+    mode: RenderMode.StretchedBillBoard, texture: getDotTexture, volume: HAIL_VOLUME,
     windFactor: 0.4, sizeMin: 0.07, sizeMax: 0.12, fall: [22, 28], stretch: 0.3,
   },
 };
