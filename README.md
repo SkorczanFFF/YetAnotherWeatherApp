@@ -54,6 +54,7 @@ Don't get wet — check the weather first!
 ## Prerequisites
 
 - **Node.js** 24 (use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to match)
+- **pnpm** 12 (`corepack enable pnpm` picks the version pinned in `packageManager`)
 - A WebGL-capable browser
 
 ## Getting Started
@@ -64,10 +65,10 @@ git clone https://github.com/SkorczanFFF/YetAnotherWeatherApp.git
 cd YetAnotherWeatherApp
 
 # Install dependencies
-npm install
+pnpm install
 
 # Start the development server
-npm start
+pnpm start
 ```
 
 The app opens at [http://localhost:3000](http://localhost:3000).
@@ -76,9 +77,9 @@ The app opens at [http://localhost:3000](http://localhost:3000).
 
 | Script | Description |
 |---|---|
-| `npm start` / `npm run dev` | Run the development server |
-| `npm run build` | Type-check and create a production build |
-| `npm run preview` | Serve the production build |
+| `pnpm start` / `pnpm dev` | Run the development server |
+| `pnpm build` | Type-check and create a production build |
+| `pnpm preview` | Serve the production build |
 
 ## Project Structure
 

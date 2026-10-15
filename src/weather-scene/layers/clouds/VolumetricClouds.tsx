@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
+  type Camera,
   Color,
   type Data3DTexture,
+  DataTexture,
   HalfFloatType,
   LinearFilter,
   MathUtils,
   Matrix4,
   type Mesh,
   ShaderMaterial,
+  type Texture,
   Vector2,
   Vector3,
   Vector4,
+  type WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
@@ -49,7 +53,9 @@ const EYE_OFFSET = new Vector3(0, CAMERA_ALTITUDE_M, 0);
 
 const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
 /** God-ray brightness at full strength, display space (tuned by eye). */
-const RAY_GAIN = 2.2;
+const RAY_GAIN = 2.6;
+/** How deep the clouds' shadow lanes cut into the bright air round the sun (tuned by eye). */
+const RAY_SHADOW_GAIN = 1.6;
 /** Share of RAY_GAIN left as glare around the disc in a sky without shafts. */
 const RAY_CLEAR_FLOOR = 0.25;
 /**
@@ -213,6 +219,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
           uClouds: { value: null },
           uRays: { value: null },
           uRayColor: { value: new Color(0, 0, 0) },
+          uRayShadow: { value: 0 },
+          uRayTexel: { value: new Vector2() },
         },
         vertexShader: fullscreenVert(1),
         fragmentShader: CLOUD_COMPOSITE_FRAG,
@@ -225,6 +233,61 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     [],
   );
   useEffect(() => () => composite.dispose(), [composite]);
+
+  /** Stands in for the cloud target under a clear sky (transparent). */
+  const clearSky = useMemo(() => {
+    const t = new DataTexture(new Uint8Array(4), 1, 1);
+    t.needsUpdate = true;
+    return t;
+  }, []);
+  useEffect(() => () => clearSky.dispose(), [clearSky]);
+
+  // God rays: only with the sun up and near the frame. Without clouds to cut
+  // them into shafts the same pass is a soft glare around the disc (a floor
+  // of RAY_CLEAR_FLOOR) — the bare Preetham disc read as a flat white dot.
+  // Returns whether the composite has rays to draw. Runs inside useFrame.
+  const drawRays = (gl: WebGLRenderer, camera: Camera, clouds: Texture, coverage: number) => {
+    const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
+    const clip = scratch.clip
+      .set(s.sunDir.x, s.sunDir.y, s.sunDir.z, 0)
+      .applyMatrix4(camera.matrixWorldInverse)
+      .applyMatrix4(camera.projectionMatrix);
+    const sunU = (clip.x / clip.w) * 0.5 + 0.5;
+    const sunV = (clip.y / clip.w) * 0.5 + 0.5;
+    const offFrame = Math.max(-sunU, sunU - 1, -sunV, sunV - 1, 0);
+    const rayStrength =
+      clip.w > 0
+        ? MathUtils.smoothstep(sunAltDeg, -1, 6) *
+          (1 - MathUtils.smoothstep(offFrame, 0, 0.4)) *
+          MathUtils.lerp(RAY_CLEAR_FLOOR, 1, MathUtils.smoothstep(coverage, 0.08, 0.35)) *
+          // Haze makes the shafts visible; fog swallows them.
+          (0.75 + 0.5 * s.haze) *
+          (1 - MathUtils.smoothstep(s.haze, 0.7, 1))
+        : 0;
+    const rayColor = composite.uniforms.uRayColor.value as Color;
+    composite.uniforms.uRays.value = targets.rays.texture;
+    (composite.uniforms.uRayTexel.value as Vector2).set(1 / targets.rays.width, 1 / targets.rays.height);
+    if (rayStrength <= 0.002) {
+      rayColor.setRGB(0, 0, 0);
+      composite.uniforms.uRayShadow.value = 0;
+      return false;
+    }
+    const ru = rays.material.uniforms;
+    ru.uClouds.value = clouds;
+    (ru.uSunUv.value as Vector2).set(sunU, sunV);
+    ru.uAspect.value = targets.rays.width / targets.rays.height;
+    // Horizon: straight ahead at elevation 0.
+    clip.set(0, 0, -1, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+    ru.uHorizonV.value = (clip.y / clip.w) * 0.5 + 0.5;
+    ru.uSamples.value = budget.raySamples;
+    const previous = gl.getRenderTarget();
+    gl.setRenderTarget(targets.rays);
+    gl.render(rays.scene, rays.camera);
+    gl.setRenderTarget(previous);
+    rayColor.copy(s.sunColor).convertLinearToSRGB().multiplyScalar(rayStrength * RAY_GAIN);
+    composite.uniforms.uRayShadow.value = rayStrength * RAY_SHADOW_GAIN;
+    return true;
+  };
 
   const targetsWanted = useMemo(() => shellTargets(params), [params]);
   const state = useRef({
@@ -261,19 +324,24 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     st.windNoise.x += s.windVelocityLow.x * drift;
     st.windNoise.y += s.windVelocityLow.z * drift;
 
+    const camera = frameState.camera;
+    const gl = frameState.gl;
+    const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
+
     // Below the shader's own cut-offs (cover fades in over 0..0.05, cirrus is skipped under 0.01).
-    const empty = sh.coverage < 0.015 && sh.high < 0.01;
-    mesh.visible = !empty;
-    if (empty) {
+    // A clear sky skips the march but keeps the glare round the sun.
+    if (sh.coverage < 0.015 && sh.high < 0.01) {
       st.historyValid = false;
+      composite.uniforms.uClouds.value = clearSky;
+      mesh.visible = drawRays(gl, camera, clearSky, sh.coverage);
       return;
     }
+    mesh.visible = true;
 
     if (st.historyOf !== targets) {
       st.historyOf = targets;
       st.historyValid = false;
     }
-    const camera = frameState.camera;
     const write = targets.history[1 - st.read];
     u.uNoise.value = noise;
     u.uFrame.value = st.frame;
@@ -311,7 +379,6 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
 
     // Key light: the sun keeps lighting cloud bases ~6° after it sets
     // (that's the red underside glow), then the moon takes over.
-    const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
     const sunVis = MathUtils.smoothstep(sunAltDeg, -6, 2);
     // Sun and moon crossfade (a hard switch jumped ~6× in brightness at dusk).
     // The light march uses the on-screen azimuth but the REAL altitude: the
@@ -377,52 +444,16 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     (r.uCamWorld.value as Matrix4).copy(camera.matrixWorld);
     (r.uPrevViewProj.value as Matrix4).copy(st.prevViewProj);
 
-    const gl = frameState.gl;
     const previous = gl.getRenderTarget();
     gl.setRenderTarget(targets.march);
     gl.render(march.scene, march.camera);
     gl.setRenderTarget(write);
     gl.render(resolve.scene, resolve.camera);
 
-    // God rays: only with the sun up and near the frame. Without clouds to cut
-    // them into shafts the same pass is a soft glare around the disc (a floor
-    // of RAY_CLEAR_FLOOR) — the bare Preetham disc read as a flat white dot.
-    const clip = scratch.clip
-      .set(s.sunDir.x, s.sunDir.y, s.sunDir.z, 0)
-      .applyMatrix4(camera.matrixWorldInverse)
-      .applyMatrix4(camera.projectionMatrix);
-    const sunU = (clip.x / clip.w) * 0.5 + 0.5;
-    const sunV = (clip.y / clip.w) * 0.5 + 0.5;
-    const offFrame = Math.max(-sunU, sunU - 1, -sunV, sunV - 1, 0);
-    const rayStrength =
-      clip.w > 0
-        ? MathUtils.smoothstep(sunAltDeg, -1, 6) *
-          (1 - MathUtils.smoothstep(offFrame, 0, 0.4)) *
-          MathUtils.lerp(RAY_CLEAR_FLOOR, 1, MathUtils.smoothstep(sh.coverage, 0.08, 0.35)) *
-          // Haze makes the shafts visible; fog swallows them.
-          (0.75 + 0.5 * s.haze) *
-          (1 - MathUtils.smoothstep(s.haze, 0.7, 1))
-        : 0;
-    const rayColor = composite.uniforms.uRayColor.value as Color;
-    if (rayStrength > 0.002) {
-      const ru = rays.material.uniforms;
-      ru.uClouds.value = write.texture;
-      (ru.uSunUv.value as Vector2).set(sunU, sunV);
-      ru.uAspect.value = write.width / write.height;
-      // Horizon: straight ahead at elevation 0.
-      clip.set(0, 0, -1, 0).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
-      ru.uHorizonV.value = (clip.y / clip.w) * 0.5 + 0.5;
-      ru.uSamples.value = budget.raySamples;
-      gl.setRenderTarget(targets.rays);
-      gl.render(rays.scene, rays.camera);
-      rayColor.copy(s.sunColor).convertLinearToSRGB().multiplyScalar(rayStrength * RAY_GAIN);
-    } else {
-      rayColor.setRGB(0, 0, 0);
-    }
     gl.setRenderTarget(previous);
+    drawRays(gl, camera, write.texture, sh.coverage);
 
     composite.uniforms.uClouds.value = write.texture;
-    composite.uniforms.uRays.value = targets.rays.texture;
     st.read = 1 - st.read;
     st.frame = (st.frame + 1) % 4096; // a multiple of 4; float precision stays exact
     st.historyValid = true;

@@ -21,6 +21,8 @@ export interface CloudPhysics {
   topM: number;
   /** Centre of the mid (altocumulus) band above ground, m. */
   midAltM: number;
+  /** The one drawn deck sits in the mid band (altocumulus) instead of at baseM–topM. */
+  midDeck: boolean;
   /** Cirrus level above ground, m. */
   highAltM: number;
   /** Optical depth of the low layer. */
@@ -51,8 +53,8 @@ interface CloudPhysicsInput {
   showers: boolean;
   precipitating: boolean;
   fog: boolean;
-  /** Radiation describes the real sky; ignore it when the debug menu changed the clouds. */
-  trustRadiation: boolean;
+  /** The model's sky: radiation and pressure levels describe it — not once the debug menu changed the clouds. */
+  measuredSky: boolean;
   /** Debug overrides (undefined = derive). */
   override?: { baseM?: number; topM?: number; cape?: number; opticalDepth?: number };
 }
@@ -146,6 +148,8 @@ const THIN_DECK_M = 100;
 /** Cover of the one low/mid deck the scene draws (high cover is the cirrus), 0..1. */
 export const deckCover = (clouds: { low: number; mid: number }) => Math.max(clouds.low, clouds.mid * 0.85);
 
+/** Pressure levels below this count as the low band, m above ground. */
+const LOW_BAND_M = 2500;
 /** Standard-atmosphere temperature lapse rate. */
 const LAPSE_K_PER_M = 0.0065;
 /** Pressure levels from here up count as the cirrus band, m above ground. */
@@ -200,7 +204,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   const spread = Math.max(0, input.temperatureC - input.dewPointC);
   let baseM = clamp(125 * spread, 60, 4000);
   const blh = atm?.boundaryLayerM ?? null;
-  const lowBand = band(levels, 0, 2500);
+  const lowBand = band(levels, 0, LOW_BAND_M);
   // A stratiform deck sits under the inversion even when the surface air is drier.
   if (blh != null && clouds.low > 0.6 && convection < 0.3) {
     baseM = Math.min(baseM, Math.max(blh - 250, 150));
@@ -233,10 +237,21 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   topM = Math.max(override?.topM ?? topM, baseM + 150);
 
   // --- layer heights -----------------------------------------------------
-  const midBand = band(levels, 2500, HIGH_BAND_M);
+  const midBand = band(levels, LOW_BAND_M, HIGH_BAND_M);
   const highBand = band(levels, HIGH_BAND_M, 14000);
   const midAltM = midBand?.meanM ?? 4000;
   const highAltM = clamp(highBand?.meanM ?? 8500, HIGH_BAND_M, 12500);
+  // One drawn deck: in the mid band when that cover clearly dominates (an
+  // altocumulus sky), or outweighs a low cover no pressure level backs up —
+  // the model's low layer can be sub-grid while its column is clear (a 49 %
+  // "low" under a 78 % mid sky drew a thin deck at the LCL). Convective air
+  // keeps the deck low: the towers rise from the boundary layer.
+  const lowLevels = levels.filter((l) => l.heightM < LOW_BAND_M);
+  const lowLevelsClear = input.measuredSky && lowLevels.length > 0 && lowLevels.every((l) => l.cover < 0.05);
+  const midDeck =
+    (clouds.low < 0.3 || lowLevelsClear) &&
+    clouds.mid > Math.max(0.15, clouds.low * 1.3) &&
+    convection < 0.5;
 
   // --- optical depth -----------------------------------------------------
   const thicknessKm = (topM - baseM) / 1000;
@@ -254,7 +269,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   if (sw != null && sw > 20 && atm?.direct != null) {
     directFraction = clamp(atm.direct / sw, 0, 1);
   }
-  if (input.trustRadiation && sw != null && toa != null && toa > 60 && deck > 0.1) {
+  if (input.measuredSky && sw != null && toa != null && toa > 60 && deck > 0.1) {
     // A low sun crosses more air and more cloud: assuming it overhead read
     // autumn mornings as τ 100–250 (black decks) under plain stratus.
     const mu0 = clamp(toa / SOLAR_CONSTANT, 0.05, 1);
@@ -298,6 +313,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     baseM,
     topM,
     midAltM,
+    midDeck,
     highAltM,
     opticalDepth,
     opticalDepthMeasured,

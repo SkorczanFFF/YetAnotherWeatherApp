@@ -187,7 +187,7 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
     showers,
     precipitating,
     fog: visibilityM < FOG_VISIBILITY_M || rime,
-    trustRadiation: !skyTouched,
+    measuredSky: !skyTouched,
     override: {
       baseM: isSet(o.cloudBase) ? o.cloudBase : undefined,
       topM: isSet(o.cloudTop) ? o.cloudTop : undefined,

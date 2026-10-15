@@ -93,6 +93,14 @@ ${NOISE_RANK}
 ${FBM_WEIGHTS}
 ${CIRRUS_ALPHA}
 
+// Every noise lookup is explicit-LOD (the 3D noise has no mips, so the values
+// are the same): implicit derivatives are undefined inside the march's
+// data-dependent loops, and ANGLE's D3D11 backend (Chrome on Windows) returned
+// an empty ray wherever the march broke out early — every opaque cloud nearby.
+vec4 noise3(vec3 p) {
+  return textureLod(uNoise, p, 0.0);
+}
+
 // Interleaved gradient noise — cheap per-pixel jitter, decorrelated per frame.
 float ign(vec2 p) {
   return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
@@ -137,9 +145,9 @@ float coverRank(vec2 xz, float hf) {
   // Perlin-Worley + Worley at two scales — irregular cells, not round blobs.
   // Drifting through the third axis with height makes rims lean and bulge
   // instead of extruding into vertical curtains; every slice has the same stats.
-  float n = texture(uNoise, vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
-          + texture(uNoise, vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25
-          + texture(uNoise, vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
+  float n = noise3(vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
+          + noise3(vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25
+          + noise3(vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
   return noiseRank(n, COVER_NOISE);
 }
 
@@ -167,7 +175,7 @@ float density(vec3 p, float hf, bool detail) {
   if (cov < 0.01) return 0.0;
 
   vec3 uvw = vec3(xz.x, y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;
-  vec4 n = texture(uNoise, uvw);
+  vec4 n = noise3(uvw);
   float lowFbm = dot(n.gba, FBM_WEIGHTS);
   float base = remap(n.r, lowFbm - 1.0, 1.0, 0.0, 1.0);
   base *= heightGradient(hf);
@@ -178,7 +186,7 @@ float density(vec3 p, float hf, bool detail) {
 
   if (detail) {
     vec3 duvw = vec3(xz.x, y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
-    vec4 d = texture(uNoise, duvw);
+    vec4 d = noise3(duvw);
     float hfFbm = dot(d.gba, FBM_WEIGHTS);
     // Wispy bottoms, billowy tops; above the freezing level the cloud is
     // glaciated — softer, fibrous edges (anvils, ice tops).
@@ -339,8 +347,8 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
     if (tc > 0.0 && tc < 160000.0) {
       vec2 q = (ro + rd * tc).xz - uWindHigh;
       vec2 qw = vec2(dot(q, uHighWindDir), dot(q, vec2(-uHighWindDir.y, uHighWindDir.x)));
-      float n = texture(uNoise, vec3(qw.x / 90000.0, qw.y / 14000.0, 0.57)).g;
-      n = n * 0.7 + texture(uNoise, vec3(qw.x / 30000.0, qw.y / 5000.0, 0.11)).b * 0.3;
+      float n = noise3(vec3(qw.x / 90000.0, qw.y / 14000.0, 0.57)).g;
+      n = n * 0.7 + noise3(vec3(qw.x / 30000.0, qw.y / 5000.0, 0.11)).b * 0.3;
       float a = cirrusAlpha(noiseRank(n, CIRRUS_NOISE), uHigh) * (1.0 - smoothstep(60000.0, 160000.0, tc));
       vec3 col = uLightColor * mix(hg(cosTheta, 0.6), 1.0, 0.5) * 0.9 + uAmbientTop * 1.2;
       col = mix(col, uHazeColor, 1.0 - exp(-tc / (uHazeDist * 2.5)));
@@ -446,50 +454,71 @@ uniform int uSamples;
 varying vec2 vUv;
 
 const float RAY_REACH = 0.9;      // share of the way to the sun the march covers
-const float DECAY = 0.96;         // per sample, away from the pixel
+const float DECAY = 0.97;         // per sample, away from the pixel
 const float GLOW_FALLOFF = 4.0;   // per frame height — how far from the disc the sky lights the air
-// An open sun gives glare, not shafts (they show when it hides behind a
-// cloud): the whole result scales from this up to 1 with the disc's cover.
+// A cloud covers a short stretch of the path to the sun, so the raw clear
+// share barely dips in its shadow; raising it to this power deepens the lanes.
+const float SHAFT_CONTRAST = 2.0;
+// Shadow lanes show where the air itself is lit: this pixel's distance from
+// the disc (per frame height), wider than the glow so the lanes reach out.
+const float SHADOW_FALLOFF = 2.5;
+// Only thick cloud casts a shaft's shadow: a cirrus veil (alpha ~0.35–0.65)
+// counted in full dimmed the whole sky instead of cutting lanes.
+const vec2 OCCLUDER = vec2(0.5, 0.9);
+// An open sun gives more glare than shafts (they peak when it hides behind a
+// cloud): the added light scales from this up to 1 with the disc's cover.
 const float OPEN_SUN = 0.15;
 const float DISC_TAP = 0.02;      // frame heights — taps around the disc for its cover
-// The sky by the disc is already bright: shafts start out here (frame heights)
-// instead of piling onto it and blowing it out white.
-const vec2 SHAFT_START = vec2(0.04, 0.3);
+// The sky by the disc is already bright: added light fades in out to here
+// (frame heights) instead of piling onto it — a shorter ramp drew a dim ring
+// round the disc. Shadow lanes start a little out too: right by the disc a
+// small cloud cut dark blades into the glare.
+const vec2 SHAFT_START = vec2(0.0, 0.35);
+const vec2 SHADOW_START = vec2(0.03, 0.2);
 
 float ign(vec2 p) {
   return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
-// Light the sun puts into the air at this point of the frame.
-float source(vec2 uv) {
-  float clear = 1.0 - texture2D(uClouds, uv).a;
+// Light the sun puts into the air at this point of the frame, before clouds.
+float glow(vec2 uv, float falloff) {
   float sky = smoothstep(uHorizonV - 0.01, uHorizonV + 0.02, uv.y);
   float d = length((uv - uSunUv) * vec2(uAspect, 1.0));
-  return clear * sky * exp(-d * GLOW_FALLOFF);
+  return sky * exp(-d * falloff);
 }
 
 void main() {
   vec2 stepUv = (uSunUv - vUv) * (RAY_REACH / float(uSamples));
   // Fixed per-pixel jitter (no history here): smooth after the bilinear upsample.
   vec2 uv = vUv + stepUv * ign(gl_FragCoord.xy);
-  float sum = 0.0;
+  float lit = 0.0;
+  float open = 0.0;
   float norm = 0.0;
   float w = 1.0;
   for (int i = 0; i < ${MAX_RAY_SAMPLES}; i++) {
     if (i >= uSamples) break;
-    sum += source(uv) * w;
+    float g = glow(uv, GLOW_FALLOFF) * w;
+    lit += g * (1.0 - smoothstep(OCCLUDER.x, OCCLUDER.y, texture2D(uClouds, uv).a));
+    open += g;
     norm += w;
     w *= DECAY;
     uv += stepUv;
   }
+  float clearShare = lit / max(open, 1e-5);
   vec2 tap = vec2(DISC_TAP / uAspect, DISC_TAP);
   float hidden = (texture2D(uClouds, clamp(uSunUv, 0.0, 1.0)).a
     + texture2D(uClouds, clamp(uSunUv + vec2(tap.x, 0.0), 0.0, 1.0)).a
     + texture2D(uClouds, clamp(uSunUv - vec2(tap.x, 0.0), 0.0, 1.0)).a
     + texture2D(uClouds, clamp(uSunUv + vec2(0.0, tap.y), 0.0, 1.0)).a
     + texture2D(uClouds, clamp(uSunUv - vec2(0.0, tap.y), 0.0, 1.0)).a) * 0.2;
-  float away = smoothstep(SHAFT_START.x, SHAFT_START.y, length((vUv - uSunUv) * vec2(uAspect, 1.0)));
-  gl_FragColor = vec4(sum / norm * mix(OPEN_SUN, 1.0, hidden) * away, 0.0, 0.0, 1.0);
+  float d = length((vUv - uSunUv) * vec2(uAspect, 1.0));
+  float shaft = pow(clearShare, SHAFT_CONTRAST);
+  // r: light added along the lit lanes; g: how much the clouds' shadows dim
+  // the bright air round the sun (the lanes that make shafts read at all).
+  gl_FragColor = vec4(
+    open / norm * shaft * mix(OPEN_SUN, 1.0, hidden) * smoothstep(SHAFT_START.x, SHAFT_START.y, d),
+    glow(vUv, SHADOW_FALLOFF) * (1.0 - shaft) * smoothstep(SHADOW_START.x, SHADOW_START.y, d),
+    0.0, 1.0);
 }
 `;
 
@@ -497,6 +526,8 @@ export const CLOUD_COMPOSITE_FRAG = /* glsl */ `
 uniform sampler2D uClouds;
 uniform sampler2D uRays;
 uniform vec3 uRayColor;       // display space, × strength (black = no shafts)
+uniform float uRayShadow;     // × strength (0 = no shafts)
+uniform vec2 uRayTexel;       // 1 / rays target size
 varying vec2 vUv;
 void main() {
   vec4 c = texture2D(uClouds, vUv);
@@ -504,9 +535,18 @@ void main() {
   // Shafts are lit air in front of the sky and, more faintly, of the clouds.
   // Soft cap: faint shafts keep their slope, bright ones saturate at RAY_MAX
   // instead of whiting out the sky they cross.
-  const float RAY_MAX = 0.3;
-  vec3 rays = RAY_MAX * (1.0 - exp(-uRayColor * texture2D(uRays, vUv).r / RAY_MAX)) * (1.0 - 0.6 * a);
-  if (a < 0.002 && max(rays.r, max(rays.g, rays.b)) < 0.002) discard;
+  const float RAY_MAX = 0.35;
+  // Shadow lanes dim the sky behind (not the clouds casting them) through the
+  // output alpha, at most by SHADOW_MAX.
+  const float SHADOW_MAX = 0.25;
+  // 4 bilinear taps half a texel out: a tent over the rays target that hides
+  // the march's per-pixel jitter (a dot pattern once the lanes got contrast).
+  vec2 o = 0.5 * uRayTexel;
+  vec2 shaft = 0.25 * (texture2D(uRays, vUv + vec2(-o.x, -o.y)).rg + texture2D(uRays, vUv + vec2(o.x, -o.y)).rg
+    + texture2D(uRays, vUv + vec2(-o.x, o.y)).rg + texture2D(uRays, vUv + o).rg);
+  vec3 rays = RAY_MAX * (1.0 - exp(-uRayColor * shaft.r / RAY_MAX)) * (1.0 - 0.6 * a);
+  float shadow = SHADOW_MAX * (1.0 - exp(-uRayShadow * shaft.g / SHADOW_MAX)) * (1.0 - a);
+  if (a + shadow < 0.002 && max(rays.r, max(rays.g, rays.b)) < 0.002) discard;
   // Un-premultiply BEFORE tone mapping and sRGB encoding: encoding premultiplied
   // colour inflates thin edges (sRGB's linear toe is ×12.92) into white outlines.
   vec3 cloud = c.rgb / max(a, 1e-4);
@@ -516,7 +556,8 @@ void main() {
   cloud = linearToOutputTexel(vec4(cloud, 1.0)).rgb;
   // Premultiplied output (blend ONE, ONE_MINUS_SRC_ALPHA): the encoded cloud
   // over the sky exactly as before, plus the shafts added in display space —
-  // encoding them would lift every faint value by the sRGB toe.
-  gl_FragColor = vec4(cloud * a + rays, a);
+  // encoding them would lift every faint value by the sRGB toe — and the
+  // shadow lanes taken out of the sky by the extra alpha.
+  gl_FragColor = vec4(cloud * a + rays, a + shadow);
 }
 `;

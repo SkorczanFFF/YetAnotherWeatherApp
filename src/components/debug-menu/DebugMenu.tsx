@@ -162,7 +162,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
   };
 
   const time = e.time ?? Date.now();
-  const sunAlt = (SunCalc.getPosition(new Date(time), e.lat, e.lon).altitude * 180) / Math.PI;
+  const sunAlt = SunCalc.getPosition(new Date(time), e.lat, e.lon).altitude;
   const moon = SunCalc.getMoonIllumination(new Date(time));
   const facing = facingFor(e.lat);
   const hourValue = typeof o.hour === "number" ? o.hour : null;
@@ -269,7 +269,10 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
           </div>
           <div className="debug-menu-group">
             <div className="debug-menu-readout">
-              clouds {fmt(e.cloudPhysics.baseM, 0)}–{fmt(e.cloudPhysics.topM, 0)} m · τ {fmt(e.cloudPhysics.opticalDepth)}
+              {e.cloudPhysics.midDeck
+                ? `mid deck ~${fmt(e.cloudPhysics.midAltM, 0)} m (LCL ${fmt(e.cloudPhysics.baseM, 0)} m)`
+                : `clouds ${fmt(e.cloudPhysics.baseM, 0)}–${fmt(e.cloudPhysics.topM, 0)} m`}
+              {` · τ ${fmt(e.cloudPhysics.opticalDepth)}`}
               {e.cloudPhysics.opticalDepthMeasured ? " (radiation)" : " (estimated)"} · convection {Math.round(e.cloudPhysics.convection * 100)}%
               {e.cloudPhysics.liftedIndex != null && ` · LI ${fmt(e.cloudPhysics.liftedIndex)}`}
               {e.cloudPhysics.boundaryLayerM != null && ` · BL ${fmt(e.cloudPhysics.boundaryLayerM, 0)} m`}

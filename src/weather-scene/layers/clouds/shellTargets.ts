@@ -41,17 +41,14 @@ export const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
 export function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
   const p = params.cloudPhysics;
-  // One shell: when the mid band clearly dominates (altocumulus sky), lift
-  // the shell to the mid level instead of the boundary-layer clouds — unless
-  // the air is convective, where the towers rise from the boundary layer.
-  const midDominant = low < 0.3 && mid > Math.max(0.15, low * 1.3) && p.convection < 0.5;
-  const base = Math.max(MIN_BASE_M, midDominant ? p.midAltM - 350 : p.baseM);
-  const top = midDominant ? p.midAltM + 450 : p.topM;
+  // One shell, at the mid level when cloudPhysics puts the deck there.
+  const base = Math.max(MIN_BASE_M, p.midDeck ? p.midAltM - 350 : p.baseM);
+  const top = p.midDeck ? p.midAltM + 450 : p.topM;
   const thickness = MathUtils.clamp(top - base, 80, 12000);
   const conv = p.convection;
   const type = params.thunder
     ? 1
-    : midDominant
+    : p.midDeck
       ? 0.3
       : low >= 0.85 && conv < 0.25
         ? 0.06 + 0.2 * conv

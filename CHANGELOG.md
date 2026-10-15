@@ -4,7 +4,21 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
+### Fixed
+- Clouds within a few km vanished on Windows (Chrome → ANGLE → D3D11): the raymarch sampled its noise with implicit derivatives inside data-dependent loops, and every ray that turned opaque came back empty — skies showed "clouds only at the horizon". Noise lookups are explicit-LOD now (identical values, the noise has no mips).
+
+### Changed (weather → clouds)
+- The drawn deck goes to the mid level also when a low cover outweighed by mid isn't backed by any pressure level below 2.5 km (sub-grid low cloud under a mid sky), decided in `cloudPhysics` (`midDeck`, shown in the debug readout); `trustRadiation` → `measuredSky`.
+- Checked the τ → extinction calibration against the shader's own density (`SHELL_FILL` 0.35 holds: 0.31–0.38 per unit cover).
+
+### Changed (tooling)
+- npm → **pnpm 12** (`packageManager`, `pnpm-lock.yaml`, settings in `pnpm-workspace.yaml`); `.npmrc` (`legacy-peer-deps`) and `package-lock.json` removed. `quarks.core` is an override instead of a direct dependency.
+- Dependencies updated to the latest releases and pinned exact: React 19.3, three 0.186, R3F 9.8, drei 10.7.9, Vite 8 (Rolldown) + plugin-react 6, TypeScript 7, sass-embedded 1.105, @vercel/analytics 2, suncalc 2; `@types/node` follows the Node 24 runtime; `@types/suncalc` dropped (suncalc 2 ships its own types).
+- suncalc 2 returns degrees, azimuth clockwise from north and refraction-corrected altitude: converted to the scene's radians-from-south in `SceneDriver` (`azimuthFromCompassDeg`); positions agree with v1 within ~0.7°.
+
 ### Changed (scene)
+- God rays read: clouds now cut shadow lanes into the bright air round the sun (the composite dims the sky behind them through its alpha), the clear share of each ray is contrast-raised, only thick cloud occludes (cirrus no longer greys the whole sky), and a 4-tap tent hides the jitter. A clear sky keeps the glare round the sun (the whole pass used to be skipped with no clouds).
+- Sun disc 0.95° → 1.4° radius.
 - Clouds: sun and moon light crossfade at dusk instead of switching (a ~6× jump), and the moon lights them from its real altitude (no more rim-lit outlines under a bright moon); the shell base has a 30 m floor.
 - Potato tier: the deck draws its own exp² fog (identical look); `FogLayer` and the fog-density signal are gone.
 - Lightning reuses one line geometry instead of rebuilding a drei `<Line>` (and its shader) per strike.

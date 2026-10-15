@@ -6,6 +6,7 @@ import type { SceneParams } from "../../weather/sceneParams";
 import { useSceneSignals } from "./sceneSignals";
 import type { ViewFrame } from "./viewVolume";
 import {
+  azimuthFromCompassDeg,
   directionFromRelative,
   facingFor,
   effectiveVisibilityM,
@@ -130,10 +131,10 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       const sun = SunCalc.getPosition(date, params.lat, params.lon);
       const moon = SunCalc.getMoonPosition(date, params.lat, params.lon);
       const illum = SunCalc.getMoonIllumination(date);
-      s.sunAlt = sun.altitude;
-      s.moonAlt = moon.altitude;
-      sunAz.current = sun.azimuth;
-      moonAz.current = moon.azimuth;
+      s.sunAlt = sun.altitude * MathUtils.DEG2RAD;
+      s.moonAlt = moon.altitude * MathUtils.DEG2RAD;
+      sunAz.current = azimuthFromCompassDeg(sun.azimuth);
+      moonAz.current = azimuthFromCompassDeg(moon.azimuth);
       s.moonPhase = illum.phase;
       s.moonFraction = illum.fraction;
     }

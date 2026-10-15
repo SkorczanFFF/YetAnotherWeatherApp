@@ -8,7 +8,8 @@ import { MathUtils, Vector3 } from "three";
 //   the southern one, so the sun's daily arc always crosses the frame.
 //   +X is to the viewer's right: west when facing south, east when facing north.
 //
-// Azimuths follow suncalc: radians from SOUTH, positive towards WEST.
+// Azimuths are radians from SOUTH, positive towards WEST (suncalc ≥ 2 gives
+// degrees clockwise from north: convert with `azimuthFromCompassDeg`).
 
 type Facing = "south" | "north";
 
@@ -63,7 +64,12 @@ function wrapPi(a: number): number {
   return a - 2 * Math.PI * Math.floor((a + Math.PI) / (2 * Math.PI));
 }
 
-/** suncalc azimuth → azimuth relative to the camera's facing (0 = straight ahead, + = right). */
+/** Degrees clockwise from north (suncalc) → radians from south, + towards west. */
+export function azimuthFromCompassDeg(deg: number): number {
+  return wrapPi((deg - 180) * MathUtils.DEG2RAD);
+}
+
+/** Scene azimuth → azimuth relative to the camera's facing (0 = straight ahead, + = right). */
 export function relativeAzimuth(azimuth: number, facing: Facing): number {
   return wrapPi(azimuth - FACING_AZIMUTH[facing]);
 }

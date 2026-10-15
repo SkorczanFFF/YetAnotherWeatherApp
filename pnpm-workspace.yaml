@@ -1,0 +1,11 @@
+minimumReleaseAgeExclude:
+  - '@react-three/fiber@9.8.2'
+  - react-dom@19.3.1
+  - react@19.3.1
+overrides:
+  # three.quarks depends on `quarks.core: *`; pin it to the matching release.
+  quarks.core: 0.17.1
+allowBuilds:
+  # Optional watcher of sass's pure-JS fallback (unknown platforms only);
+  # its install script would compile from source. Never needed for builds.
+  '@parcel/watcher': false
