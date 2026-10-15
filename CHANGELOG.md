@@ -4,19 +4,8 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 
 ## Unreleased
 
-### Fixed
-- Clouds within a few km vanished on Windows (Chrome → ANGLE → D3D11): the raymarch sampled its noise with implicit derivatives inside data-dependent loops, and every ray that turned opaque came back empty — skies showed "clouds only at the horizon". Noise lookups are explicit-LOD now (identical values, the noise has no mips).
-
-### Changed (weather → clouds)
-- The drawn deck goes to the mid level also when a low cover outweighed by mid isn't backed by any pressure level below 2.5 km (sub-grid low cloud under a mid sky), decided in `cloudPhysics` (`midDeck`, shown in the debug readout); `trustRadiation` → `measuredSky`.
-- Checked the τ → extinction calibration against the shader's own density (`SHELL_FILL` 0.35 holds: 0.31–0.38 per unit cover).
-
-### Changed (tooling)
-- npm → **pnpm 12** (`packageManager`, `pnpm-lock.yaml`, settings in `pnpm-workspace.yaml`); `.npmrc` (`legacy-peer-deps`) and `package-lock.json` removed. `quarks.core` is an override instead of a direct dependency.
-- Dependencies updated to the latest releases and pinned exact: React 19.3, three 0.186, R3F 9.8, drei 10.7.9, Vite 8 (Rolldown) + plugin-react 6, TypeScript 7, sass-embedded 1.105, @vercel/analytics 2, suncalc 2; `@types/node` follows the Node 24 runtime; `@types/suncalc` dropped (suncalc 2 ships its own types).
-- suncalc 2 returns degrees, azimuth clockwise from north and refraction-corrected altitude: converted to the scene's radians-from-south in `SceneDriver` (`azimuthFromCompassDeg`); positions agree with v1 within ~0.7°.
-
 ### Changed (scene)
+- Overcast and rain decks are mottled from below: the diffuse light under a closing deck follows the local column thickness (its lumpy-base factor), so thinner patches are brighter — it was one flat grey once nearby clouds rendered at all.
 - God rays read: clouds now cut shadow lanes into the bright air round the sun (the composite dims the sky behind them through its alpha), the clear share of each ray is contrast-raised, only thick cloud occludes (cirrus no longer greys the whole sky), and a 4-tap tent hides the jitter. A clear sky keeps the glare round the sun (the whole pass used to be skipped with no clouds).
 - Sun disc 0.95° → 1.4° radius.
 - Clouds: sun and moon light crossfade at dusk instead of switching (a ~6× jump), and the moon lights them from its real altitude (no more rim-lit outlines under a bright moon); the shell base has a 30 m floor.
@@ -26,8 +15,26 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - The 2D noise texture is baked only when frost or the potato deck first shows; the star field no longer reshuffles on resize.
 
 ### Fixed
+- Clouds within a few km vanished on Windows (Chrome → ANGLE → D3D11): the raymarch sampled its noise with implicit derivatives inside data-dependent loops, and every ray that turned opaque came back empty — skies showed "clouds only at the horizon". Noise lookups are explicit-LOD now (identical values, the noise has no mips).
 - iOS: an orientation permission granted after the scene unmounted no longer leaves a listener behind.
 - Scene errors are logged; asset paths respect the deploy base; the °C/°F buttons expose `aria-pressed`.
+- Sunrise/sunset, hourly labels and forecast day names were shifted by the difference between the browser's and the location's time zone.
+- Clouds slid sideways whenever the low-deck noise scale changed, worse the longer the page was open; the frame counter no longer grows without bound (banding after hours, unmarched pixels after ~77 h).
+- Map picker: the picked point and focus no longer reset on every app re-render; the closed drawer is out of the tab order.
+- "-0°" for temperatures just below zero.
+- A pinned quality tier no longer lowers the automatic one; the lightning bolt core is no longer greyed by the sky.
+- Open-Meteo error reasons are kept (logged); a failing geocoder reports a service error, not "City not found"; measured precipitation with null rain/showers/snowfall is no longer dropped.
+- Debug: pinning e.g. the hour no longer adds rain to measured thunder or hail; a pinned CAPE keeps the shower/storm convection floor; cirrus no longer lifts the fair-weather cumulus cap to ~9 km.
+- Weather refreshes silently every 15 minutes, so current conditions and the hourly chart don't go stale.
+
+### Changed (weather → clouds)
+- The drawn deck goes to the mid level also when a low cover outweighed by mid isn't backed by any pressure level below 2.5 km (sub-grid low cloud under a mid sky), decided in `cloudPhysics` (`midDeck`, shown in the debug readout); `trustRadiation` → `measuredSky`.
+- Checked the τ → extinction calibration against the shader's own density (`SHELL_FILL` 0.35 holds: 0.31–0.38 per unit cover).
+
+### Changed (tooling)
+- npm → **pnpm 12** (`packageManager`, `pnpm-lock.yaml`, settings in `pnpm-workspace.yaml`); `.npmrc` (`legacy-peer-deps`) and `package-lock.json` removed. `quarks.core` is an override instead of a direct dependency.
+- Dependencies updated to the latest releases and pinned exact: React 19.3, three 0.186, R3F 9.8, drei 10.7.9, Vite 8 (Rolldown) + plugin-react 6, TypeScript 7, sass-embedded 1.105, @vercel/analytics 2, suncalc 2; `@types/node` follows the Node 24 runtime; `@types/suncalc` dropped (suncalc 2 ships its own types).
+- suncalc 2 returns degrees, azimuth clockwise from north and refraction-corrected altitude: converted to the scene's radians-from-south in `SceneDriver` (`azimuthFromCompassDeg`); positions agree with v1 within ~0.7°.
 
 ### Changed (comments)
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
@@ -51,16 +58,6 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Unread API fields (hourly precipitation probability and weather code, geocoder ids, response units), the generic endpoint parameter, the dead `NETWORK_ERROR` path and `getSunAltitude`.
 - `react-dom/server` from the bundle (map marker is a static Leaflet `divIcon`): −197 kB (−60 kB gzip).
 - The missing `logo192.png` link, the CRA `browserslist` and a second Toastify stylesheet (v11 injects its own).
-
-### Fixed
-- Sunrise/sunset, hourly labels and forecast day names were shifted by the difference between the browser's and the location's time zone.
-- Clouds slid sideways whenever the low-deck noise scale changed, worse the longer the page was open; the frame counter no longer grows without bound (banding after hours, unmarched pixels after ~77 h).
-- Map picker: the picked point and focus no longer reset on every app re-render; the closed drawer is out of the tab order.
-- "-0°" for temperatures just below zero.
-- A pinned quality tier no longer lowers the automatic one; the lightning bolt core is no longer greyed by the sky.
-- Open-Meteo error reasons are kept (logged); a failing geocoder reports a service error, not "City not found"; measured precipitation with null rain/showers/snowfall is no longer dropped.
-- Debug: pinning e.g. the hour no longer adds rain to measured thunder or hail; a pinned CAPE keeps the shower/storm convection floor; cirrus no longer lifts the fair-weather cumulus cap to ~9 km.
-- Weather refreshes silently every 15 minutes, so current conditions and the hourly chart don't go stale.
 
 ### Scene
 - Camera pitched up 22° (was 16°): the frame spans −3°…+47°, a thin horizon strip and mostly sky.

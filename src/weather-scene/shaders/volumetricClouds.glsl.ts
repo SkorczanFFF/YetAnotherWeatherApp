@@ -151,7 +151,13 @@ float coverRank(vec2 xz, float hf) {
   return noiseRank(n, COVER_NOISE);
 }
 
+// Column thickness of a closing deck at the last density() sample, relative
+// to the deck's mean (its lumpy-base factor; 1 elsewhere). Read it right after
+// the lit sample's density() — the light march below overwrites it.
+float gColumn = 1.0;
+
 float density(vec3 p, float hf, bool detail) {
+  gColumn = 1.0;
   if (hf < 0.0 || hf > 1.0) return 0.0;
   // Noise space is metres ÷ uFeatureScale, so a low deck keeps cumulus-sized cells
   // on screen. uWind is already in noise space: a changing scale zooms around the camera.
@@ -181,7 +187,8 @@ float density(vec3 p, float hf, bool detail) {
   base *= heightGradient(hf);
   base = remap(base, 1.0 - cov, 1.0, 0.0, 1.0) * cov;
   // A closed deck still has structure: undulating, lumpy base.
-  base *= mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, uCoverage));
+  gColumn = mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, uCoverage));
+  base *= gColumn;
   if (base <= 0.0) return 0.0;
 
   if (detail) {
@@ -250,8 +257,10 @@ float sunEnergy(float od, float cosTheta) {
 // to build up (no white rims) and scales with the irradiance of a low sun.
 const float TWO_STREAM_K = 0.1125;   // (1 − g)·0.75, g = 0.85
 const float DIFFUSE_GAIN = 1.1;
-float diffuseLight(float od, float hf) {
-  float tauAbove = min(od, uDeckTau * (1.0 - hf));
+float diffuseLight(float od, float hf, float column) {
+  // Thinner patches of a closed deck let more light through: seen from below
+  // an overcast is mottled, not one flat grey.
+  float tauAbove = min(od, uDeckTau * (1.0 - hf) * column);
   float mu = mix(0.35, 1.0, clamp(uLightDir.y / 0.7, 0.0, 1.0));
   return DIFFUSE_GAIN * mu * (1.0 - exp(-od * 1.5)) / (1.0 + TWO_STREAM_K * tauAbove);
 }
@@ -313,10 +322,11 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         lit++;
         if (tFirst < 0.0) tFirst = t;
         float sigma = d * uDensity;
+        float column = gColumn;
         float od = lightOpticalDepth(p);
         // Denser pockets are darker — gives a closed deck its mottled base.
         vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.15, 0.7, d);
-        vec3 L = uLightColor * max(sunEnergy(od, cosTheta), diffuseLight(od, hf)) + ambient;
+        vec3 L = uLightColor * max(sunEnergy(od, cosTheta), diffuseLight(od, hf, column)) + ambient;
         // Lightning lights the cloud from inside.
         L += vec3(0.8, 0.85, 1.0) * uFlash * 6.0 * exp(-distance(p, uFlashPos) / 1800.0);
         float tr = exp(-sigma * dt);
