@@ -18,6 +18,9 @@ export const formatTemperature = (value: number, units: Units): string =>
 export const formatSpeed = (value: number, units: Units): string =>
   `${value.toFixed()} ${UNITS[units].speedLabel}`;
 
+/** UV index to one decimal; "—" when unknown. */
+export const formatUv = (uv?: number): string => (uv != null ? uv.toFixed(1) : "—");
+
 const CARDINALS = [
   "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
   "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",

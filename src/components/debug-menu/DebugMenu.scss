@@ -1,9 +1,10 @@
 @use "../../styles/glass" as *;
+@use "../../styles/tokens" as *;
 
 .debug-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: $z-debug-menu;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -12,7 +13,7 @@
 }
 
 .debug-menu-panel {
-  background: #1a1a2eef;
+  background: color-mix(in oklch, var(--panel) 94%, transparent);
   color: var(--fg);
   border-radius: 8px;
   width: 385px;
@@ -21,7 +22,7 @@
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   overflow-x: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 20px oklch(0 0 0 / 0.5);
 }
 
 .debug-menu-header {
@@ -30,7 +31,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--stroke-strong);
   min-width: 0;
 
   h2 {
@@ -55,9 +56,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #ffffff;
+  background: var(--fill-strong);
+  border: 1px solid var(--stroke-strong);
+  color: var(--fg);
   padding: 0.3rem;
   border-radius: 4px;
   cursor: pointer;
@@ -67,7 +68,7 @@
   svg { width: 1em; height: 1em; }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--fill-hover);
   }
 }
 
@@ -98,7 +99,7 @@
   label {
     display: block;
     font-size: 0.8rem;
-    color: #e0e0e0;
+    color: var(--fg-dim);
     margin-bottom: 0.25rem;
   }
 
@@ -108,15 +109,15 @@
     min-width: 0;
     max-width: 100%;
     padding: 0.35rem 0.5rem;
-    background: #0f0f1a;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: color-mix(in oklch, var(--panel) 60%, black);
+    border: 1px solid var(--stroke-strong);
     border-radius: 4px;
-    color: #ffffff;
+    color: var(--fg);
     font-size: 0.875rem;
     font-family: inherit;
 
     &::placeholder {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--fg-mute);
     }
   }
 
@@ -129,22 +130,22 @@
   .debug-menu-option-btn {
     @include glass-reveal;
     padding: 0.3rem 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: var(--fill-strong);
+    border: 1px solid var(--stroke-strong);
     border-radius: 4px;
-    color: #e0e0e0;
+    color: var(--fg-dim);
     cursor: pointer;
     font-size: 0.8rem;
     font-family: inherit;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: var(--fill-hover);
     }
 
     &.debug-menu-option-btn--active {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.5);
-      color: #ffffff;
+      background: color-mix(in oklch, var(--accent-warm) 22%, transparent);
+      border-color: color-mix(in oklch, var(--accent-warm) 60%, transparent);
+      color: var(--fg);
     }
   }
 }
@@ -159,6 +160,5 @@
   margin: 0.35rem 0 0;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-dim);
 }
-

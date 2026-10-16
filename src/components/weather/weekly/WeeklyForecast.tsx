@@ -2,6 +2,7 @@ import React from "react";
 import {
   formatDegrees,
   formatSpeed,
+  formatUv,
   toCardinal,
 } from "../../../utils/format";
 import { DailyWeather, Units } from "../../../weather/types";
@@ -51,7 +52,7 @@ export const WeeklyForecast: React.FC<WeeklyForecastProps> = ({ items, units }) 
               {d.uv_max > 0 && (
                 <div className="row">
                   <span className="k">UV max</span>
-                  <span className="v">{d.uv_max.toFixed(1)}</span>
+                  <span className="v">{formatUv(d.uv_max)}</span>
                 </div>
               )}
             </div>

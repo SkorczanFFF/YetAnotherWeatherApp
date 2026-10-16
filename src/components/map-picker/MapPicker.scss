@@ -4,7 +4,7 @@
 .map-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 8000;
+  z-index: $z-map-drawer;
   pointer-events: none;
 
   &--open { pointer-events: auto; }
@@ -34,8 +34,8 @@
   // browser bars hidden, which puts the confirm button off-screen.
   height: 100vh;
   height: 100dvh;
-  z-index: 8001;
-  background: oklch(0.18 0.02 240 / 0.55);
+  z-index: 1; // over the overlay, inside the backdrop's stacking context
+  background: color-mix(in oklch, var(--panel) 55%, transparent);
   border-left: 1px solid var(--stroke);
   backdrop-filter: blur(var(--blur));
   -webkit-backdrop-filter: blur(var(--blur));
@@ -43,7 +43,7 @@
   box-shadow: -16px 0 40px oklch(0 0 0 / 0.4);
   display: flex;
   flex-direction: column;
-  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1), --glass-glow 0.35s ease;
+  transition: transform 0.28s $ease-out, $glass-glow-transition;
   transform: translateX(100%);
 
   &--open { transform: translateX(0); }
@@ -164,7 +164,7 @@
   border-radius: 50%;
   cursor: pointer;
   color: var(--fg-mute);
-  transition: color 0.2s, background 0.2s, border-color 0.2s, --glass-glow 0.35s ease;
+  transition: color 0.2s, background 0.2s, border-color 0.2s, $glass-glow-transition;
 
   svg { width: 14px; height: 14px; }
 
@@ -230,9 +230,7 @@
   .leaflet-control-attribution {
     background: oklch(0 0 0 / 0.55) !important;
     color: var(--fg-mute) !important;
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.04em;
+    @include mono-label(9.5px, 0.04em, false);
     padding: 3px 6px;
     border-top-left-radius: 6px;
 
@@ -242,7 +240,7 @@
 
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
-    background: oklch(0.18 0.02 240 / 0.92);
+    background: color-mix(in oklch, var(--panel) 92%, transparent);
     color: var(--fg);
     border: 1px solid var(--stroke);
     backdrop-filter: blur(var(--blur));
@@ -250,9 +248,7 @@
     box-shadow: 0 6px 24px oklch(0 0 0 / 0.4);
   }
   .leaflet-popup-content {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
+    @include mono-label(11px, 0.04em, false);
     margin: 8px 12px;
     color: var(--fg-dim);
   }
@@ -276,15 +272,11 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  @include mono-label(11px, 0.04em, false);
 
   .k {
+    @include mono-label(10px, 0.08em);
     color: var(--fg-faint);
-    text-transform: uppercase;
-    font-size: 10px;
-    letter-spacing: 0.08em;
   }
   .v {
     color: var(--fg);
@@ -309,7 +301,7 @@
   border: 1px solid var(--accent-warm);
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, --glass-glow 0.35s ease;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s, $glass-glow-transition;
 
   svg {
     width: 14px;

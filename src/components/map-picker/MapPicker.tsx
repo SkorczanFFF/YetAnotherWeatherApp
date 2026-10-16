@@ -14,14 +14,16 @@ const DRAWER_WIDTH_MAX = 800;
 
 const PIN_SIZE = 36;
 const TILES_LOADER_DELAY_MS = 250;
+/** Outline and dot of the map pin (its fill is the accent). */
+const PIN_INK = "oklch(0.34 0.06 240)";
 
 const MARKER_ICON = L.divIcon({
   className: "map-picker-marker",
   html:
     `<span aria-hidden="true" class="map-picker-marker__pin" style="width:${PIN_SIZE}px;height:${PIN_SIZE}px;display:block">` +
     `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
-    `<path d="${PIN_PATH}" stroke="oklch(0.34 0.06 240)" style="fill:var(--accent-warm)" />` +
-    `<circle cx="12" cy="9" r="2.6" fill="oklch(0.34 0.06 240)" />` +
+    `<path d="${PIN_PATH}" stroke="${PIN_INK}" style="fill:var(--accent-warm)" />` +
+    `<circle cx="12" cy="9" r="2.6" fill="${PIN_INK}" />` +
     `</svg></span>`,
   iconSize: [PIN_SIZE, PIN_SIZE],
   iconAnchor: [PIN_SIZE / 2, PIN_SIZE],

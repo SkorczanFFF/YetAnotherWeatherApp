@@ -3,16 +3,27 @@
 $bp-tablet: 720px;
 $bp-phone: 440px;
 
+// Decelerating ease for entrances and slides.
+$ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+// Stacking order of the fixed layers over the page.
+$z-refresh-pill: 50;
+$z-map-drawer: 8000;
+$z-debug-menu: 9000;
+$z-debug-stats: 9998;
+
 @mixin below($bp) {
   @media (max-width: $bp) {
     @content;
   }
 }
 
-// Small uppercase label in Geist Mono; colour is up to the caller.
-@mixin mono-label($size: 11px, $spacing: 0.06em) {
+// Small label in Geist Mono, uppercase unless `$upper: false`; colour is up to the caller.
+@mixin mono-label($size: 11px, $spacing: 0.06em, $upper: true) {
   font-family: var(--font-mono);
   font-size: $size;
   letter-spacing: $spacing;
-  text-transform: uppercase;
+  @if $upper {
+    text-transform: uppercase;
+  }
 }

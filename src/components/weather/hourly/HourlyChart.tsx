@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useId, useMemo } from "react";
 import { HourlyForecast, Units } from "../../../weather/types";
 import { formatDegrees, formatToLocalTime, tempSymbol } from "../../../utils/format";
 import "./HourlyChart.scss";
@@ -18,6 +18,7 @@ const PAD_B = 28;
 const POINTS = 12;
 
 export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, units }) => {
+  const gradientId = `temp-grad${useId()}`;
   const slice = useMemo(() => {
     const nowSec = Date.now() / 1000;
     let startIdx = hourly.findIndex((h) => h.time >= nowSec);
@@ -60,7 +61,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, unit
   return (
     <section className="hourly">
       <div className="section-head">
-        <span className="section-title">Next 12 hours</span>
+        <span className="section-title">Next {POINTS} hours</span>
         <span className="section-hint">Temperature · {tempSymbol(units)}</span>
       </div>
       <div className="chart">
@@ -70,7 +71,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, unit
           preserveAspectRatio="none"
         >
           <defs>
-            <linearGradient id="tempgrad" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" style={{ stopColor: "var(--accent-warm)" }} stopOpacity="0.38" />
               <stop offset="100%" style={{ stopColor: "var(--accent-warm)" }} stopOpacity="0" />
             </linearGradient>
@@ -85,7 +86,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ hourly, timezone, unit
               y2={y}
             />
           ))}
-          <path className="area" d={chart.areaPath} />
+          <path className="area" d={chart.areaPath} fill={`url(#${gradientId})`} />
           <path className="line" d={chart.linePath} />
         </svg>
         <div className="chart-overlay">

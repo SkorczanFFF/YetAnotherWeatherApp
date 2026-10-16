@@ -1,15 +1,16 @@
 // Liquid glass and cursor reveal — see CLAUDE.md › UI conventions.
 // `--scene-light` darkens the backdrop so white text keeps its contrast over a
 // bright sky. Hover/active raise `--glass-lift`; replacing `background` would drop the tint.
-$glass-reveal: 160px;
+// The reveal glow fades in and out; a component with its own `transition` list adds this to it.
+$glass-glow-transition: --glass-glow 0.35s ease;
 
 // Owns `::after` (can't decorate input/select/img). `$position: null` for an
 // element that is already absolute/fixed. Components that declare their own
-// `transition` list must add `--glass-glow 0.35s ease` to it.
+// `transition` list must add `$glass-glow-transition` to it.
 @mixin glass-reveal($position: relative) {
   --glass-spot: 1;
   position: $position;
-  transition: --glass-glow 0.35s ease;
+  transition: $glass-glow-transition;
 
   // Drawn inside the padding box so `overflow: hidden` boxes don't clip it.
   &::after {
@@ -20,7 +21,7 @@ $glass-reveal: 160px;
     padding: 1.5px;
     border-radius: inherit;
     background: radial-gradient(
-      $glass-reveal circle at var(--mx, -999px) var(--my, -999px),
+      var(--glass-reveal) circle at var(--mx, -999px) var(--my, -999px),
       oklch(1 0 0 / calc(0.55 + var(--glass-glow) * 0.35)),
       oklch(1 0 0 / calc(0.12 + var(--glass-glow) * 0.1)) 55%,
       transparent 100%

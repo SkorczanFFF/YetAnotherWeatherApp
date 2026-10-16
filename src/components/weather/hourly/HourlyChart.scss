@@ -19,10 +19,8 @@
   }
 
   .section-hint {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
+    @include mono-label(10.5px, 0.06em, false);
     color: var(--fg-faint);
-    letter-spacing: 0.06em;
   }
 
   .chart {
@@ -47,7 +45,6 @@
       stroke-width: 1;
       stroke-dasharray: 2 4;
     }
-    .area { fill: url(#tempgrad); }
     .line {
       fill: none;
       stroke: var(--accent-warm);
@@ -96,10 +93,8 @@
       position: absolute;
       bottom: 0;
       transform: translateX(-50%);
-      font-family: var(--font-mono);
-      font-size: 10px;
+      @include mono-label(10px, 0.06em, false);
       color: var(--fg-faint);
-      letter-spacing: 0.06em;
       white-space: nowrap;
     }
   }

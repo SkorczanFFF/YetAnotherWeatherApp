@@ -5,8 +5,6 @@ const SPOT_VAR = "--glass-spot";
 const MAP_PANE = ".leaflet-map-pane";
 /** Every element except the scene canvas and Leaflet's tiles and markers. */
 const SCAN = `body *:not(canvas, ${MAP_PANE} *)`;
-/** `$glass-reveal` in _glass.scss — past this distance an element's edge is dark. */
-const REVEAL_PX = 160;
 const OFF = "-999px";
 
 const isGlassCache = new WeakMap<Element, boolean>();
@@ -38,6 +36,8 @@ function distanceTo(rect: DOMRect, x: number, y: number): number {
 export function useGlassSpotlight(): void {
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    // `--glass-reveal` (index.scss): past this distance an element's edge is dark.
+    const reach = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--glass-reveal"));
 
     let frame = 0;
     let x = 0;
@@ -69,7 +69,7 @@ export function useGlassSpotlight(): void {
       }
       for (const el of glass) {
         const rect = el.getBoundingClientRect();
-        if (active && distanceTo(rect, x, y) < REVEAL_PX) {
+        if (active && distanceTo(rect, x, y) < reach) {
           el.style.setProperty("--mx", `${(x - rect.left).toFixed(1)}px`);
           el.style.setProperty("--my", `${(y - rect.top).toFixed(1)}px`);
           lit.add(el);

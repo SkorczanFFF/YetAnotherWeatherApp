@@ -1,9 +1,9 @@
 import React, { useEffect, useId, useMemo, useState } from "react";
-import { DateTime } from "luxon";
 import {
   formatToLocalTime,
   formatTemperature,
   formatSpeed,
+  formatUv,
   tempSymbol,
   toCardinal,
 } from "../../../utils/format";
@@ -29,11 +29,11 @@ const uvLabel = (uv?: number): string => {
 };
 
 const getLiveTimeParts = (timezone: string) => {
-  const now = DateTime.now().setZone(timezone);
+  const nowSeconds = Date.now() / 1000;
   return {
-    datePart: now.toFormat("cccc, dd LLLL yyyy"),
-    timePart: now.toFormat("HH:mm"),
-    nowSeconds: now.toSeconds(),
+    datePart: formatToLocalTime(nowSeconds, timezone, "cccc, dd LLLL yyyy"),
+    timePart: formatToLocalTime(nowSeconds, timezone, "HH:mm"),
+    nowSeconds,
   };
 };
 
@@ -113,7 +113,7 @@ export const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }
     windDir: toCardinal(weather.wind_direction) || "—",
     cloudCover: weather.cloud_cover != null ? `${weather.cloud_cover.toFixed()}` : "—",
     visibility: visibilityKm(weather.visibility),
-    uv: weather.uv_index != null ? weather.uv_index.toFixed(1) : "—",
+    uv: formatUv(weather.uv_index),
     uvLabel: uvLabel(weather.uv_index),
     dew: weather.dew_point != null ? formatTemperature(weather.dew_point, units) : "—",
     precip: weather.precipitation != null ? weather.precipitation.toFixed(1) : "0.0",

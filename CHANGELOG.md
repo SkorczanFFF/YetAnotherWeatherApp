@@ -65,6 +65,21 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Named exports everywhere except `App`; README brought up to date.
 
 ### Changed (single sources of truth)
+- **UI.** Checked with a declaration-by-declaration diff of the compiled CSS and in Chrome.
+  - **Transitions:** one `$glass-glow-transition` for the ten transition lists that must carry the reveal glow, and one `$ease-out` for the entrance and drawer curves. The CSS compiles identically.
+  - **Tokens:**
+    - `--danger` for the error box and `--panel` for the map drawer and its popups, tinted with `color-mix` like the accent;
+    - a `$z-*` stacking scale (refresh pill, map drawer, debug menu, perf stats). The drawer's 8001 inside its own 8000 stacking context is a plain 1.
+    - The debug panel's own greys (white 10–50 %, `#e0e0e0`, `#0f0f1a`) moved onto the app's fill/stroke/fg tokens, so it now looks like the app. Its active option is accent-tinted (it looked the same as hover). This is the one visible change.
+  - **Mono labels:** `mono-label` takes `$upper` and replaces nine hand-written copies of the recipe: footer, section hint, chart hours, forecast dates, map popups and attribution, the key labels of the hero, sunrise/sunset, forecast and map. Sizes are unchanged.
+  - **Display formatting through `utils/format.ts`:**
+    - the UV index (`formatUv`, written twice);
+    - the hero clock and the debug time (`formatToLocalTime` instead of calling luxon directly).
+  - **TS ↔ SCSS duplicates:**
+    - the hourly chart's gradient id comes from `useId`, with its fill set on the path (an id written in both the TSX and the SCSS would clash with a second chart);
+    - "Next N hours" follows `POINTS`;
+    - the map pin's ink colour is named once;
+    - the cursor-reveal reach is the CSS variable `--glass-reveal`, read by `useGlassSpotlight` instead of copied as 160.
 - **Scene.** Every output was checked old vs new on 20 000 random skies, cameras and weathers: bit-identical except the rain/snow ambient below and float rounding (≤ 1e-15). The shaders were compared as normalised text.
   - **SceneDriver publishes once per frame what layers re-derived:**
     - the real altitudes in degrees (`sunAltDeg` / `moonAltDeg`; converted in 10 places);

@@ -7,7 +7,7 @@ import { getFrostAmount } from "../../weather/frost";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
-import { toCardinal } from "../../utils/format";
+import { formatToLocalTime, toCardinal } from "../../utils/format";
 import { CloseIcon, LineIcon } from "../icons";
 import "./DebugMenu.scss";
 
@@ -213,7 +213,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             <label>
               Local hour{" "}
               <span className="debug-menu-current">
-                ({hourValue === null ? "live" : "pinned"} {local.toFormat("HH:mm")})
+                ({hourValue === null ? "live" : "pinned"} {formatToLocalTime(time / 1000, e.timezone, "HH:mm")})
               </span>
             </label>
             <div className="debug-menu-row">

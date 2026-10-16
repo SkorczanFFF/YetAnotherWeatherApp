@@ -108,16 +108,13 @@
     display: flex;
     gap: 18px;
     margin-top: 10px;
-    font-family: var(--font-mono);
-    font-size: 12px;
+    @include mono-label(12px, 0.04em, false);
     color: var(--fg-mute);
-    letter-spacing: 0.04em;
 
     .kv { display: flex; gap: 8px; align-items: baseline; }
     .kv .k {
+      @include mono-label(10.5px, 0.04em);
       color: var(--fg-faint);
-      text-transform: uppercase;
-      font-size: 10.5px;
     }
     .kv .v { color: var(--fg-dim); font-weight: 500; }
   }
@@ -203,9 +200,7 @@
     }
 
     .sun-label {
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      @include mono-label(10px, 0.08em);
       color: var(--fg-faint);
     }
   }

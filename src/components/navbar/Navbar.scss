@@ -74,7 +74,7 @@
     padding: 0 6px 0 16px;
     @include liquid-glass;
     border-radius: 999px;
-    transition: border-color 0.2s, --glass-lift 0.2s, --glass-glow 0.35s ease;
+    transition: border-color 0.2s, --glass-lift 0.2s, $glass-glow-transition;
     min-width: 0;
 
     &:focus-within {
@@ -112,7 +112,7 @@
       color: var(--fg-mute);
       cursor: pointer;
       border-radius: 999px;
-      transition: color 0.2s, background 0.2s, --glass-glow 0.35s ease;
+      transition: color 0.2s, background 0.2s, $glass-glow-transition;
 
       svg { width: 15px; height: 15px; }
       .loader-spinner { --spinner-size: 15px; }
@@ -136,7 +136,7 @@
     border-radius: 50%;
     color: var(--fg);
     cursor: pointer;
-    transition: --glass-lift 0.2s, --glass-glow 0.35s ease, border-color 0.2s, color 0.2s;
+    transition: --glass-lift 0.2s, $glass-glow-transition, border-color 0.2s, color 0.2s;
 
     svg {
       width: 17px;
@@ -181,7 +181,7 @@
       border-radius: 999px;
       cursor: pointer;
       letter-spacing: 0.04em;
-      transition: color 0.2s, background 0.2s, --glass-glow 0.35s ease;
+      transition: color 0.2s, background 0.2s, $glass-glow-transition;
 
       &:hover { color: var(--fg-dim); }
       &.on { color: var(--fg); background: var(--fill-strong); }

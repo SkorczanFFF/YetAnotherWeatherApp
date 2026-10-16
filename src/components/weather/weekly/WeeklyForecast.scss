@@ -14,8 +14,8 @@
     flex-direction: column;
     gap: 10px;
     overflow: hidden;
-    transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
-      --glass-lift 0.25s, --glass-glow 0.35s ease, border-color 0.25s;
+    transition: transform 0.25s $ease-out,
+      --glass-lift 0.25s, $glass-glow-transition, border-color 0.25s;
 
     &:hover {
       --glass-lift: 0.06;
@@ -42,10 +42,8 @@
   }
 
   .day-date {
-    font-family: var(--font-mono);
-    font-size: 10px;
+    @include mono-label(10px, 0.04em, false);
     color: var(--fg-faint);
-    letter-spacing: 0.04em;
   }
 
   .day-body {
@@ -103,10 +101,8 @@
       padding-top: 0;
     }
     .k {
+      @include mono-label(9.5px, 0.06em);
       color: var(--fg-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-size: 9.5px;
     }
     .v { color: var(--fg-dim); }
   }
