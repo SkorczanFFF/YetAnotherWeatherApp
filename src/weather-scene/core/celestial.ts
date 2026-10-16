@@ -16,9 +16,9 @@ const smoothstep = MathUtils.smoothstep;
 
 /**
  * Real altitude → on-screen altitude, zenith at `top`. sin() lifts the mid-sky
- * body (45° → ~30° instead of ~21°, near the frame's centre) — the linear
- * squeeze kept the sun in the lower third most of the day. Below the horizon
- * it stays linear: Preetham's sky dies at −2.3° display, a steeper slope would end dusk early.
+ * body towards the frame's centre (45° → ~30°, not ~21° as a linear squeeze
+ * would). Below the horizon it stays linear: Preetham's sky dies at −2.3°
+ * display, and a steeper slope would end dusk early.
  */
 function displayAltitude(alt: number, top: number): number {
   return alt >= 0 ? top * Math.sin(alt) : alt * (top / (Math.PI / 2));
@@ -34,16 +34,15 @@ const MIN_GUTTER_NDC = 0.1;
 const CROSS_SHARE = 0.12;
 /**
  * …the moon within ±2.7° (a quarter of an hour or so): it transits due south
- * (north) in the middle of the night, and at the sun's share it spent an hour
- * or two of the best moonlight behind the cards.
+ * (north) in the middle of the night, its best hours, which the cards would hide.
  */
 const MOON_CROSS_SHARE = 0.02;
 
 /**
  * Relative azimuth → on-screen azimuth at display altitude `alt`. With side
  * gutters next to the content column the body runs in them (morning left,
- * afternoon right, a quick crossing around noon) — in the middle it sat behind
- * the cards all day. The azimuth is solved for the pitched base camera so a
+ * afternoon right, a quick crossing around noon) instead of behind the cards.
+ * The azimuth is solved for the pitched base camera so a
  * high body lands on the same screen x as a low one. No gutters: ±135° → 80 %
  * of the half-frame.
  */
@@ -73,8 +72,8 @@ const PAIR_INSIDE = 15 * MathUtils.DEG2RAD;
  * The moon's relative azimuth for display. With both bodies up on the same
  * side, the moon — when it is the one nearer the middle — goes to the other
  * side (mirrored): an evening's waxing crescent rises on the left while the
- * sun sets on the right, a morning's waning moon the other way round; side by
- * side in one gutter they looked like a pair of lamps. The order stays true
+ * sun sets on the right, a morning's waning moon the other way round, rather
+ * than both in one gutter. The order stays true
  * (that moon is east of the evening sun, west of the morning one), the
  * mirror is continuous through the middle, and it eases out as either body
  * goes down — after twilight the moon glides back to its real side.

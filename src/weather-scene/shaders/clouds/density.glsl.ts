@@ -16,10 +16,9 @@ const float SHAPE_SCALE = 1.0 / ${SHAPE_TILE_M}.0;
 const float DETAIL_SCALE = 1.0 / ${DETAIL_TILE_M}.0;
 const float WEATHER_SCALE = 1.0 / ${COVER_TILE_M}.0;
 
-// Every noise lookup is explicit-LOD (the 3D noise has no mips, so the values
-// are the same): implicit derivatives are undefined inside the march's
-// data-dependent loops, and ANGLE's D3D11 backend (Chrome on Windows) returned
-// an empty ray wherever the march broke out early — every opaque cloud nearby.
+// Every noise lookup is explicit-LOD (no mips, same values): implicit
+// derivatives are undefined in the march's data-dependent loops and break
+// ANGLE/D3D11 (see CLAUDE.md › gotchas).
 vec4 noise3(vec3 p) {
   return textureLod(uNoise, p, 0.0);
 }
@@ -58,7 +57,7 @@ const vec2 COVER_NOISE_LOW = vec2(0.659, 0.056);   // its large-scale part alone
 const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
 // How far under the cover threshold (in rank) the large-scale field may sit
 // for the fine component to still raise cloud: it shapes the rims of cells
-// but spawns no isolated islands — each floated as a smooth round ball.
+// but spawns no isolated islands (they read as smooth floating balls).
 const float ISLAND_REACH = 0.12;
 // The shell's cover fades in over 0..COVER_FADE_IN.
 const float COVER_FADE_IN = ${COVER_FADE_IN};

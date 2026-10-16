@@ -56,6 +56,14 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - suncalc 2 returns degrees, azimuth clockwise from north and refraction-corrected altitude: converted to the scene's radians-from-south in `SceneDriver` (`azimuthFromCompassDeg`); positions agree with v1 within ~0.7°.
 
 ### Changed (comments)
+- **Sky, cloud and physics comments.** The comments added with the sun-in-view, god-ray, mid-layer and lens-flare work are cut to the why. The incident stories are gone:
+  - "a grey band at the horizon", "a pale lavender band", "a pair of lamps", "a white blob the size of a fist";
+  - "every overcast base went black", "a dot pattern once the lanes got contrast";
+  - the Sesvete and autumn-τ anecdotes.
+
+  Each keeps the reason it was protecting against, in one line, and the long form stays in CLAUDE.md. The ANGLE note in the cloud noise is a pointer to the CLAUDE.md gotcha.
+
+  12 files: sky light, celestial, sky layer and grade, sun glow, cloud density, lighting, rays, composite and lighting model, precipitation kinds, cloud physics. Each was proven comment-only: with comments and whitespace stripped, every file is identical to the previous commit.
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
 
 ### Changed (file organisation)

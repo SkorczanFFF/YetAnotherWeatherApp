@@ -52,7 +52,7 @@ export function cloudLighting(
   // Key light: the sun keeps lighting cloud bases ~6° after it sets
   // (that's the red underside glow), then the moon takes over.
   const sunVis = MathUtils.smoothstep(s.sunAltDeg, -6, 2);
-  // Sun and moon crossfade (a hard switch jumped ~6× in brightness at dusk).
+  // Sun and moon crossfade: a switch would jump ~6× in brightness at dusk.
   // The light march uses the real altitude (signals.sunLightDir); the phase
   // (silver lining, forward glow) the full display direction, so it sits
   // around the visible disc, not off-frame above it.

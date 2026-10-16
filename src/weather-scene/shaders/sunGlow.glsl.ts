@@ -2,8 +2,8 @@
 // Preetham's disc tone-maps to a flat white dot that doesn't read as a light
 // source; a bright rim hugging the disc plus a wide halo of lit air does.
 // Drawn under the cloud composite, so clouds in front hide it. Display-space
-// colour, never sRGB-encoded: the encoding's toe lifted the faint halo ×10
-// into a white blob the size of a fist.
+// colour, never sRGB-encoded: the encoding's linear toe (×12.92) would lift
+// the faint halo into a white blob.
 
 export const SUN_GLOW_FRAG = /* glsl */ `
 uniform vec3 uColor;      // display space, × strength

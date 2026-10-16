@@ -19,7 +19,7 @@ void main() {
   // output alpha, at most by SHADOW_MAX.
   const float SHADOW_MAX = 0.25;
   // 4 bilinear taps half a texel out: a tent over the rays target that hides
-  // the march's per-pixel jitter (a dot pattern once the lanes got contrast).
+  // the march's per-pixel jitter (it shows as dots in contrasty lanes).
   vec2 o = 0.5 * uRayTexel;
   vec2 shaft = 0.25 * (texture2D(uRays, vUv + vec2(-o.x, -o.y)).rg + texture2D(uRays, vUv + vec2(o.x, -o.y)).rg
     + texture2D(uRays, vUv + vec2(-o.x, o.y)).rg + texture2D(uRays, vUv + o).rg);
@@ -34,7 +34,7 @@ void main() {
   #endif
   cloud = linearToOutputTexel(vec4(cloud, 1.0)).rgb;
   // Premultiplied output (blend ONE, ONE_MINUS_SRC_ALPHA): the encoded cloud
-  // over the sky exactly as before, plus the shafts added in display space —
+  // over the sky, plus the shafts added in display space —
   // encoding them would lift every faint value by the sRGB toe — and the
   // shadow lanes taken out of the sky by the extra alpha.
   gl_FragColor = vec4(cloud * a + rays, a + shadow);

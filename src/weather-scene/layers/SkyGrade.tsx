@@ -44,8 +44,8 @@ export function SkyGrade() {
   useFrame((state) => {
     ref.current?.position.copy(state.camera.position);
     const u = material.uniforms;
-    // Blue hour: the night gradient comes in from sunset (≤ 75 % by −6°) —
-    // Preetham's sky alone went a dull dark grey in late twilight.
+    // Blue hour: the night gradient comes in from sunset (≤ 75 % by −6°);
+    // Preetham alone turns a dull dark grey in late twilight.
     const blueHour = 1 - MathUtils.smoothstep(s.sunAltDeg, -6, -0.5);
     u.uNight.value = Math.max(s.night, 0.75 * blueHour);
     u.uOvercast.value = s.overcast * 0.9;

@@ -26,17 +26,17 @@ const float SHAFT_CONTRAST = 2.0;
 // Shadow lanes show where the air itself is lit: this pixel's distance from
 // the disc (per frame height), wider than the glow so the lanes reach out.
 const float SHADOW_FALLOFF = 2.5;
-// Only thick cloud casts a shaft's shadow: a cirrus veil (alpha ~0.35–0.65)
-// counted in full dimmed the whole sky instead of cutting lanes.
+// Only thick cloud casts a shaft's shadow: counting a cirrus veil (alpha
+// ~0.35–0.65) in full would dim the whole sky instead of cutting lanes.
 const vec2 OCCLUDER = vec2(0.5, 0.9);
 // An open sun gives more glare than shafts (they peak when it hides behind a
 // cloud): the added light scales from this up to 1 with the disc's cover.
 const float OPEN_SUN = 0.15;
 const float DISC_TAP = 0.02;      // frame heights — taps around the disc for its cover
 // The sky by the disc is already bright: added light fades in out to here
-// (frame heights) instead of piling onto it — a shorter ramp drew a dim ring
-// round the disc. Shadow lanes start a little out too: right by the disc a
-// small cloud cut dark blades into the glare.
+// (frame heights) instead of piling onto it; a shorter ramp shows as a dim
+// ring. Shadow lanes start a little out too, or a small cloud by the disc
+// cuts dark blades into the glare.
 const vec2 SHAFT_START = vec2(0.0, 0.35);
 const vec2 SHADOW_START = vec2(0.03, 0.2);
 

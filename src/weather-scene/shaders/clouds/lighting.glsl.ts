@@ -19,11 +19,9 @@ float hg(float c, float g) {
 }
 
 // Optical depth towards the light: growing steps through a near cone, then
-// one long step for the bulk of a tall cell. Spreading the steps over a
-// whole 4–5 km tower (first step ~350 m) quantised where the light ray left
-// the cloud into terraces along the lit flank.
-// The start is jittered (as the view march is): a fixed pattern laddered a
-// low sun's lit flanks with bright stripes; the temporal resolve averages it.
+// one long step for the bulk of a tall cell — fine steps where the light ray
+// leaves the cloud, or the lit flanks show terraces. The start is jittered (as
+// the view march is) so a low sun draws no stripes; the resolve averages it.
 const float LIGHT_CONE_M = 1000.0;
 float lightOpticalDepth(vec3 p, float jitter) {
   float stepLen = min(uThickness * 0.45, LIGHT_CONE_M) / float(uLightSteps);
@@ -38,7 +36,7 @@ float lightOpticalDepth(vec3 p, float jitter) {
     if (hf > 1.0 || hf < 0.0) break;
     od += density(q, hf, i < 2) * s;
   }
-  // The rest of the old full-thickness reach (1.24 × thickness at 6 steps).
+  // The far step covers the rest of the reach (1.24 × thickness at 6 steps).
   float far = uThickness * 0.45 * (1.0 + 0.35 * float(uLightSteps - 1)) - t;
   if (far > 1.0) {
     vec3 q = p + uLightDir * (t + far * 0.5);
@@ -58,7 +56,7 @@ float sunEnergy(float od, float cosTheta) {
     // Narrow forward lobe (silver lining only close to the sun), broad main
     // lobe, a little back-scatter.
     float phase = 0.18 * hg(cosTheta, 0.88 * c) + 0.62 * hg(cosTheta, 0.3 * c) + 0.2 * hg(cosTheta, -0.25 * c);
-    // Higher orders need medium to scatter in; on thin edges they would draw white outlines.
+    // Higher orders need medium to scatter in, or thin edges get white outlines.
     float depthWeight = i == 0 ? 1.0 : 1.0 - exp(-od * 1.5);
     sum += a * exp(-od * b) * phase * depthWeight;
     a *= 0.7;
@@ -72,8 +70,8 @@ float sunEnergy(float od, float cosTheta) {
 }
 
 // Sunlight diffused down through a thick deck. Two-stream transmission falls
-// as 1/τ, the octaves above exponentially — without this floor every overcast
-// base went black. Through a horizontal deck light forgets its slant, so the
+// as 1/τ, the octaves above exponentially — this floor keeps an overcast base
+// grey, not black. Through a horizontal deck light forgets its slant, so the
 // depth is the deck's τ above the sample (at most the march's); it needs medium
 // to build up (no white rims) and scales with the irradiance of a low sun.
 const float TWO_STREAM_K = ${glslFloat(TWO_STREAM_K)};   // cloudPhysics.ts

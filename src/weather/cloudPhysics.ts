@@ -311,9 +311,8 @@ function layerHeights(input: CloudPhysicsInput, levels: Levels, baseM: number, t
   const highAltM = clamp(highBand?.meanM ?? 8500, HIGH_BAND_M, 12500);
   // One drawn deck: in the mid band when that cover clearly dominates (an
   // altocumulus sky), or outweighs a low cover no pressure level backs up —
-  // the model's low layer can be sub-grid while its column is clear (a 49 %
-  // "low" under a 78 % mid sky drew a thin deck at the LCL). Convective air
-  // keeps the deck low: the towers rise from the boundary layer.
+  // the model's low layer can be sub-grid while its column is clear.
+  // Convective air keeps the deck low: the towers rise from the boundary layer.
   const lowLevels = levels.filter((l) => l.heightM < LOW_BAND_M);
   const lowLevelsClear =
     input.measuredSky && lowLevels.length > 0 && lowLevels.every((l) => l.cover < CLEAR_LEVEL_COVER);
@@ -352,8 +351,8 @@ function estimateOpticalDepth(input: CloudPhysicsInput, deckBaseM: number, deckT
     directFraction = clamp(atm.direct / sw, 0, 1);
   }
   if (input.measuredSky && sw != null && toa != null && toa > 60 && deck > 0.1) {
-    // A low sun crosses more air and more cloud: assuming it overhead read
-    // autumn mornings as τ 100–250 (black decks) under plain stratus.
+    // A low sun crosses more air and more cloud: the clear-sky reference and μ0
+    // follow its altitude (taking it overhead overstates τ by several times).
     const mu0 = clamp(toa / SOLAR_CONSTANT, 0.05, 1);
     const clearKt = CLEAR_SKY_KT * Math.exp(-CLEAR_SKY_AIRMASS_K * (Math.min(1 / mu0, MAX_AIRMASS) - 1));
     const relative = clamp(sw / toa / clearKt, 0, 1.1);

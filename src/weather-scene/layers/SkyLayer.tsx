@@ -47,8 +47,8 @@ export function SkyLayer() {
     u.turbidity.value = 1.6 + 6 * s.haze + 4 * s.overcast;
     u.rayleigh.value = MathUtils.lerp(1.6, 3.0, s.warmth);
     u.mieCoefficient.value = 0.0025 + 0.02 * s.haze;
-    // The disc goes with the REAL sun: below the horizon its squeezed display
-    // position still sat in the ground haze's soft edge and shone through it.
+    // The disc follows the REAL sun: its squeezed display position sits in the
+    // ground haze's soft edge for a while after sunset.
     if (u.uDiscVisible) u.uDiscVisible.value = MathUtils.smoothstep(s.sunAltDeg, -1, 0.5);
   });
 

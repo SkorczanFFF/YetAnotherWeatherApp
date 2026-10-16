@@ -70,19 +70,16 @@ function hazeAndHorizon(s: SceneSignals, params: SceneParams, a: number): void {
   const visibility = effectiveVisibilityM(fog.visibilityM, temperatureC);
   s.haze = MathUtils.clamp(1 - (Math.log10(visibility) - 2.5) / 1.9, 0, 1);
 
-  // Warm from a low sun down through twilight, the light failing until night
-  // takes over — following `warmth` (0 again by −8°) the haze went back to
-  // the day's pale blue-grey in late dusk and drew a grey band at the horizon.
+  // Warm from a low sun down through twilight, dimming until night takes over —
+  // not keyed to `warmth`, which is back to 0 by −8° while the horizon still glows.
   const horizon = s.horizonColor
     .copy(DAY_HAZE)
     .lerp(TWILIGHT, 1 - smoothstep(a, 2, 18))
     .multiplyScalar(1 - 0.55 * (1 - smoothstep(a, -8, 0)));
   horizon.lerp(NIGHT_HAZE, s.night);
   if (heat > 0) horizon.lerp(HEAT_HAZE, heat * 0.5 * s.day);
-  // At dusk the deck's base glows red (VolumetricClouds lights it from ~6°
-  // under the horizon) and the light fails: the haze under it goes dark and
-  // warm until night takes over. Keyed to warmth, the day grey came back
-  // as a pale lavender band under a red sky.
+  // Under an overcast at dusk the deck's base glows red (lit from ~6° under the
+  // horizon), so the haze below it goes dark and warm (keyed to lowSun, not warmth).
   const overcastTint = scratch
     .copy(HAZE_OVERCAST_DAY)
     .lerp(HAZE_OVERCAST_DUSK, s.lowSun)

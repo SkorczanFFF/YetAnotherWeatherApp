@@ -26,8 +26,8 @@ export interface KindDef {
   tiles?: number;
 }
 
-// Streaks start further out than flakes: a drop 1.5 units away stretched
-// across ~30° of the frame as one long white slash.
+// Streaks start further out than flakes: a drop 1.5 units away would stretch
+// across ~30° of the frame.
 const RAIN_VOLUME: PrecipVolume = { dNear: 3, dFar: 40, pad: 1.5 };
 const SNOW_VOLUME: PrecipVolume = { dNear: 1.5, dFar: 30, pad: 1 };
 const HAIL_VOLUME: PrecipVolume = { dNear: 3, dFar: 30, pad: 1 };
