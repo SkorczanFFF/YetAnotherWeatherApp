@@ -11,7 +11,7 @@ import { MathUtils, Vector3 } from "three";
 // Azimuths are radians from SOUTH, positive towards WEST (suncalc ≥ 2 gives
 // degrees clockwise from north: convert with `azimuthFromCompassDeg`).
 
-type Facing = "south" | "north";
+export type Facing = "south" | "north";
 
 export const CAMERA_FOV = 50;
 export const CAMERA_NEAR = 0.5;
@@ -99,15 +99,4 @@ export function windVelocity(
   target = new Vector3(),
 ): Vector3 {
   return compassToWorld(fromDeg, facing, target).multiplyScalar(-speedMs);
-}
-
-/** Human-readable screen drift for the debug readout, e.g. "right → left". */
-export function describeScreenDrift(fromDeg: number, facing: Facing): string {
-  const v = windVelocity(fromDeg, 1, facing);
-  const parts: string[] = [];
-  if (v.x < -0.38) parts.push("leftwards");
-  else if (v.x > 0.38) parts.push("rightwards");
-  if (v.z < -0.38) parts.push("away to the horizon");
-  else if (v.z > 0.38) parts.push("towards the viewer");
-  return parts.join(" + ") || "—";
 }

@@ -26,7 +26,7 @@ const sun: ScreenPoint = { u: 0, v: 0, w: 0, offFrame: 0 };
 const horizon: ScreenPoint = { u: 0, v: 0, w: 0, offFrame: 0 };
 
 /** 0 = no rays: the sun up and near the frame, cloud to cut shafts, haze to show them, no fog. */
-export function rayStrength(s: SceneSignals, sunOnScreen: ScreenPoint, coverage: number): number {
+function rayStrength(s: SceneSignals, sunOnScreen: ScreenPoint, coverage: number): number {
   return sunOnScreen.w > 0
     ? MathUtils.smoothstep(s.sunAltDeg, -1, 6) *
         (1 - MathUtils.smoothstep(sunOnScreen.offFrame, 0, 0.4)) *
@@ -37,7 +37,7 @@ export function rayStrength(s: SceneSignals, sunOnScreen: ScreenPoint, coverage:
     : 0;
 }
 
-export interface RayPasses {
+interface RayPasses {
   rays: FullscreenPass;
   composite: ShaderMaterial;
   targets: CloudTargets;

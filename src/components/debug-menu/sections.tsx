@@ -4,10 +4,10 @@ import { getFrostAmount } from "../../weather/frost";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
 import type { Auto } from "../../weather/overrides";
 import { QUALITY_TIERS, type QualityTier } from "../../weather-scene/core/quality";
-import { DEFAULT_PARALLAX, describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
+import { DEFAULT_PARALLAX, facingFor } from "../../weather-scene/core/worldFrame";
 import { formatToLocalTime, toCardinal } from "../../utils/format";
 import { FlagChip, NumericField, OptionButton, PerfReadout } from "./fields";
-import { fmt, moonPhaseName, useDebug } from "./helpers";
+import { describeScreenDrift, fmt, moonPhaseName, useDebug } from "./helpers";
 
 const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
 const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", ...QUALITY_TIERS];

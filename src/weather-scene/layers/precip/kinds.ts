@@ -12,7 +12,7 @@ import { getDotTexture, getSnowAtlas, SNOW_TILES } from "./textures";
 export type Kind = "drizzle" | "rain" | "grains" | "snow" | "wet-snow" | "hail";
 
 /** What a particle system is built from — fixed per kind. */
-export interface KindDef {
+interface KindDef {
   mode: RenderMode;
   texture: () => Texture;
   volume: PrecipVolume;
@@ -62,7 +62,7 @@ export const KINDS: Record<Kind, KindDef> = {
 };
 
 /** What changes with the weather — applied to the live system every frame. */
-export interface SystemSpec {
+interface SystemSpec {
   kind: Kind;
   /** Simultaneous particles at full intensity. */
   max: number;

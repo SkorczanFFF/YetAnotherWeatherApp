@@ -76,6 +76,10 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
   - God rays and the clouds' moonlight keep their own ramps: they are light through the air mass, not the disc.
 - `DISPLAY_OVERLAY` (`core/constants.ts`): the flags of a light added in display space (additive, no depth, never tone-mapped), used by `SunGlow` and `LensFlare`, which had the same five lines.
 - **Not done:** a `useDisposable` hook. Each of the 12 disposals is already one effect line next to its `useMemo`, so the hook would save about a line per site and add one more pattern.
+- **Leftovers.**
+  - Five exports nobody imported (`SetOverride`, `rayStrength`, `RayPasses`, `KindDef`, `SystemSpec`) are file-local. An audit script over every export in `src/` now finds none.
+  - `describeScreenDrift`, a debug-readout string, moved from the scene core (`core/worldFrame.ts`) to the debug menu's helpers; `Facing` is exported for it.
+  - The dev-only drift-period checks in `cloudDrift.ts` stay. They tie the TS wrap periods to the GLSL tile sizes; without them a noise change would silently break the wrap.
 
 ### Changed (docs)
 - **CLAUDE.md as rules.** CLAUDE.md holds the rules and gotchas only (43.5 → 33 KB). Gone from it:
