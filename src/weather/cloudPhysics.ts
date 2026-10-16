@@ -36,6 +36,7 @@ export interface CloudPhysics {
   /** 0 stable … 1 deep convection. */
   convection: number;
   cape: number;
+  /** The model's inputs, echoed for the debug readout. */
   liftedIndex: number | null;
   boundaryLayerM: number | null;
   /** 0 °C level above ground, m (standard lapse rate when the model has none). */

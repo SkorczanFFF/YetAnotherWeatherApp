@@ -131,19 +131,15 @@ interface OpenMeteoQueryParams {
   current: string;
   hourly: string;
   daily: string;
-  forecast_hours?: number;
-  forecast_days?: number;
+  forecast_hours: number;
+  forecast_days: number;
 }
 
 export const getForecast = async (
   searchParams: OpenMeteoQueryParams,
 ): Promise<OpenMeteoResponse> => {
   const url = new URL(FORECAST_URL);
-  Object.entries(searchParams).forEach(([key, value]) => {
-    if (value !== undefined) {
-      url.searchParams.append(key, value.toString());
-    }
-  });
+  for (const [key, value] of Object.entries(searchParams)) url.searchParams.append(key, String(value));
 
   const response = await fetch(url.toString());
   // Open-Meteo reports bad requests as HTTP 400 with { error: true, reason }.

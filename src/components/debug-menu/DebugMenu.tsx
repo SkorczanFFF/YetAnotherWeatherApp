@@ -11,10 +11,6 @@ import { toCardinal } from "../../utils/format";
 import { CloseIcon, LineIcon } from "../icons";
 import "./DebugMenu.scss";
 
-export interface DebugTools {
-  showPerf: boolean;
-}
-
 interface DebugMenuProps {
   open: boolean;
   onClose: () => void;
@@ -24,8 +20,8 @@ interface DebugMenuProps {
   currentParams: SceneParams;
   /** What the scene is actually rendering. */
   effectiveParams: SceneParams;
-  tools: DebugTools;
-  onToolsChange: (tools: DebugTools) => void;
+  showPerf: boolean;
+  onShowPerfChange: (show: boolean) => void;
   onForceLightning: () => void;
 }
 
@@ -33,7 +29,6 @@ const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
 const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", ...QUALITY_TIERS];
 /** Keys a preset owns — "Auto" preset clears exactly these. */
 const PRESET_KEYS = Object.keys(WEATHER_PRESETS[0].overrides) as (keyof SceneOverrides)[];
-
 
 function numericOrAuto(v: string): number | "auto" {
   if (v === "") return "auto";
@@ -64,16 +59,15 @@ interface NumericFieldProps {
   min?: number;
   max?: number;
   current: string;
-  half?: boolean;
   overrides: SceneOverrides;
   onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
 }
 
-function NumericField({ label, field, step, min, max, current, half = true, overrides, onSet }: NumericFieldProps) {
+function NumericField({ label, field, step, min, max, current, overrides, onSet }: NumericFieldProps) {
   const raw = overrides[field];
   const display = raw === undefined || raw === "auto" ? "" : String(raw);
   return (
-    <div className={`debug-menu-group${half ? " debug-menu-group--half" : ""}`}>
+    <div className="debug-menu-group debug-menu-group--half">
       <label>
         {label} <span className="debug-menu-current">({current})</span>
         <input
@@ -135,8 +129,8 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
   onOverridesChange,
   currentParams: c,
   effectiveParams: e,
-  tools,
-  onToolsChange,
+  showPerf,
+  onShowPerfChange,
   onForceLightning,
 }) => {
   const o = overrides ?? {};
@@ -360,13 +354,13 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             <div className="debug-menu-button-group">
               <button
                 type="button"
-                className={`debug-menu-option-btn${tools.showPerf ? " debug-menu-option-btn--active" : ""}`}
-                onClick={() => onToolsChange({ ...tools, showPerf: !tools.showPerf })}
+                className={`debug-menu-option-btn${showPerf ? " debug-menu-option-btn--active" : ""}`}
+                onClick={() => onShowPerfChange(!showPerf)}
               >
                 perf
               </button>
             </div>
-            {tools.showPerf && <PerfReadout />}
+            {showPerf && <PerfReadout />}
           </div>
         </div>
       </div>

@@ -6,7 +6,7 @@ import { CurrentWeather } from "./components/weather/current/CurrentWeather";
 import { HourlyChart } from "./components/weather/hourly/HourlyChart";
 import { WeeklyForecast } from "./components/weather/weekly/WeeklyForecast";
 import { WeatherSceneContainer } from "./weather-scene/WeatherSceneContainer";
-import { DebugMenu, type DebugTools } from "./components/debug-menu/DebugMenu";
+import { DebugMenu } from "./components/debug-menu/DebugMenu";
 import { MapPicker } from "./components/map-picker/MapPicker";
 import { LoaderPanel, LoaderPill } from "./components/loader/Loader";
 import { useDebugToggle } from "./hooks/useDebugToggle";
@@ -41,9 +41,7 @@ const App = (): React.ReactElement => {
   const [loadSource, setLoadSource] = useState<LoadSource>("initial");
   const { open: debugOpen, setOpen: setDebugOpen, onTap: handleStatusTap } = useDebugToggle();
   const [debugOverrides, setDebugOverrides] = useState<SceneOverrides | null>(null);
-  const [debugTools, setDebugTools] = useState<DebugTools>({
-    showPerf: true,
-  });
+  const [showPerf, setShowPerf] = useState(true);
   const [lightningNonce, setLightningNonce] = useState(0);
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const isDebugMode = isOverridesDirty(debugOverrides);
@@ -75,7 +73,7 @@ const App = (): React.ReactElement => {
     <div className="App">
       <WeatherSceneContainer
         params={effectiveParams}
-        showPerf={debugOpen && debugTools.showPerf}
+        showPerf={debugOpen && showPerf}
         lightningNonce={lightningNonce}
       />
       <div className="shell">
@@ -163,8 +161,8 @@ const App = (): React.ReactElement => {
         onOverridesChange={setDebugOverrides}
         currentParams={currentParams}
         effectiveParams={effectiveParams}
-        tools={debugTools}
-        onToolsChange={setDebugTools}
+        showPerf={showPerf}
+        onShowPerfChange={setShowPerf}
         onForceLightning={() => setLightningNonce((n) => n + 1)}
       />
       <Analytics />

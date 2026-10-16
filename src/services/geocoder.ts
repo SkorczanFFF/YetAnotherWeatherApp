@@ -24,7 +24,7 @@ export const geocodeCity = async (
   city: string,
 ): Promise<GeocodingResult | null> => {
   const trimmed = city.trim();
-  if (!trimmed || trimmed.length < 2) return null;
+  if (trimmed.length < 2) return null;
 
   const trySearch = async (
     language: string,

@@ -101,7 +101,7 @@ export const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }
     };
   }, [weather.sunrise, weather.sunset, weather.next_sunrise, live.nowSeconds]);
 
-  const formatted = useMemo(() => ({
+  const formatted = {
     feels: formatTemperature(weather.feels_like, units),
     high: formatTemperature(weather.temp_max, units),
     low: formatTemperature(weather.temp_min, units),
@@ -117,7 +117,7 @@ export const CurrentWeather: React.FC<CurrentWeatherProps> = ({ weather, units }
     uvLabel: uvLabel(weather.uv_index),
     dew: weather.dew_point != null ? formatTemperature(weather.dew_point, units) : "—",
     precip: weather.precipitation != null ? weather.precipitation.toFixed(1) : "0.0",
-  }), [weather, units, arc]);
+  };
 
   const arcPt = arcAt(arc.progress);
   const arcColorClass = arc.mode === "night" ? "is-night" : "is-day";

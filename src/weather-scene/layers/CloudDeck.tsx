@@ -88,7 +88,6 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
           uLit: { value: new Color() },
           uShade: { value: new Color() },
           uHighColor: { value: new Color() },
-          uFadeFar: { value: DECK_FAR },
           uFlash: { value: 0 },
           uFogColor: { value: new Color() },
           uFogDensity: { value: 0 },

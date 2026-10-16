@@ -15,6 +15,7 @@
 // Cloud output is premultiplied: rgb = in-scattered radiance (pre-tonemap,
 // "sky units"), a = 1 − transmittance.
 
+import { EARTH_RADIUS_M } from "../../core/worldFrame";
 import { CIRRUS_ALPHA, FBM_WEIGHTS, IGN, NOISE_RANK, REMAP } from "../chunks.glsl";
 import { BLOCK_OFFSET, VIEW_RAY } from "./common.glsl";
 import { CLOUD_DENSITY } from "./density.glsl";
@@ -33,7 +34,7 @@ uniform mat4 uInvProj;
 uniform mat4 uCamWorld;
 uniform vec3 uCamPos;        // metres
 
-uniform float uEarthR;
+const float EARTH_R = ${EARTH_RADIUS_M}.0;   // m
 uniform float uBase;         // cloud base altitude, m
 uniform float uThickness;    // shell thickness, m
 uniform float uCoverage;     // 0..1
@@ -68,8 +69,6 @@ uniform int uLightSteps;
 uniform float uFlash;
 uniform vec3 uFlashPos;      // metres
 
-varying vec2 vUv;
-
 ${BLOCK_OFFSET}
 ${VIEW_RAY}
 ${REMAP}
@@ -96,10 +95,10 @@ float fineStep(float t, float minStep) {
 
 vec4 march(vec3 ro, vec3 rd, float jitter) {
   // Below the horizon: the ground is in the way.
-  if (raySphere(ro, rd, uEarthR).x > 0.0) return vec4(0.0, 0.0, 0.0, 0.0);
+  if (raySphere(ro, rd, EARTH_R).x > 0.0) return vec4(0.0, 0.0, 0.0, 0.0);
 
-  float tStart = raySphere(ro, rd, uEarthR + uBase).y;
-  float tEnd = min(raySphere(ro, rd, uEarthR + uBase + uThickness).y, uMaxDist);
+  float tStart = raySphere(ro, rd, EARTH_R + uBase).y;
+  float tEnd = min(raySphere(ro, rd, EARTH_R + uBase + uThickness).y, uMaxDist);
 
   vec3 scat = vec3(0.0);
   float T = 1.0;

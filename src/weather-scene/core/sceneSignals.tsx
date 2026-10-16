@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { Color, type Texture, Vector3 } from "three";
+import { Color, DataTexture, type Texture, Vector3 } from "three";
 
 // Per-frame shared state. Written once per frame by <SceneDriver> (mounted
 // right after the camera rig) — except `flash` / `flashPosition`, written by
@@ -49,9 +49,13 @@ export interface SceneSignals {
   flash: number;
   /** World position of the current bolt (for lighting the right cloud), valid while flash > 0. */
   flashPosition: Vector3;
-  /** This frame's resolved cloud target (a = cover over the screen), null on the potato deck. */
-  cloudCover: Texture | null;
+  /** This frame's resolved cloud target (a = cover over the screen); NO_CLOUD_COVER on the potato deck or a clear sky. */
+  cloudCover: Texture;
 }
+
+/** Transparent 1×1 stand-in for the cloud target: nothing covers the screen. */
+export const NO_CLOUD_COVER = new DataTexture(new Uint8Array(4), 1, 1);
+NO_CLOUD_COVER.needsUpdate = true;
 
 /** Placeholder values: <SceneDriver> overwrites them before any layer reads them. */
 export function createSceneSignals(): SceneSignals {
@@ -81,7 +85,7 @@ export function createSceneSignals(): SceneSignals {
     windOffsetHigh: new Vector3(),
     flash: 0,
     flashPosition: new Vector3(),
-    cloudCover: null,
+    cloudCover: NO_CLOUD_COVER,
   };
 }
 

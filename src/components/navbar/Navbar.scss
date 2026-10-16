@@ -153,8 +153,7 @@
 
     &:disabled { cursor: progress; }
 
-    &.loc-btn svg,
-    &.map-btn svg { color: var(--accent-warm); }
+    svg { color: var(--accent-warm); }
   }
 
   .tools {

@@ -71,6 +71,23 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - UI: `LineIcon`/`CloseIcon`, SCSS breakpoint and label mixins, accent tints derived from `--accent-warm`; narrow grids use `minmax(0, 1fr)` so long content can't overflow.
 
 ### Removed
+- Dead code (no visible change):
+  - **Scene.**
+    - The frame-change trigger of SceneDriver's suncalc recompute: the display directions are recomputed every frame anyway.
+    - The march's unused `vUv` varying, and `ViewFrame.pitch` (always the camera pitch).
+    - The never-changing `uEarthR` / `uFadeFar` uniforms: GLSL constants interpolated from `EARTH_RADIUS_M` / `DECK_FAR`.
+    - The lens flare's `uCloudsOn` branch: `signals.cloudCover` is a shared transparent 1×1 texture (`NO_CLOUD_COVER`) when there is no cloud target, which also replaced the clouds' own clear-sky texture.
+    - Budget values captured into the cloud passes at mount, now placeholders written every frame.
+    - WeatherScene's never-passed `className` / `style` props and its server-rendering guards (also in `useIsMobile`).
+  - **UI.**
+    - The debug menu's `DebugTools` object (a plain `showPerf` flag) and the never-passed `NumericField.half`.
+    - The hero's `formatted` memo.
+    - CSS restating what `liquid-glass` or the global rules already set (`position`, `box-sizing`, `font-family`), a mobile `.stats` rule identical to the desktop one, and a selector list that matched every icon button.
+  - **Data and config.**
+    - Optional forecast query params and their `undefined` filter (the one caller passes all), and a duplicate empty-string check in the geocoder.
+    - `allowJs` / `resolveJsonModule` from `tsconfig.json` (no JS or JSON imports).
+    - The unused Chakra Petch 700 weight from the font request.
+    - The manifest's white background (the app is dark).
 - Unread API fields (hourly precipitation probability and weather code, geocoder ids, response units), the generic endpoint parameter, the dead `NETWORK_ERROR` path and `getSunAltitude`.
 - `react-dom/server` from the bundle (map marker is a static Leaflet `divIcon`): −197 kB (−60 kB gzip).
 - The missing `logo192.png` link, the CRA `browserslist` and a second Toastify stylesheet (v11 injects its own).

@@ -31,7 +31,6 @@ export function LensFlare({ source }: LensFlareProps) {
       new ShaderMaterial({
         uniforms: {
           uClouds: { value: null },
-          uCloudsOn: { value: 0 },
           uSource: { value: new Vector2() },
           uTap: { value: new Vector2() },
           uAspect: { value: 1 },
@@ -74,7 +73,6 @@ export function LensFlare({ source }: LensFlareProps) {
     (uniforms.uTap.value as Vector2).set(TAP / aspect, TAP);
     uniforms.uAspect.value = aspect;
     uniforms.uClouds.value = s.cloudCover;
-    uniforms.uCloudsOn.value = s.cloudCover ? 1 : 0;
     uniforms.uSpikes.value = sun ? 1 : 0.15;
     const color = sun ? scratch.color.copy(s.sunColor).convertLinearToSRGB() : scratch.color.copy(MOON_TINT);
     (uniforms.uColor.value as Color).copy(color).multiplyScalar(strength);

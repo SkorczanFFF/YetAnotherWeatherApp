@@ -24,7 +24,7 @@ vec4 noise3(vec3 p) {
 
 // Ray vs sphere centred at the Earth's centre; returns (near, far) or (-1).
 vec2 raySphere(vec3 ro, vec3 rd, float r) {
-  vec3 oc = ro + vec3(0.0, uEarthR, 0.0);
+  vec3 oc = ro + vec3(0.0, EARTH_R, 0.0);
   float b = dot(oc, rd);
   float c = dot(oc, oc) - r * r;
   float h = b * b - c;
@@ -34,7 +34,7 @@ vec2 raySphere(vec3 ro, vec3 rd, float r) {
 }
 
 float heightFraction(vec3 p) {
-  return (length(p + vec3(0.0, uEarthR, 0.0)) - uEarthR - uBase) / uThickness;
+  return (length(p + vec3(0.0, EARTH_R, 0.0)) - EARTH_R - uBase) / uThickness;
 }
 
 // Vertical density profile per cloud type: flat stratus, bottom-heavy
@@ -111,7 +111,7 @@ float density(vec3 p, float hf, bool detail) {
   base *= heightGradient(hf);
   base = remap(base, 1.0 - cov, 1.0, 0.0, 1.0) * cov;
   // A closed deck still has structure: undulating, lumpy base.
-  gColumn = mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, uCoverage));
+  gColumn = mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, c));
   base *= gColumn;
   if (base <= 0.0) return 0.0;
 

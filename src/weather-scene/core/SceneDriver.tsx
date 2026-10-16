@@ -35,7 +35,6 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
   const s = useSceneSignals();
   const lastCelestial = useRef(-Infinity);
   const lastParams = useRef<SceneParams | null>(null);
-  const lastFrame = useRef<ViewFrame | null>(null);
   const sunAz = useRef(0);
   const moonAz = useRef(0);
 
@@ -43,14 +42,9 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
     const time = params.time ?? Date.now();
     const facing = facingFor(params.lat);
 
-    // --- celestial (throttled; params/frame changes force a recompute) ---
-    if (
-      params !== lastParams.current ||
-      frame !== lastFrame.current ||
-      time - lastCelestial.current > CELESTIAL_INTERVAL
-    ) {
+    // --- celestial (throttled; a params change forces a recompute) ---
+    if (params !== lastParams.current || time - lastCelestial.current > CELESTIAL_INTERVAL) {
       lastParams.current = params;
-      lastFrame.current = frame;
       lastCelestial.current = time;
       const date = new Date(time);
       const sun = SunCalc.getPosition(date, params.lat, params.lon);

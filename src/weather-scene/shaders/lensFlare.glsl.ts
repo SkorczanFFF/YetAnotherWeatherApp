@@ -6,8 +6,7 @@
 // vertex shader reads the cloud cover around the source once per vertex.
 
 export const LENS_FLARE_VERT = /* glsl */ `
-uniform sampler2D uClouds;
-uniform float uCloudsOn;
+uniform sampler2D uClouds;  // the resolved cloud target (transparent 1×1 without one)
 uniform vec2 uSource;    // source uv; may lie off the frame
 uniform vec2 uTap;       // cloud-cover tap spacing, uv
 
@@ -24,7 +23,7 @@ void main() {
     + cover(uSource + vec2(uTap.x, 0.0)) + cover(uSource - vec2(uTap.x, 0.0))
     + cover(uSource + vec2(0.0, uTap.y)) + cover(uSource - vec2(0.0, uTap.y))) / 6.0;
   // A thin veil still lets a flare through; a cloud's body doesn't.
-  vClear = 1.0 - uCloudsOn * smoothstep(0.15, 0.75, c);
+  vClear = 1.0 - smoothstep(0.15, 0.75, c);
   gl_Position = vec4(position.xy, 1.0, 1.0);
 }
 `;
@@ -33,7 +32,7 @@ export const LENS_FLARE_FRAG = /* glsl */ `
 uniform vec2 uSource;
 uniform float uAspect;
 uniform vec3 uColor;     // display space, × strength
-uniform float uSpikes;   // diffraction spikes gain (the sun; ~0 for the moon)
+uniform float uSpikes;   // diffraction spikes gain (1 for the sun, faint for the moon)
 
 varying vec2 vUv;
 varying float vClear;

@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { PerformanceMonitor, Stats } from "@react-three/drei";
 import type { QualityTier, SceneParams } from "../weather/sceneParams";
@@ -30,15 +30,13 @@ import { TONE_EXPOSURE } from "./core/constants";
 
 export interface WeatherSceneDebugProps {
   /** fps graph + renderer.info probe. */
-  showPerf?: boolean;
+  showPerf: boolean;
   /** Increment to force a lightning strike. */
-  lightningNonce?: number;
+  lightningNonce: number;
 }
 
 interface WeatherSceneProps extends WeatherSceneDebugProps {
   params: SceneParams;
-  className?: string;
-  style?: React.CSSProperties;
 }
 
 interface SceneRootProps extends WeatherSceneDebugProps {
@@ -92,7 +90,7 @@ function SceneRoot({
       <Thunder
         enabled={params.thunder}
         cloudBaseM={params.cloudPhysics.baseM}
-        nonce={lightningNonce ?? 0}
+        nonce={lightningNonce}
         frame={frame}
         isMobile={isMobile}
       />
@@ -113,16 +111,7 @@ function SceneRoot({
   );
 }
 
-export function WeatherScene({
-  params,
-  className,
-  style,
-  ...debug
-}: WeatherSceneProps) {
-  const eventSource =
-    typeof document !== "undefined"
-      ? (document.body as HTMLElement)
-      : undefined;
+export function WeatherScene({ params, ...debug }: WeatherSceneProps) {
   const isMobile = useIsMobile();
   const [autoTier, setAutoTier] = useState<QualityTier>(() =>
     initialTier(isMobile),
@@ -135,14 +124,12 @@ export function WeatherScene({
 
   return (
     <div
-      className={className}
       style={{
         position: "absolute",
         inset: 0,
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        ...style,
       }}
     >
       <Canvas
@@ -158,7 +145,7 @@ export function WeatherScene({
         onCreated={({ gl }) => {
           gl.toneMappingExposure = TONE_EXPOSURE;
         }}
-        eventSource={eventSource}
+        eventSource={document.body}
         eventPrefix="client"
         style={{ display: "block" }}
       >

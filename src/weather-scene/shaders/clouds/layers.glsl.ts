@@ -21,7 +21,7 @@ const float MID_ALPHA = 0.8;   // peak opacity
 // cover field at a larger scale; a finer Worley breaks them into the
 // cell-and-gap texture, thinner where the cover thins out.
 void midLayer(vec3 ro, vec3 rd, float cosTheta, inout vec3 scat, inout float T) {
-  float tm = raySphere(ro, rd, uEarthR + uMidAlt).y;
+  float tm = raySphere(ro, rd, EARTH_R + uMidAlt).y;
   if (tm > 0.0 && tm < 120000.0) {
     vec2 xz = (ro + rd * tm).xz - uMidDrift;
     vec2 ranks = coverRank(xz * MID_CELL_SCALE, 0.5);
@@ -43,7 +43,7 @@ void midLayer(vec3 ro, vec3 rd, float cosTheta, inout vec3 scat, inout float T) 
 
 // Cirrus: thin streaks on a high shell, stretched along the wind, behind the volume.
 void cirrusLayer(vec3 ro, vec3 rd, float cosTheta, inout vec3 scat, inout float T) {
-  float tc = raySphere(ro, rd, uEarthR + uCirrusAlt).y;
+  float tc = raySphere(ro, rd, EARTH_R + uCirrusAlt).y;
   if (tc > 0.0 && tc < 160000.0) {
     // In the wind's frame; the drift comes in per lookup, already in tiles.
     vec2 q = (ro + rd * tc).xz;

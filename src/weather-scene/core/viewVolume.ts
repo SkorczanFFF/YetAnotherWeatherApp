@@ -19,7 +19,6 @@ import {
 // elevations — corners sit lower/higher only by less — so it's a superset.
 
 export interface ViewFrame {
-  pitch: number;
   /** Raw (unpadded) angles — used for celestial compression. */
   hHalfRaw: number;
   topElevRaw: number;
@@ -44,7 +43,6 @@ export function createViewFrame(aspect: number, parallaxAmount: number, coverHal
   const bottomElev = CAMERA_PITCH - vHalf - margin;
   const hHalf = Math.min(hHalfRaw + margin, MathUtils.degToRad(85));
   return {
-    pitch: CAMERA_PITCH,
     hHalfRaw,
     topElevRaw: CAMERA_PITCH + vHalf,
     topElev,
@@ -58,7 +56,7 @@ export function createViewFrame(aspect: number, parallaxAmount: number, coverHal
 
 /** Visible half-width (x) at horizontal distance `d` and height `y`. */
 export function halfWidthAt(f: ViewFrame, d: number, y: number): number {
-  const depth = d * Math.cos(f.pitch) + y * Math.sin(f.pitch);
+  const depth = d * Math.cos(CAMERA_PITCH) + y * Math.sin(CAMERA_PITCH);
   return Math.max(0, depth) * f.tanH;
 }
 

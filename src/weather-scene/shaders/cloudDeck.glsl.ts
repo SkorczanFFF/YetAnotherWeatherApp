@@ -9,6 +9,7 @@
 // minus the accumulated wind drift, so clouds move with the real wind.
 // Exp² fog towards the horizon colour (same maths and order as three's fog chunks).
 
+import { DECK_FAR } from "../core/worldFrame";
 import { CIRRUS_ALPHA, NOISE_RANK } from "./chunks.glsl";
 
 /** Noise tiles of the deck, scene units: the low cover (and its ×2.7 octave), the cirrus along / across the wind. */
@@ -39,7 +40,7 @@ uniform float uHigh;       // 0..1 high cloud cover
 uniform vec3 uLit;
 uniform vec3 uShade;
 uniform vec3 uHighColor;
-uniform float uFadeFar;
+const float FADE_FAR = ${DECK_FAR}.0;   // the deck fades out by here, scene units
 uniform float uFlash;
 uniform vec3 uFogColor;
 uniform float uFogDensity;  // exp² density per scene unit
@@ -83,7 +84,7 @@ void main() {
   vec3 col = (colLow * aLow + uHighColor * aHigh * (1.0 - aLow)) / max(a, 1e-4);
 
   float dist = length(vWorld.xz - cameraPosition.xz);
-  a *= 1.0 - smoothstep(uFadeFar * 0.55, uFadeFar, dist);
+  a *= 1.0 - smoothstep(FADE_FAR * 0.55, FADE_FAR, dist);
   col += uFlash * 0.45;
 
   gl_FragColor = vec4(col, a);

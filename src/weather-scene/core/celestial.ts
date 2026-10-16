@@ -1,6 +1,6 @@
 import { type Camera, MathUtils, type Vector3, Vector4 } from "three";
 import type { ViewFrame } from "./viewVolume";
-import { directionFromRelative } from "./worldFrame";
+import { CAMERA_PITCH, directionFromRelative } from "./worldFrame";
 
 // Sun and moon on screen: real altitude/azimuth → the display direction
 // squeezed into the frame (see CLAUDE.md › World convention), and the screen
@@ -59,10 +59,9 @@ function displayAzimuth(rel: number, alt: number, frame: ViewFrame, crossShare =
       : Math.sign(u) * (g0 + ((EDGE_NDC - g0) * (a - crossShare)) / (1 - crossShare));
   // x·tanH·(cosφ·cos e·cos p + sin e·sin p) = sinφ·cos e, solved for φ.
   const k = x * Math.tan(frame.hHalfRaw);
-  const ce = Math.cos(alt);
-  const A = ce;
-  const B = k * ce * Math.cos(frame.pitch);
-  const C = k * Math.sin(alt) * Math.sin(frame.pitch);
+  const A = Math.cos(alt);
+  const B = k * A * Math.cos(CAMERA_PITCH);
+  const C = k * Math.sin(alt) * Math.sin(CAMERA_PITCH);
   return Math.atan2(B, A) + Math.asin(MathUtils.clamp(C / Math.hypot(A, B), -1, 1));
 }
 

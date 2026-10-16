@@ -3,14 +3,13 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { type Data3DTexture, MathUtils, Matrix4, type Mesh, Vector2, Vector3, type Vector4 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
 import type { VolumetricBudget } from "../../core/quality";
-import { useSceneSignals } from "../../core/sceneSignals";
+import { NO_CLOUD_COVER, useSceneSignals } from "../../core/sceneSignals";
 import { CAMERA_ALTITUDE_M, CLOUD_TIMELAPSE, METRES_PER_UNIT } from "../../core/worldFrame";
 import { MAX_DT, RENDER_ORDER } from "../../core/constants";
 import { getCloudNoise3D } from "./cloudNoise3D";
 import { highDrift, lowDrift } from "./cloudDrift";
 import { cloudLighting, createCloudLight } from "./cloudLighting";
 import {
-  createClearSkyTexture,
   createCloudTargets,
   createCompositeMaterial,
   createMarchPass,
@@ -53,22 +52,20 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
   useEffect(() => () => disposeCloudTargets(targets), [targets]);
 
   const light = useMemo(createCloudLight, []);
-  const march = useMemo(() => createMarchPass(budget, light), []);
+  const march = useMemo(() => createMarchPass(light), [light]);
   useEffect(() => () => march.dispose(), [march]);
   const resolve = useMemo(createResolvePass, []);
   useEffect(() => () => resolve.dispose(), [resolve]);
-  const rays = useMemo(() => createRaysPass(budget), []);
+  const rays = useMemo(createRaysPass, []);
   useEffect(() => () => rays.dispose(), [rays]);
   const composite = useMemo(createCompositeMaterial, []);
   useEffect(() => () => composite.dispose(), [composite]);
   const rayPasses = useMemo(() => ({ rays, composite, targets }), [rays, composite, targets]);
 
-  const clearSky = useMemo(createClearSkyTexture, []);
-  useEffect(() => () => clearSky.dispose(), [clearSky]);
-  // The potato deck has no cloud target: readers fall back to no occlusion.
+  // The potato deck has no cloud target: readers see no occlusion.
   useEffect(
     () => () => {
-      s.cloudCover = null;
+      s.cloudCover = NO_CLOUD_COVER;
     },
     [s],
   );
@@ -115,9 +112,9 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     // A clear sky skips the march but keeps the glare round the sun.
     if (sh.coverage < 0.015 && sh.high < 0.01 && sh.midLayer < 0.01) {
       st.historyValid = false;
-      composite.uniforms.uClouds.value = clearSky;
-      s.cloudCover = clearSky;
-      mesh.visible = drawRays(gl, camera, s, clearSky, sh.coverage, budget.raySamples, rayPasses);
+      composite.uniforms.uClouds.value = NO_CLOUD_COVER;
+      s.cloudCover = NO_CLOUD_COVER;
+      mesh.visible = drawRays(gl, camera, s, NO_CLOUD_COVER, sh.coverage, budget.raySamples, rayPasses);
       return;
     }
     mesh.visible = true;

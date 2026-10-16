@@ -1,6 +1,5 @@
 import {
   Color,
-  DataTexture,
   HalfFloatType,
   LinearFilter,
   Matrix4,
@@ -10,8 +9,6 @@ import {
   Vector4,
   WebGLRenderTarget,
 } from "three";
-import type { VolumetricBudget } from "../../core/quality";
-import { EARTH_RADIUS_M } from "../../core/worldFrame";
 import { fullscreenVert } from "../../shaders/fullscreen.glsl";
 import { CLOUD_MARCH_FRAG } from "../../shaders/clouds/march.glsl";
 import { CLOUD_RESOLVE_FRAG } from "../../shaders/clouds/resolve.glsl";
@@ -56,7 +53,7 @@ export function disposeCloudTargets(targets: CloudTargets): void {
 }
 
 /** The march's lighting uniforms are `light`'s own objects: cloudLighting() writes them in place. */
-export function createMarchPass(budget: VolumetricBudget, light: CloudLight): FullscreenPass {
+export function createMarchPass(light: CloudLight): FullscreenPass {
   return fullscreenPass(
     new ShaderMaterial({
       uniforms: {
@@ -66,7 +63,6 @@ export function createMarchPass(budget: VolumetricBudget, light: CloudLight): Fu
         uInvProj: { value: new Matrix4() },
         uCamWorld: { value: new Matrix4() },
         uCamPos: { value: new Vector3() },
-        uEarthR: { value: EARTH_RADIUS_M },
         uBase: { value: 1200 },
         uThickness: { value: 1500 },
         uCoverage: { value: 0 },
@@ -92,9 +88,9 @@ export function createMarchPass(budget: VolumetricBudget, light: CloudLight): Fu
         uAmbientBottom: { value: light.ambientBottom },
         uHazeColor: { value: light.hazeColor },
         uHazeDist: { value: light.hazeDist },
-        uMaxDist: { value: budget.maxDistance },
-        uSteps: { value: budget.steps },
-        uLightSteps: { value: budget.lightSteps },
+        uMaxDist: { value: 0 },
+        uSteps: { value: 0 },
+        uLightSteps: { value: 0 },
         uFlash: { value: 0 },
         uFlashPos: { value: new Vector3() },
       },
@@ -144,7 +140,7 @@ export function createResolvePass(): FullscreenPass {
   );
 }
 
-export function createRaysPass(budget: VolumetricBudget): FullscreenPass {
+export function createRaysPass(): FullscreenPass {
   return fullscreenPass(
     new ShaderMaterial({
       uniforms: {
@@ -152,7 +148,7 @@ export function createRaysPass(budget: VolumetricBudget): FullscreenPass {
         uSunUv: { value: new Vector2() },
         uAspect: { value: 1 },
         uHorizonV: { value: 0 },
-        uSamples: { value: budget.raySamples },
+        uSamples: { value: 0 },
       },
       vertexShader: fullscreenVert(),
       fragmentShader: CLOUD_RAYS_FRAG,
@@ -180,11 +176,4 @@ export function createCompositeMaterial(): ShaderMaterial {
     depthTest: false,
     depthWrite: false,
   });
-}
-
-/** Stands in for the cloud target under a clear sky (transparent). */
-export function createClearSkyTexture(): DataTexture {
-  const t = new DataTexture(new Uint8Array(4), 1, 1);
-  t.needsUpdate = true;
-  return t;
 }
