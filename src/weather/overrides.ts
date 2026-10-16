@@ -4,7 +4,7 @@ import { DateTime } from "luxon";
 import { clamp, clamp01 } from "../utils/math";
 import { dewPointFromHumidity, physicsFor } from "./cloudPhysics";
 import { RIME_VISIBILITY_M } from "./fog";
-import { finalizePrecip } from "./precip";
+import { finalizePrecip, type PrecipState } from "./precip";
 import type { CloudLayers, SceneParams } from "./sceneParams";
 import type { QualityTier } from "../weather-scene/core/quality";
 
@@ -109,15 +109,9 @@ function resolveTime(o: SceneOverrides, timezone: string): number | null {
   return dt.toMillis();
 }
 
-export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
-  const thunder = pick(o.thunder, base.thunder);
-  const hail = pick(o.hail, base.precip.hail);
-  const drizzle = pick(o.drizzle, base.precip.drizzle);
-  const grains = pick(o.grains, base.precip.grains);
-  const showers = pick(o.showers, base.precip.showers);
-
-  // Pinning a precipitation flag without a rate should still show something;
-  // measured weather (e.g. dry thundersnow) keeps its rates.
+/** Rates and flags with the pins applied; a flag pinned on with no rate still shows something. */
+function precipFromOverrides(base: SceneParams, o: SceneOverrides, temperatureC: number): PrecipState {
+  // Measured weather (e.g. dry thundersnow) keeps its rates.
   const pinnedOn = (v: Auto<boolean> | undefined) => isSet(v) && v;
   let baseRain = base.precip.rainMmH;
   if (baseRain === 0 && !isSet(o.snow)) {
@@ -128,27 +122,45 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
   let baseSnow = base.precip.snowCmH;
   if (baseSnow === 0 && pinnedOn(o.grains) && !isSet(o.rain)) baseSnow = 0.4;
 
-  const rainMmH = Math.max(0, pick(o.rain, baseRain));
-  const snowCmH = Math.max(0, pick(o.snow, baseSnow));
-  const temperatureC = pick(o.temperature, base.temperatureC);
-  const precipitating = rainMmH > 0 || snowCmH > 0;
+  return finalizePrecip(Math.max(0, pick(o.rain, baseRain)), Math.max(0, pick(o.snow, baseSnow)), {
+    drizzle: pick(o.drizzle, base.precip.drizzle),
+    freezing: pick(o.freezing, base.precip.freezing || temperatureC < 0),
+    showers: pick(o.showers, base.precip.showers),
+    hail: pick(o.hail, base.precip.hail),
+    grains: pick(o.grains, base.precip.grains),
+  });
+}
 
+/** Cloud layers with the pins applied; `touched` when they differ from the model's. */
+function cloudsFromOverrides(
+  base: SceneParams,
+  o: SceneOverrides,
+  thunder: boolean,
+  precip: PrecipState,
+  precipPinned: boolean,
+): { clouds: CloudLayers; touched: boolean } {
   let low = pick(o.cloudLow, base.clouds.low);
   // Precipitation pinned in the debug menu brings its deck to fall from.
   // (Measured weather keeps the model's cover — see sceneParams.ts fromWeather.)
-  const precipPinned = PRECIP_KEYS.some((k) => isSet(o[k]));
   if (!isSet(o.cloudLow) && precipPinned) {
     if (thunder) low = Math.max(low, 0.95);
-    else if (precipitating) low = Math.max(low, showers ? 0.6 : 0.85);
+    else if (precip.rainMmH > 0 || precip.snowCmH > 0) low = Math.max(low, precip.showers ? 0.6 : 0.85);
   }
   const mid = pick(o.cloudMid, base.clouds.mid);
   const high = pick(o.cloudHigh, base.clouds.high);
-  const layersTouched =
-    low !== base.clouds.low || isSet(o.cloudMid) || isSet(o.cloudHigh);
-  const total = layersTouched
+  const touched = low !== base.clouds.low || isSet(o.cloudMid) || isSet(o.cloudHigh);
+  const total = touched
     ? clamp01(1 - (1 - low) * (1 - mid * 0.8) * (1 - high * 0.4))
     : base.clouds.total;
-  const clouds: CloudLayers = { total, low, mid, high };
+  return { clouds: { total, low, mid, high }, touched };
+}
+
+export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParams {
+  const thunder = pick(o.thunder, base.thunder);
+  const temperatureC = pick(o.temperature, base.temperatureC);
+  const precip = precipFromOverrides(base, o, temperatureC);
+  const precipPinned = PRECIP_KEYS.some((k) => isSet(o[k]));
+  const { clouds, touched: layersTouched } = cloudsFromOverrides(base, o, thunder, precip, precipPinned);
 
   const rime = pick(o.rime, base.fog.rime);
   let visibilityM = pick(o.visibility, base.fog.visibilityM);
@@ -183,13 +195,7 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
     timezone: base.timezone,
     clouds,
     wind,
-    precip: finalizePrecip(rainMmH, snowCmH, {
-      drizzle,
-      freezing: pick(o.freezing, base.precip.freezing || temperatureC < 0),
-      showers,
-      hail,
-      grains,
-    }),
+    precip,
     thunder,
     fog: { visibilityM, rime },
     temperatureC,

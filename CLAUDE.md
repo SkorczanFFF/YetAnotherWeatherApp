@@ -55,7 +55,7 @@ src/
     precip.ts                   PrecipState, gauge/code → rates (fallbacks), finalizePrecip (flags only where something falls)
     fog.ts                      visibility thresholds (fog, fog-code cap, rime cap, clear default)
     cloudPhysics.ts             API atmosphere → cloud base/top/τ/convection/winds aloft (with fallbacks); physicsFor(scene)
-                                is the one way in; deckCover (drawn shell) vs skyClosure (unweighted), deckClosing, TWO_STREAM_K
+                                is the one way in, deriveCloudPhysics composes named steps (convection, base, top, layer heights, optical depth, winds aloft); deckCover (drawn shell) vs skyClosure (unweighted), deckClosing, TWO_STREAM_K
     scenePresets.ts             debug presets — one per weather-catalogue row
     codes.ts                    the WMO table: label, kind, intensity, flags, cover fallback (scene, labels, icons)
     units.ts                    metric/imperial: API unit names, labels, conversions to SI
@@ -92,7 +92,7 @@ src/
                                 cloudDrift (drifts wrapped by the noise tile periods — float32 stays exact on a page left open),
                                 shellTargets (weather → shell incl. storm gloom and haze distance, pure; withDerived), cloudNoise3D (generator + cache), fullscreenPass
       CloudDeck.tsx             "potato"-tier fallback: flat world-space plane at DECK_Y
-      precip/                   three.quarks: Precipitation (static KINDS table; rebuilt only when the set of kinds changes,
+      precip/                   three.quarks: Precipitation (kinds.ts: the static KINDS table and the weather → specs mapping, pure; rebuilt only when the set of kinds changes,
                                 rate/fall/colour/sway updated live), ViewVolumeEmitter, textures
       Thunder.tsx               strike scheduler + one persistent LineSegments2 geometry (written in place per strike), drives signals.flash
       DiamondDust.tsx           drei <Sparkles> at ≤ −10 °C, clear and humid (weather/frost.ts::hasDiamondDust)

@@ -226,12 +226,20 @@ const TAU_PER_KM_RAIN = 35;
 const MAX_OPTICAL_DEPTH = 250;
 const TROPOPAUSE_M = 11500;
 
-function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
-  const atm = input.atmosphere;
-  const levels = atm?.levels ?? [];
-  const { clouds, override } = input;
+type Levels = AtmosphereSI["levels"];
 
-  // --- stability ---------------------------------------------------------
+interface Convection {
+  cape: number;
+  liftedIndex: number | null;
+  /** 0 stable … 1 deep convection. */
+  convection: number;
+  /** Showers or a storm: towers may grow past the shallow cap. */
+  deep: boolean;
+}
+
+function estimateConvection(input: CloudPhysicsInput): Convection {
+  const atm = input.atmosphere;
+  const { clouds, override } = input;
   const cape = Math.max(
     0,
     override?.cape ??
@@ -248,44 +256,55 @@ function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   // need showers or a storm.
   const deep = input.thunder || input.showers;
   if (!deep) convection = Math.min(convection, SHALLOW_CONVECTION);
+  return { cape, liftedIndex: li, convection, deep };
+}
 
-  // --- base --------------------------------------------------------------
+/** Low-cloud base above ground, m: the LCL, lowered under an inversion or in fog. */
+function estimateBase(input: CloudPhysicsInput, convection: number): number {
+  const blh = input.atmosphere?.boundaryLayerM ?? null;
   const spread = Math.max(0, input.temperatureC - input.dewPointC);
   let baseM = clamp(125 * spread, 60, 4000);
-  const blh = atm?.boundaryLayerM ?? null;
-  const lowBand = band(levels, 0, LOW_BAND_M);
   // A stratiform deck sits under the inversion even when the surface air is drier.
-  if (blh != null && clouds.low > 0.6 && convection < 0.3) {
+  if (blh != null && input.clouds.low > 0.6 && convection < 0.3) {
     baseM = Math.min(baseM, Math.max(blh - 250, 150));
   }
   if (input.fog) baseM = Math.min(baseM, 120);
-  baseM = override?.baseM ?? baseM;
+  return input.override?.baseM ?? baseM;
+}
 
-  // --- top ---------------------------------------------------------------
+/** Low-cloud top above ground, m: the inversion and the column for a stable deck, CAPE for towers. */
+function estimateTop(input: CloudPhysicsInput, levels: Levels, baseM: number, c: Convection): number {
+  const blh = input.atmosphere?.boundaryLayerM ?? null;
+  const lowBand = band(levels, 0, LOW_BAND_M);
   // The inversion caps a deck inside the boundary layer, at least THIN_DECK_M
   // thick (a lifting fog, thin stratus); a boundary layer below the base says nothing.
   let stableTop =
     blh != null && blh >= baseM
       ? Math.max(blh, baseM + THIN_DECK_M)
-      : baseM + (clouds.low > 0.8 ? 600 : 900);
+      : baseM + (input.clouds.low > 0.8 ? 600 : 900);
   if (lowBand && lowBand.topM + 150 > stableTop) stableTop = lowBand.topM + 150;
   // With no cloudy level in the column, the first clear level above the
   // base bounds the deck from above.
   const clearAbove = lowBand ? null : lowestClearAbove(levels, baseM + THIN_DECK_M);
   if (clearAbove != null) stableTop = Math.min(stableTop, clearAbove);
   if (input.precipitating) stableTop = Math.max(stableTop, baseM + 1500);
-  let convectiveTop = Math.min(TROPOPAUSE_M, baseM + 500 + 4.2 * cape);
-  if (!deep) {
+  let convectiveTop = Math.min(TROPOPAUSE_M, baseM + 500 + 4.2 * c.cape);
+  if (!c.deep) {
     // The towers reach no higher than the model puts any cloud in the
     // column (cirrus aside); with none up there, fair-weather to moderate cumulus.
     const columnTop = highestCloud(levels, CLEAR_LEVEL_COVER, HIGH_BAND_M);
-    const shallowTop = baseM + 800 + 0.6 * Math.min(cape, 2000);
+    const shallowTop = baseM + 800 + 0.6 * Math.min(c.cape, 2000);
     convectiveTop = Math.min(convectiveTop, Math.max(shallowTop, columnTop + 300));
   }
-  let topM = lerp(stableTop, Math.max(stableTop, convectiveTop), convection);
-  topM = Math.max(override?.topM ?? topM, baseM + 150);
+  const topM = lerp(stableTop, Math.max(stableTop, convectiveTop), c.convection);
+  return Math.max(input.override?.topM ?? topM, baseM + 150);
+}
 
-  // --- layer heights -----------------------------------------------------
+type Layers = Pick<CloudPhysics, "midAltM" | "highAltM" | "midDeck" | "midLayer" | "deckBaseM" | "deckTopM">;
+
+/** Mid and cirrus heights, and where the one drawn deck sits. */
+function layerHeights(input: CloudPhysicsInput, levels: Levels, baseM: number, topM: number, convection: number): Layers {
+  const { clouds } = input;
   const midBand = band(levels, LOW_BAND_M, HIGH_BAND_M);
   const highBand = band(levels, HIGH_BAND_M, 14000);
   const midAltM = midBand?.meanM ?? 4000;
@@ -302,15 +321,25 @@ function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     (clouds.low < 0.3 || lowLevelsClear) &&
     clouds.mid > Math.max(0.15, clouds.low * 1.3) &&
     convection < 0.5;
-  const midLayer = !midDeck && clouds.mid >= MID_LAYER_MIN;
-  const deckBaseM = midDeck ? midAltM - MID_DECK_BELOW_M : baseM;
-  const deckTopM = midDeck ? midAltM + MID_DECK_ABOVE_M : topM;
+  return {
+    midAltM,
+    highAltM,
+    midDeck,
+    midLayer: !midDeck && clouds.mid >= MID_LAYER_MIN,
+    deckBaseM: midDeck ? midAltM - MID_DECK_BELOW_M : baseM,
+    deckTopM: midDeck ? midAltM + MID_DECK_ABOVE_M : topM,
+  };
+}
 
-  // --- optical depth (of the drawn deck) ---------------------------------
+type OpticalDepth = Pick<CloudPhysics, "opticalDepth" | "opticalDepthMeasured" | "directFraction">;
+
+/** τ of the drawn deck: estimated from its thickness, blended towards the radiation's by day. */
+function estimateOpticalDepth(input: CloudPhysicsInput, deckBaseM: number, deckTopM: number): OpticalDepth {
+  const atm = input.atmosphere;
   const thicknessKm = (deckTopM - deckBaseM) / 1000;
   // Only low/mid cloud dims the sun much — cirrus is τ ≲ 1 — so the
   // radiation is attributed to that cover alone.
-  const deck = skyClosure(clouds);
+  const deck = skyClosure(input.clouds);
   const closed = deckClosing(deck);
   const tauPerKm = input.precipitating ? TAU_PER_KM_RAIN : lerp(TAU_PER_KM_CUMULUS, TAU_PER_KM_DECK, closed);
   const estimated = clamp(thicknessKm * tauPerKm * (input.thunder ? 1.6 : 1), 0.5, MAX_OPTICAL_DEPTH);
@@ -345,41 +374,46 @@ function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     ? MIN_RAIN_OPTICAL_DEPTH
     : lerp(MIN_OPTICAL_DEPTH, MIN_DECK_OPTICAL_DEPTH, closed);
   opticalDepth = clamp(opticalDepth, minDepth, MAX_OPTICAL_DEPTH);
-  if (override?.opticalDepth != null) {
-    opticalDepth = override.opticalDepth;
+  if (input.override?.opticalDepth != null) {
+    opticalDepth = input.override.opticalDepth;
     opticalDepthMeasured = false;
   }
+  return { opticalDepth, opticalDepthMeasured, directFraction };
+}
 
-  // --- winds aloft -------------------------------------------------------
-  // Without upper-air data, veer and strengthen the surface wind (Ekman).
+/** 850 and 300 hPa winds; without upper-air data, the surface wind veered and strengthened (Ekman). */
+function windsAloft(input: CloudPhysicsInput): Pick<CloudPhysics, "windLow" | "windHigh"> {
+  const atm = input.atmosphere;
   const surface = input.surfaceWind;
-  const windLow = atm?.windLow ?? {
-    speedMs: Math.max(2, surface.speedMs * 1.7),
-    fromDeg: (surface.fromDeg + 15) % 360,
+  return {
+    windLow: atm?.windLow ?? {
+      speedMs: Math.max(2, surface.speedMs * 1.7),
+      fromDeg: (surface.fromDeg + 15) % 360,
+    },
+    windHigh: atm?.windHigh ?? {
+      speedMs: surface.speedMs * 3.5 + 8,
+      fromDeg: (surface.fromDeg + 30) % 360,
+    },
   };
-  const windHigh = atm?.windHigh ?? {
-    speedMs: surface.speedMs * 3.5 + 8,
-    fromDeg: (surface.fromDeg + 30) % 360,
-  };
+}
 
+function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
+  const atm = input.atmosphere;
+  const levels = atm?.levels ?? [];
+  const c = estimateConvection(input);
+  const baseM = estimateBase(input, c.convection);
+  const topM = estimateTop(input, levels, baseM, c);
+  const layers = layerHeights(input, levels, baseM, topM, c.convection);
   return {
     baseM,
     topM,
-    deckBaseM,
-    deckTopM,
-    midAltM,
-    midDeck,
-    midLayer,
-    highAltM,
-    opticalDepth,
-    opticalDepthMeasured,
-    directFraction,
-    convection,
-    cape,
-    liftedIndex: li,
-    boundaryLayerM: blh,
+    ...layers,
+    ...estimateOpticalDepth(input, layers.deckBaseM, layers.deckTopM),
+    convection: c.convection,
+    cape: c.cape,
+    liftedIndex: c.liftedIndex,
+    boundaryLayerM: atm?.boundaryLayerM ?? null,
     freezingLevelM: atm?.freezingLevelM ?? Math.max(0, input.temperatureC / LAPSE_K_PER_M),
-    windLow,
-    windHigh,
+    ...windsAloft(input),
   };
 }
