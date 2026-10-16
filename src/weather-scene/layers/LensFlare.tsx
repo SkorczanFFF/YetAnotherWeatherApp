@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial, Vector2, Vector4 } from "three";
+import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial, Vector2 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
 import { RENDER_ORDER } from "../core/constants";
+import { projectToScreen, type ScreenPoint } from "../core/celestial";
 import { LENS_FLARE_FRAG, LENS_FLARE_VERT } from "../shaders/lensFlare.glsl";
 
 /** Display brightness of the sun's flare at full strength (tuned by eye). */
@@ -13,7 +14,8 @@ const MOON_TINT = new Color("#dfe7ff");
 /** Cloud-cover taps around the source, frame heights. */
 const TAP = 0.012;
 
-const scratch = { clip: new Vector4(), color: new Color() };
+const scratch = { color: new Color() };
+const onScreen: ScreenPoint = { u: 0, v: 0, w: 0, offFrame: 0 };
 
 interface LensFlareProps {
   source: "sun" | "moon";
@@ -54,20 +56,13 @@ export function LensFlare({ source }: LensFlareProps) {
     const sun = source === "sun";
     const dir = sun ? s.sunDir : s.moonDir;
     const altDeg = (sun ? s.sunAlt : s.moonAlt) * MathUtils.RAD2DEG;
-    const camera = state.camera;
-    const clip = scratch.clip
-      .set(dir.x, dir.y, dir.z, 0)
-      .applyMatrix4(camera.matrixWorldInverse)
-      .applyMatrix4(camera.projectionMatrix);
-    const u = (clip.x / clip.w) * 0.5 + 0.5;
-    const v = (clip.y / clip.w) * 0.5 + 0.5;
-    const offFrame = Math.max(-u, u - 1, -v, v - 1, 0);
+    const { u, v, w, offFrame } = projectToScreen(dir, state.camera, onScreen);
     const weather = (1 - s.overcast) * (1 - MathUtils.smoothstep(s.haze, 0.35, 0.85));
     const body = sun
       ? MathUtils.smoothstep(altDeg, -1, 2)
       : s.night * s.moonIntensity * MathUtils.smoothstep(s.moonFraction, 0.4, 1) * MathUtils.smoothstep(altDeg, 0, 3);
     const strength =
-      clip.w > 0 ? body * weather * (1 - MathUtils.smoothstep(offFrame, 0, 0.15)) * (sun ? SUN_GAIN : MOON_GAIN) : 0;
+      w > 0 ? body * weather * (1 - MathUtils.smoothstep(offFrame, 0, 0.15)) * (sun ? SUN_GAIN : MOON_GAIN) : 0;
     mesh.visible = strength > 0.002;
     if (!mesh.visible) return;
 

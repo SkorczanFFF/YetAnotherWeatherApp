@@ -13,6 +13,13 @@ float remap(float v, float l0, float h0, float l1, float h1) {
 }
 `;
 
+/** Interleaved gradient noise — cheap per-pixel jitter, decorrelated per frame. */
+export const IGN = /* glsl */ `
+float ign(vec2 p) {
+  return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
+}
+`;
+
 /** Octave weights of every Worley FBM (generator and samplers must agree). */
 export const FBM_WEIGHTS = /* glsl */ `
 const vec3 FBM_WEIGHTS = vec3(0.625, 0.25, 0.125);

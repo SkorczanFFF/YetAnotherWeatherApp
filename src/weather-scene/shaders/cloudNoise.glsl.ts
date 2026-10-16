@@ -6,7 +6,7 @@
 //       sampling) and the high-frequency detail used to erode edges.
 // Everything wraps with the tile period, so wind can scroll it forever.
 // Changing it shifts the noise statistics: re-measure COVER_NOISE and
-// CIRRUS_NOISE in volumetricClouds.glsl.ts (the coverage calibration).
+// CIRRUS_NOISE in clouds/density.glsl.ts and clouds/layers.glsl.ts (the coverage calibration).
 
 import { FBM_WEIGHTS, REMAP } from "./chunks.glsl";
 

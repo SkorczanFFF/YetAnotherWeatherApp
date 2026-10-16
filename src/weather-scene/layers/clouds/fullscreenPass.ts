@@ -14,3 +14,5 @@ export function fullscreenPass(material: ShaderMaterial) {
     },
   };
 }
+
+export type FullscreenPass = ReturnType<typeof fullscreenPass>;
