@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { Sparkles } from "@react-three/drei";
 import type { Material, Points } from "three";
 import type { SceneParams } from "../../weather/sceneParams";
+import { hasDiamondDust } from "../../weather/frost";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
 import { RENDER_ORDER } from "../core/constants";
 import { DIAMOND_DUST } from "../core/palette";
@@ -10,17 +11,6 @@ interface DiamondDustProps {
   params: SceneParams;
   frame: ViewFrame;
   count: number;
-}
-
-/** Ice crystals glitter in very cold, clear, humid air. */
-function hasDiamondDust(params: SceneParams): boolean {
-  return (
-    params.temperatureC <= -10 &&
-    params.clouds.total < 0.5 &&
-    params.humidity >= 0.7 &&
-    params.precip.rainMmH === 0 &&
-    params.precip.snowCmH === 0
-  );
 }
 
 const DEPTH = 14;

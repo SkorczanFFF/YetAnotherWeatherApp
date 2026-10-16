@@ -1,11 +1,11 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { PerformanceMonitor, Stats } from "@react-three/drei";
-import type { QualityTier, SceneParams } from "../weather/sceneParams";
+import type { SceneParams } from "../weather/sceneParams";
 import { CameraRig } from "./core/CameraRig";
 import { FrameRateGate } from "./core/FrameRateGate";
 import { useIsMobile } from "./core/useIsMobile";
-import { initialTier, lowerTier, QUALITY, type QualityBudget } from "./core/quality";
+import { initialTier, lowerTier, QUALITY, type QualityBudget, type QualityTier } from "./core/quality";
 import { createSceneSignals, SceneSignalsProvider } from "./core/sceneSignals";
 import { SceneDriver } from "./core/SceneDriver";
 import { UiBacklight } from "./core/UiBacklight";
@@ -28,18 +28,23 @@ import { PerfProbe } from "./debug/PerfProbe";
 import { perfStats } from "./debug/perfStats";
 import { TONE_EXPOSURE } from "./core/constants";
 
-export interface WeatherSceneDebugProps {
+/** How the scene is viewed (not the weather): tier, parallax, debug tools. */
+export interface WeatherSceneViewProps {
+  /** Pinned quality tier; null = auto (device + PerformanceMonitor decide). */
+  quality: QualityTier | null;
+  /** Camera parallax amount, 0..1. */
+  parallax: number;
   /** fps graph + renderer.info probe. */
   showPerf: boolean;
   /** Increment to force a lightning strike. */
   lightningNonce: number;
 }
 
-interface WeatherSceneProps extends WeatherSceneDebugProps {
+interface WeatherSceneProps extends WeatherSceneViewProps {
   params: SceneParams;
 }
 
-interface SceneRootProps extends WeatherSceneDebugProps {
+interface SceneRootProps extends Omit<WeatherSceneViewProps, "quality"> {
   params: SceneParams;
   budget: QualityBudget;
   isMobile: boolean;
@@ -54,6 +59,7 @@ function SceneRoot({
   params,
   budget,
   isMobile,
+  parallax,
   showPerf,
   lightningNonce,
 }: SceneRootProps) {
@@ -62,14 +68,14 @@ function SceneRoot({
   const aspect = size.width / Math.max(1, size.height);
   const coverHalf = useCoverColumn(size.width);
   const frame = useMemo(
-    () => createViewFrame(aspect, params.parallaxAmount, coverHalf),
-    [aspect, params.parallaxAmount, coverHalf],
+    () => createViewFrame(aspect, parallax, coverHalf),
+    [aspect, parallax, coverHalf],
   );
 
   return (
     <SceneSignalsProvider value={signals}>
       <FrameRateGate fps={budget.fps} />
-      <CameraRig parallaxAmount={params.parallaxAmount} />
+      <CameraRig parallaxAmount={parallax} />
       <SceneDriver params={params} frame={frame} />
       <UiBacklight thunder={params.thunder} />
 
@@ -111,12 +117,12 @@ function SceneRoot({
   );
 }
 
-export function WeatherScene({ params, ...debug }: WeatherSceneProps) {
+export function WeatherScene({ params, quality, ...view }: WeatherSceneProps) {
   const isMobile = useIsMobile();
   const [autoTier, setAutoTier] = useState<QualityTier>(() =>
     initialTier(isMobile),
   );
-  const tier = params.quality ?? autoTier;
+  const tier = quality ?? autoTier;
   const budget = QUALITY[tier];
   useEffect(() => {
     perfStats.tier = tier;
@@ -154,14 +160,14 @@ export function WeatherScene({ params, ...debug }: WeatherSceneProps) {
           flipflops={3}
           onDecline={() => {
             // A pinned tier's fps says nothing about the auto one.
-            if (!params.quality) setAutoTier(lowerTier);
+            if (!quality) setAutoTier(lowerTier);
           }}
         />
         <SceneRoot
           params={params}
           budget={budget}
           isMobile={isMobile}
-          {...debug}
+          {...view}
         />
       </Canvas>
     </div>

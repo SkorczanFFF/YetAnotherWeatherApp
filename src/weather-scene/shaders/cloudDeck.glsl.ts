@@ -9,9 +9,10 @@
 // minus the accumulated wind drift, so clouds move with the real wind.
 // Exp² fog towards the horizon colour (same maths and order as three's fog chunks).
 
-import { DECK_FAR } from "../core/worldFrame";
 import { CIRRUS_ALPHA, NOISE_RANK } from "./chunks.glsl";
 
+/** The deck extends this far (scene units) before fading into the horizon. */
+export const DECK_FAR = 2400;
 /** Noise tiles of the deck, scene units: the low cover (and its ×2.7 octave), the cirrus along / across the wind. */
 export const DECK_LOW_TILE = 220;
 export const DECK_LOW_OCTAVE = 2.7;

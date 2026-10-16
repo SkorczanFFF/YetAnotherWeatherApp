@@ -21,6 +21,8 @@ export const CAMERA_PITCH = MathUtils.degToRad(22);
 export const LOOK_DISTANCE = 30;
 /** Camera translation (scene units) at parallaxAmount = 1. */
 export const PARALLAX_RANGE = 1.5;
+/** Parallax amount unless the debug menu pins one (0..1). */
+export const DEFAULT_PARALLAX = 0.15;
 
 /** One scene unit ≈ 20 m; decides how visibility in metres maps onto fog density. */
 export const METRES_PER_UNIT = 20;
@@ -32,14 +34,6 @@ export const heatShimmer = (temperatureC: number) => MathUtils.smoothstep(temper
 export const effectiveVisibilityM = (visibilityM: number, temperatureC: number) =>
   Math.max(50, visibilityM * (1 - heatShimmer(temperatureC) * 0.5));
 
-/** Exp² fog density per scene unit: Koschmieder, 95 % extinction at the visibility (√3 ≈ 1.73). */
-export const fogDensityFor = (visibilityM: number) =>
-  MathUtils.clamp(1.73 / (visibilityM / METRES_PER_UNIT), 0.0004, 0.15);
-
-/** Fallback ("potato" tier) cloud deck plane height (≈ 1.2 km). */
-export const DECK_Y = 60;
-/** Deck extends this far before fading into the horizon. */
-export const DECK_FAR = 2400;
 /** Earth radius for the volumetric cloud shell (curvature makes clouds converge at the horizon). */
 export const EARTH_RADIUS_M = 6371000;
 /** Eye height above ground for the volumetric raymarch. */

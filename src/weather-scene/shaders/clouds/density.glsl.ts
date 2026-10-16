@@ -89,13 +89,10 @@ vec2 coverRank(vec2 xz, float hf) {
   return vec2(noiseRank(n, COVER_NOISE), noiseRank(large / 0.8, COVER_NOISE_LOW));
 }
 
-// Column thickness of a closing deck at the last density() sample, relative
-// to the deck's mean (its lumpy-base factor; 1 elsewhere). Read it right after
-// the lit sample's density() — the light march below overwrites it.
-float gColumn = 1.0;
-
-float density(vec3 p, float hf, bool detail) {
-  gColumn = 1.0;
+// Density at p (0..1). column: a closing deck's column thickness there,
+// relative to its mean (its lumpy-base factor; 1 elsewhere).
+float density(vec3 p, float hf, bool detail, out float column) {
+  column = 1.0;
   if (hf < 0.0 || hf > 1.0) return 0.0;
   // Noise space is metres ÷ uFeatureScale, so a low deck keeps cumulus-sized cells
   // on screen. uWind is already in noise space: a changing scale zooms around the camera.
@@ -125,8 +122,8 @@ float density(vec3 p, float hf, bool detail) {
   base *= heightGradient(hf);
   base = remap(base, 1.0 - cov, 1.0, 0.0, 1.0) * cov;
   // A closed deck still has structure: undulating, lumpy base.
-  gColumn = mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, c));
-  base *= gColumn;
+  column = mix(1.0, 0.35 + 1.1 * lowFbm, smoothstep(0.75, 1.0, c));
+  base *= column;
   if (base <= 0.0) return 0.0;
 
   if (detail) {
@@ -143,5 +140,10 @@ float density(vec3 p, float hf, bool detail) {
     base = remap(base, modifier * (0.5 + 0.2 * ice), 1.0, 0.0, 1.0);
   }
   return clamp(base, 0.0, 1.0);
+}
+
+float density(vec3 p, float hf, bool detail) {
+  float column;
+  return density(p, hf, detail, column);
 }
 `;

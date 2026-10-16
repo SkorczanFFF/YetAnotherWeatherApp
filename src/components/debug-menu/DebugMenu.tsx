@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import * as SunCalc from "suncalc";
 import { DateTime } from "luxon";
-import { QUALITY_TIERS, type QualityTier, type SceneParams } from "../../weather/sceneParams";
+import type { SceneParams } from "../../weather/sceneParams";
+import { QUALITY_TIERS, type QualityTier } from "../../weather-scene/core/quality";
 import type { Auto, BoolOverrideKey, SceneOverrides } from "../../weather/overrides";
 import { getFrostAmount } from "../../weather/frost";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
-import { describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
+import { DEFAULT_PARALLAX, describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
 import { perfStats } from "../../weather-scene/debug/perfStats";
 import { formatToLocalTime, toCardinal } from "../../utils/format";
 import { CloseIcon, LineIcon } from "../icons";
@@ -264,7 +265,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
           <div className="debug-menu-group">
             <div className="debug-menu-readout">
               {e.cloudPhysics.midDeck
-                ? `mid deck ~${fmt(e.cloudPhysics.midAltM, 0)} m (LCL ${fmt(e.cloudPhysics.baseM, 0)} m)`
+                ? `mid deck ${fmt(e.cloudPhysics.deckBaseM, 0)}–${fmt(e.cloudPhysics.deckTopM, 0)} m (LCL ${fmt(e.cloudPhysics.baseM, 0)} m)`
                 : `clouds ${fmt(e.cloudPhysics.baseM, 0)}–${fmt(e.cloudPhysics.topM, 0)} m`}
               {e.cloudPhysics.midLayer && ` + mid layer ~${fmt(e.cloudPhysics.midAltM, 0)} m`}
               {` · τ ${fmt(e.cloudPhysics.opticalDepth)}`}
@@ -324,7 +325,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             <NumericField label="Humidity" field="humidity" step={0.05} min={0} max={1} current={fmt(c.humidity, 2)} overrides={o} onSet={set} />
           </div>
           <div className="debug-menu-row">
-            <NumericField label="Parallax 0–1" field="parallax" step={0.05} min={0} max={1} current={fmt(c.parallaxAmount, 2)} overrides={o} onSet={set} />
+            <NumericField label="Parallax 0–1" field="parallax" step={0.05} min={0} max={1} current={fmt(DEFAULT_PARALLAX, 2)} overrides={o} onSet={set} />
             <div className="debug-menu-group debug-menu-group--half">
               <label>Rime</label>
               <div className="debug-menu-button-group">

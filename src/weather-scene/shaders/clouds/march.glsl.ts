@@ -132,13 +132,13 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         continue;
       }
 
-      float d = density(p, hf, true);
+      float column;
+      float d = density(p, hf, true, column);
       if (d > 0.002) {
         empty = 0;
         lit++;
         if (tFirst < 0.0) tFirst = t;
         float sigma = d * uDensity;
-        float column = gColumn;
         float od = lightOpticalDepth(p, fract(jitter + float(lit) * 0.618034));
         // Denser pockets are darker — gives a closed deck its mottled base.
         vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.15, 0.7, d);

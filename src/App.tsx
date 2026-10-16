@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastContainer } from "react-toastify";
-import { Navbar } from "./components/navbar/Navbar";
+import { type LoadSource, Navbar } from "./components/navbar/Navbar";
 import { CurrentWeather } from "./components/weather/current/CurrentWeather";
 import { HourlyChart } from "./components/weather/hourly/HourlyChart";
 import { WeeklyForecast } from "./components/weather/weekly/WeeklyForecast";
@@ -13,9 +13,10 @@ import { useDebugToggle } from "./hooks/useDebugToggle";
 import { useGlassSpotlight } from "./hooks/useGlassSpotlight";
 import { useWeather } from "./hooks/useWeather";
 import { DEFAULT_LOCATION, mapToSceneParams } from "./weather/sceneParams";
-import { isOverridesDirty, type SceneOverrides } from "./weather/overrides";
+import { isOverridesDirty, pinned, type SceneOverrides } from "./weather/overrides";
+import { DEFAULT_PARALLAX } from "./weather-scene/core/worldFrame";
 import { formatCoords, formatGmtOffset, formatLatLon, tempSymbol } from "./utils/format";
-import type { LoadSource, Units, WeatherQuery } from "./weather/types";
+import type { Units, WeatherQuery } from "./weather/types";
 
 const describeQuery = (query: WeatherQuery): string =>
   query.q
@@ -73,6 +74,8 @@ const App = (): React.ReactElement => {
     <div className="App">
       <WeatherSceneContainer
         params={effectiveParams}
+        quality={pinned(debugOverrides?.quality)}
+        parallax={pinned(debugOverrides?.parallax) ?? DEFAULT_PARALLAX}
         showPerf={debugOpen && showPerf}
         lightningNonce={lightningNonce}
       />

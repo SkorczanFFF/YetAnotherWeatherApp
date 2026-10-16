@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
-import { CELESTIAL_DISTANCE, RENDER_ORDER } from "../core/constants";
+import { CELESTIAL_DISTANCE, RENDER_ORDER, SUN_DISC_DEG } from "../core/constants";
 import { SUN_GLOW_FRAG } from "../shaders/sunGlow.glsl";
 import { BILLBOARD_VERT } from "../shaders/chunks.glsl";
 import { placeBillboard } from "../core/celestial";
-import { SUN_DISC_DEG } from "./SkyLayer";
 
 /** Half-size of the glow quad, degrees. */
 const HALF_DEG = 28;

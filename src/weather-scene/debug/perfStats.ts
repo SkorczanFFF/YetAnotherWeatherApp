@@ -1,4 +1,4 @@
-import type { QualityTier } from "../../weather/sceneParams";
+import type { QualityTier } from "../core/quality";
 
 /**
  * Module-level perf readout. <PerfProbe> writes it from inside the Canvas;

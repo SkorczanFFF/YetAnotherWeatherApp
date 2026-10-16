@@ -8,9 +8,6 @@ export interface WeatherQuery {
 
 export type Units = "metric" | "imperial";
 
-/** What started the current weather fetch — picks the loader and its label. */
-export type LoadSource = "initial" | "search" | "location" | "map" | "units";
-
 export interface DailyWeather {
   /** Short weekday, e.g. "Mon". */
   title: string;

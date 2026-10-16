@@ -5,7 +5,8 @@ import { clamp, clamp01 } from "../utils/math";
 import { dewPointFromHumidity, physicsFor } from "./cloudPhysics";
 import { RIME_VISIBILITY_M } from "./fog";
 import { finalizePrecip } from "./precip";
-import type { CloudLayers, QualityTier, SceneParams } from "./sceneParams";
+import type { CloudLayers, SceneParams } from "./sceneParams";
+import type { QualityTier } from "../weather-scene/core/quality";
 
 export type Auto<T> = T | "auto";
 
@@ -86,6 +87,11 @@ function pick<T>(override: Auto<T> | undefined, base: T): T {
   return isSet(override) ? override : base;
 }
 
+/** A pinned value, or null for "auto" — the view pins (quality, parallax) the scene resolves itself. */
+export function pinned<T>(override: Auto<T> | undefined): T | null {
+  return isSet(override) ? override : null;
+}
+
 /** Resolves hour/date overrides to an instant in the location's timezone. */
 function resolveTime(o: SceneOverrides, timezone: string): number | null {
   if (!isSet(o.hour) && !isSet(o.date)) return null;
@@ -112,15 +118,15 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
 
   // Pinning a precipitation flag without a rate should still show something;
   // measured weather (e.g. dry thundersnow) keeps its rates.
-  const pinned = (v: Auto<boolean> | undefined) => isSet(v) && v;
+  const pinnedOn = (v: Auto<boolean> | undefined) => isSet(v) && v;
   let baseRain = base.precip.rainMmH;
   if (baseRain === 0 && !isSet(o.snow)) {
-    if (pinned(o.thunder) || pinned(o.hail)) baseRain = 6;
-    else if (pinned(o.drizzle)) baseRain = 0.5;
-    else if (pinned(o.freezing)) baseRain = 2;
+    if (pinnedOn(o.thunder) || pinnedOn(o.hail)) baseRain = 6;
+    else if (pinnedOn(o.drizzle)) baseRain = 0.5;
+    else if (pinnedOn(o.freezing)) baseRain = 2;
   }
   let baseSnow = base.precip.snowCmH;
-  if (baseSnow === 0 && pinned(o.grains) && !isSet(o.rain)) baseSnow = 0.4;
+  if (baseSnow === 0 && pinnedOn(o.grains) && !isSet(o.rain)) baseSnow = 0.4;
 
   const rainMmH = Math.max(0, pick(o.rain, baseRain));
   const snowCmH = Math.max(0, pick(o.snow, baseSnow));
@@ -190,8 +196,6 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
     dewPointC,
     humidity,
     atmosphere,
-    parallaxAmount: pick(o.parallax, base.parallaxAmount),
-    quality: pick<QualityTier | null>(o.quality, base.quality),
   };
   return {
     ...scene,

@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { LoadSource, WeatherQuery, Units } from "../../weather/types";
+import { WeatherQuery, Units } from "../../weather/types";
 import { UNITS } from "../../weather/units";
 import { Spinner } from "../loader/Loader";
 import { LineIcon, PinIcon } from "../icons";
 import "./Navbar.scss";
+
+/** What started the current weather fetch — picks the loader, its label and which control spins. */
+export type LoadSource = "initial" | "search" | "location" | "map" | "units";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery, source: LoadSource) => void;

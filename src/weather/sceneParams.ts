@@ -15,10 +15,6 @@ import {
   toAtmosphereSI,
 } from "./cloudPhysics";
 
-/** Quality tiers, lowest first. */
-export const QUALITY_TIERS = ["potato", "low", "medium", "high"] as const;
-export type QualityTier = (typeof QUALITY_TIERS)[number];
-
 export interface CloudLayers {
   /** All values 0..1. */
   total: number;
@@ -55,9 +51,6 @@ export interface SceneParams {
   cloudPhysics: CloudPhysics;
   /** Upper-air column the physics was derived from (kept to re-derive under overrides). */
   atmosphere: AtmosphereSI | null;
-  parallaxAmount: number;
-  /** null = auto (device + PerformanceMonitor decide). */
-  quality: QualityTier | null;
 }
 
 /** The app's initial location; the scene uses it before the first fetch lands, not (0, 0). */
@@ -85,8 +78,6 @@ const DEFAULT_SCENE: Omit<SceneParams, "cloudPhysics"> = {
   dewPointC: 4,
   humidity: 0.6,
   atmosphere: null,
-  parallaxAmount: 0.15,
-  quality: null,
 };
 const DEFAULT_PARAMS: SceneParams = { ...DEFAULT_SCENE, cloudPhysics: physicsFor(DEFAULT_SCENE, false) };
 
@@ -145,8 +136,6 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
     dewPointC,
     humidity,
     atmosphere: toAtmosphereSI(weather.atmosphere, units),
-    parallaxAmount: DEFAULT_SCENE.parallaxAmount,
-    quality: null,
   };
   return { ...scene, cloudPhysics: physicsFor(scene, true) };
 }

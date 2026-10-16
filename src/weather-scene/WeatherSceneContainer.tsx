@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { SceneParams } from "../weather/sceneParams";
 import {
   WeatherScene as Scene3D,
-  type WeatherSceneDebugProps,
+  type WeatherSceneViewProps,
 } from "./WeatherScene";
 
 /** Renders nothing on a scene error (the UI works without it); the error goes to the console. */
@@ -24,18 +24,18 @@ class SceneErrorBoundary extends Component<
   }
 }
 
-interface WeatherSceneContainerProps extends WeatherSceneDebugProps {
+interface WeatherSceneContainerProps extends WeatherSceneViewProps {
   params: SceneParams;
 }
 
 export const WeatherSceneContainer: React.FC<WeatherSceneContainerProps> = ({
   params,
-  ...debug
+  ...view
 }) => {
   return (
     <div className="weather-scene-container" aria-hidden="true">
       <SceneErrorBoundary>
-        <Scene3D params={params} {...debug} />
+        <Scene3D params={params} {...view} />
       </SceneErrorBoundary>
     </div>
   );

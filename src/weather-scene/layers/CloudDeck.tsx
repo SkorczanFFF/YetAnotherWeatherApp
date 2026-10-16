@@ -4,6 +4,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  MathUtils,
   type Mesh,
   ShaderMaterial,
   SRGBColorSpace,
@@ -14,15 +15,8 @@ import type { SceneParams } from "../../weather/sceneParams";
 import { getCloudNoiseTexture } from "../core/noiseTexture";
 import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, nearestVisibleDistance, type ViewFrame } from "../core/viewVolume";
-import {
-  CLOUD_TIMELAPSE,
-  DECK_FAR,
-  DECK_Y,
-  effectiveVisibilityM,
-  fogDensityFor,
-  METRES_PER_UNIT,
-} from "../core/worldFrame";
-import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
+import { CLOUD_TIMELAPSE, effectiveVisibilityM, METRES_PER_UNIT } from "../core/worldFrame";
+import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT, DECK_FAR } from "../shaders/cloudDeck.glsl";
 import { RENDER_ORDER } from "../core/constants";
 import { DECK_DAY_LIT, DECK_NIGHT_LIT, DECK_SHADE, DECK_STORM } from "../core/palette";
 import { stormDim } from "./clouds/shellTargets";
@@ -32,6 +26,13 @@ interface CloudDeckProps {
   params: SceneParams;
   frame: ViewFrame;
 }
+
+/** Plane height, scene units (≈ 1.2 km). */
+const DECK_Y = 60;
+
+/** Exp² fog density per scene unit: Koschmieder, 95 % extinction at the visibility (√3 ≈ 1.73). */
+const fogDensityFor = (visibilityM: number) =>
+  MathUtils.clamp(1.73 / (visibilityM / METRES_PER_UNIT), 0.0004, 0.15);
 
 /** The trapezoid the frustum cuts out of the plane y = DECK_Y. */
 function deckFootprint(frame: ViewFrame) {

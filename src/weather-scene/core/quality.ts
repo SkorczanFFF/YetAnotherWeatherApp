@@ -1,4 +1,6 @@
-import { QUALITY_TIERS, type QualityTier } from "../../weather/sceneParams";
+/** Quality tiers, lowest first. */
+export const QUALITY_TIERS = ["potato", "low", "medium", "high"] as const;
+export type QualityTier = (typeof QUALITY_TIERS)[number];
 
 // Per-tier budgets; PerformanceMonitor steps the tier down to "potato" (flat cloud
 // deck). Particle counts are simultaneous maxima at full intensity: emission rate

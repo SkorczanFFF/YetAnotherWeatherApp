@@ -23,3 +23,6 @@ export const MAX_DT = 0.1;
 
 /** The sun glow and moon billboards sit this far out along their display direction (inside the sky box). */
 export const CELESTIAL_DISTANCE = 1400;
+
+/** Sun disc radius, degrees (drei <Sky> is patched to it; the glow hugs it). Preetham's real ~0.53° is a dot at FOV 50 on a phone. */
+export const SUN_DISC_DEG = 1.4;

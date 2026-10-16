@@ -64,6 +64,26 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - The cloud noise cache is keyed by renderer, so a remount with a new WebGL context regenerates it instead of reusing a dead texture.
 - Named exports everywhere except `App`; README brought up to date.
 
+### Changed (logic in its own layer)
+- **Altocumulus depth (visible).** A deck drawn in the mid band now has its optical depth from the drawn deck: the mid band −350…+450 m (`CloudPhysics.deckBaseM` / `deckTopM`). Before, it came from the unrelated low (LCL) slab under it.
+  - The shell used to invent the mid deck's geometry itself. Now it reads it from the physics.
+  - The Altocumulus preset goes from τ 6.4 (a 400 m LCL slab) to 12.8: firmer cells, same height.
+  - Mid decks over a thick rain slab are no longer τ 50+.
+  - Checked over 20 000 random weathers: τ changed in 1 935 mid-deck cases, in no other.
+  - The debug readout shows the drawn deck's range next to the LCL.
+- **Storm gloom and haze distance** are shell targets: they ease with the weather like the rest of the shell. Before, they were computed in the lighting every frame and jumped when rain or visibility changed.
+- **Only the primary shell fields ease.** Density and noise feature scale are re-derived from them (`withDerived`), so they no longer drift off their own formula mid-transition.
+- **The cloud shader's lumpy-base factor** is an `out` parameter of `density()` instead of a global that had to be read right after the lit sample's call (textually checked, same draw).
+- **Moved to their layers:**
+  - **Weather domain:** the diamond-dust rule (`weather/frost.ts`).
+  - **Scene core:**
+    - the quality tiers (`core/quality.ts`);
+    - the default parallax (`core/worldFrame.ts`);
+    - the sun disc size (`core/constants.ts`, imported by both the sky and the glow).
+  - **Potato-deck file:** the deck's height and fog helper (`CloudDeck.tsx`) and its fade distance (`cloudDeck.glsl.ts`).
+  - **UI:** the load source (`Navbar.tsx`).
+- **`SceneParams` describes only the weather:** the quality tier and parallax are scene props, resolved from the debug pins in App (`pinned()`).
+
 ### Changed (single sources of truth)
 - **UI.** Checked with a declaration-by-declaration diff of the compiled CSS and in Chrome.
   - **Transitions:** one `$glass-glow-transition` for the ten transition lists that must carry the reveal glow, and one `$ease-out` for the entrance and drawer curves. The CSS compiles identically.

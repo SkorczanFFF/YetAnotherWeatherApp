@@ -19,7 +19,7 @@ import {
   setShellUniforms,
 } from "./cloudPasses";
 import { drawRays } from "./godRays";
-import { SHELL_KEYS, shellTargets, type ShellTargets } from "./shellTargets";
+import { SHELL_KEYS, shellTargets, type ShellTargets, withDerived } from "./shellTargets";
 import { COVER_FADE_IN } from "../../shaders/clouds/density.glsl";
 import { LAYER_MIN } from "../../shaders/clouds/layers.glsl";
 
@@ -105,6 +105,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     const sh = (st.shell ??= { ...targetsWanted });
     const dt = Math.min(delta, MAX_DT);
     for (const key of SHELL_KEYS) sh[key] = MathUtils.damp(sh[key], targetsWanted[key], SHELL_EASE, dt);
+    withDerived(sh);
     const drift = (CLOUD_TIMELAPSE * dt) / sh.featureScale;
     st.windNoise.x += s.windVelocityLow.x * drift;
     st.windNoise.y += s.windVelocityLow.z * drift;
@@ -156,7 +157,7 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uEvolve.value = frameState.clock.elapsedTime * 0.002;
 
     // Writes the lighting uniforms in place (they are `light`'s objects).
-    cloudLighting(s, sh, params, light);
+    cloudLighting(s, sh, light);
     u.uHazeDist.value = light.hazeDist;
 
     u.uFlash.value = s.flash;

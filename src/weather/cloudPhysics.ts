@@ -17,10 +17,13 @@ interface WindVector {
 }
 
 export interface CloudPhysics {
-  /** Low-cloud base above ground, m. */
+  /** Low-cloud base above ground (LCL, inversion, fog), m. */
   baseM: number;
   /** Low-cloud top above ground, m. */
   topM: number;
+  /** The one drawn deck: the low cloud, or the mid band when `midDeck`, m above ground. */
+  deckBaseM: number;
+  deckTopM: number;
   /** Centre of the mid (altocumulus) band above ground, m. */
   midAltM: number;
   /** The one drawn deck sits in the mid band (altocumulus) instead of at baseM–topM. */
@@ -187,6 +190,9 @@ export const deckClosing = (cover: number) => smoothstep(cover, 0.8, 1);
 
 /** Mid cover from which a low deck gets a mid layer above it, 0..1. */
 const MID_LAYER_MIN = 0.1;
+/** A deck drawn in the mid band (altocumulus) spans this far below and above its centre, m. */
+const MID_DECK_BELOW_M = 350;
+const MID_DECK_ABOVE_M = 450;
 /** Pressure levels below this count as the low band, m above ground. */
 const LOW_BAND_M = 2500;
 /** Standard-atmosphere temperature lapse rate. */
@@ -297,9 +303,11 @@ function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
     clouds.mid > Math.max(0.15, clouds.low * 1.3) &&
     convection < 0.5;
   const midLayer = !midDeck && clouds.mid >= MID_LAYER_MIN;
+  const deckBaseM = midDeck ? midAltM - MID_DECK_BELOW_M : baseM;
+  const deckTopM = midDeck ? midAltM + MID_DECK_ABOVE_M : topM;
 
-  // --- optical depth -----------------------------------------------------
-  const thicknessKm = (topM - baseM) / 1000;
+  // --- optical depth (of the drawn deck) ---------------------------------
+  const thicknessKm = (deckTopM - deckBaseM) / 1000;
   // Only low/mid cloud dims the sun much — cirrus is τ ≲ 1 — so the
   // radiation is attributed to that cover alone.
   const deck = skyClosure(clouds);
@@ -357,6 +365,8 @@ function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   return {
     baseM,
     topM,
+    deckBaseM,
+    deckTopM,
     midAltM,
     midDeck,
     midLayer,

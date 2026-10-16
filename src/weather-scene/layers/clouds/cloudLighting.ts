@@ -1,10 +1,8 @@
 import { Color, MathUtils, Vector3 } from "three";
-import type { SceneParams } from "../../../weather/sceneParams";
 import { deckClosing, TWO_STREAM_K } from "../../../weather/cloudPhysics";
 import type { SceneSignals } from "../../core/sceneSignals";
-import { effectiveVisibilityM } from "../../core/worldFrame";
 import { CLOUD_MOON, CLOUD_NIGHT_GLOW, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../../core/palette";
-import { stormDim, type ShellTargets } from "./shellTargets";
+import type { ShellTargets } from "./shellTargets";
 
 // The clouds' light for this frame: key light (sun ↔ moon crossfade), its
 // march and phase directions, ambient, adaptation and aerial-perspective haze.
@@ -44,14 +42,11 @@ export function createCloudLight(): CloudLight {
  */
 const ADAPT_POWER = 0.35;
 const ADAPT_MAX = 2.2;
-/** Ambient lost under a storm (stormDim 1); heavy rain or snow (0.6) lose 0.3. */
-const STORM_GLOOM = 0.5;
 const moonColor = new Color();
 
 export function cloudLighting(
   s: SceneSignals,
-  shell: Pick<ShellTargets, "coverage" | "opticalDepth">,
-  params: SceneParams,
+  shell: Pick<ShellTargets, "coverage" | "opticalDepth" | "gloom" | "hazeDist">,
   out: CloudLight,
 ): CloudLight {
   // Key light: the sun keeps lighting cloud bases ~6° after it sets
@@ -86,7 +81,7 @@ export function cloudLighting(
     1 + closed * s.day * (Math.min(ADAPT_MAX, Math.pow(1 + TWO_STREAM_K * shell.opticalDepth, ADAPT_POWER)) - 1);
   lightColor.multiplyScalar(adapt);
   // Thick storm and rain clouds starve their own bases of light.
-  const gloom = STORM_GLOOM * stormDim(params);
+  const gloom = shell.gloom;
   out.ambientTop.copy(s.hemiSky).multiplyScalar(1.35 * (1 - gloom) * adapt);
   const ambientBottom = out.ambientBottom
     .copy(s.hemiGround)
@@ -99,7 +94,6 @@ export function cloudLighting(
   ambientBottom.b += CLOUD_NIGHT_GLOW.b * s.night;
   // Sky radiance is tone-mapped at exposure 0.5 — the haze target is in the same units.
   out.hazeColor.copy(s.horizonColor).multiplyScalar(1.4);
-  // The same visibility as the sky's haze (heat shimmer included).
-  out.hazeDist = MathUtils.clamp(effectiveVisibilityM(params.fog.visibilityM, params.temperatureC) * 1.2, 1200, 60000);
+  out.hazeDist = shell.hazeDist;
   return out;
 }
