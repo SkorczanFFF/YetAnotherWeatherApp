@@ -5,7 +5,9 @@
  */
 
 import type { AtmosphereData, Units } from "./types";
+import type { SceneParams } from "./sceneParams";
 import { UNITS } from "./units";
+import { FOG_VISIBILITY_M } from "./fog";
 import { clamp, lerp, smoothstep } from "../utils/math";
 
 interface WindVector {
@@ -59,7 +61,30 @@ interface CloudPhysicsInput {
   /** The model's sky: radiation and pressure levels describe it — not once the debug menu changed the clouds. */
   measuredSky: boolean;
   /** Debug overrides (undefined = derive). */
-  override?: { baseM?: number; topM?: number; cape?: number; opticalDepth?: number };
+  override?: CloudPhysicsOverride;
+}
+
+type CloudPhysicsOverride = { baseM?: number; topM?: number; cape?: number; opticalDepth?: number };
+
+/** The physics of a scene's weather — the one place a scene becomes CloudPhysicsInput. */
+export function physicsFor(
+  scene: Omit<SceneParams, "cloudPhysics">,
+  measuredSky: boolean,
+  override?: CloudPhysicsOverride,
+): CloudPhysics {
+  return deriveCloudPhysics({
+    atmosphere: scene.atmosphere,
+    temperatureC: scene.temperatureC,
+    dewPointC: scene.dewPointC,
+    clouds: scene.clouds,
+    surfaceWind: scene.wind,
+    thunder: scene.thunder,
+    showers: scene.precip.showers,
+    precipitating: scene.precip.rainMmH > 0 || scene.precip.snowCmH > 0,
+    fog: scene.fog.visibilityM < FOG_VISIBILITY_M || scene.fog.rime,
+    measuredSky,
+    override,
+  });
 }
 
 /** AtmosphereData converted to SI with heights above ground. */
@@ -120,12 +145,17 @@ interface Band {
   topM: number;
 }
 
+/** Pressure-level cover that counts towards a layer's height… */
+const BAND_MIN_COVER = 0.15;
+/** …and below which a level is clear. */
+const CLEAR_LEVEL_COVER = 0.05;
+
 function band(levels: AtmosphereSI["levels"], lo: number, hi: number): Band | null {
   let weight = 0;
   let sum = 0;
   let top = 0;
   for (const l of levels) {
-    if (l.heightM < lo || l.heightM >= hi || l.cover < 0.15) continue;
+    if (l.heightM < lo || l.heightM >= hi || l.cover < BAND_MIN_COVER) continue;
     weight += l.cover;
     sum += l.cover * l.heightM;
     top = Math.max(top, l.heightM);
@@ -142,14 +172,18 @@ function highestCloud(levels: AtmosphereSI["levels"], minCover: number, belowM: 
 
 /** Lowest level above `minM` with (almost) no cloud, m above ground; null when none. */
 function lowestClearAbove(levels: AtmosphereSI["levels"], minM: number): number | null {
-  for (const l of levels) if (l.heightM >= minM && l.cover < 0.05) return l.heightM;
+  for (const l of levels) if (l.heightM >= minM && l.cover < CLEAR_LEVEL_COVER) return l.heightM;
   return null;
 }
 
 /** A deck under an inversion right above its base (lifting fog, thin stratus), m. */
 const THIN_DECK_M = 100;
-/** Cover of the one low/mid deck the scene draws (high cover is the cirrus), 0..1. */
+/** Cover of the one low/mid shell the scene draws (high cover is the cirrus; mid weighted 0.85), 0..1. */
 export const deckCover = (clouds: { low: number; mid: number }) => Math.max(clouds.low, clouds.mid * 0.85);
+/** How much of the sky low/mid cloud closes, unweighted — what dims the sun and greys the sky, 0..1. */
+export const skyClosure = (clouds: { low: number; mid: number }) => Math.max(clouds.low, clouds.mid);
+/** 0 → 1 as a cover closes into a deck (80 → 100 %). */
+export const deckClosing = (cover: number) => smoothstep(cover, 0.8, 1);
 
 /** Mid cover from which a low deck gets a mid layer above it, 0..1. */
 const MID_LAYER_MIN = 0.1;
@@ -171,6 +205,8 @@ const MAX_AIRMASS = 6;
 const SOLAR_CONSTANT = 1361;
 /** Cloud droplet asymmetry parameter (Eddington two-stream below). */
 const ASYMMETRY = 0.85;
+/** Two-stream diffusion coefficient, (1 − g)·¾ — the clouds' diffuse light and exposure use it too. */
+export const TWO_STREAM_K = (1 - ASYMMETRY) * 0.75;
 /** Thinnest low/mid cloud we draw — a fair-weather cumulus is τ ≈ 5… */
 const MIN_OPTICAL_DEPTH = 3;
 /** …and a closed deck: overcast stratus is τ ≈ 10–40. */
@@ -180,9 +216,11 @@ const TAU_PER_KM_CUMULUS = 16;
 const TAU_PER_KM_DECK = 30;
 /** …and of one that precipitates (nimbostratus, cumulonimbus are τ ≳ 20). */
 const MIN_RAIN_OPTICAL_DEPTH = 15;
+const TAU_PER_KM_RAIN = 35;
+const MAX_OPTICAL_DEPTH = 250;
 const TROPOPAUSE_M = 11500;
 
-export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
+function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   const atm = input.atmosphere;
   const levels = atm?.levels ?? [];
   const { clouds, override } = input;
@@ -234,7 +272,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   if (!deep) {
     // The towers reach no higher than the model puts any cloud in the
     // column (cirrus aside); with none up there, fair-weather to moderate cumulus.
-    const columnTop = highestCloud(levels, 0.05, HIGH_BAND_M);
+    const columnTop = highestCloud(levels, CLEAR_LEVEL_COVER, HIGH_BAND_M);
     const shallowTop = baseM + 800 + 0.6 * Math.min(cape, 2000);
     convectiveTop = Math.min(convectiveTop, Math.max(shallowTop, columnTop + 300));
   }
@@ -252,7 +290,8 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   // "low" under a 78 % mid sky drew a thin deck at the LCL). Convective air
   // keeps the deck low: the towers rise from the boundary layer.
   const lowLevels = levels.filter((l) => l.heightM < LOW_BAND_M);
-  const lowLevelsClear = input.measuredSky && lowLevels.length > 0 && lowLevels.every((l) => l.cover < 0.05);
+  const lowLevelsClear =
+    input.measuredSky && lowLevels.length > 0 && lowLevels.every((l) => l.cover < CLEAR_LEVEL_COVER);
   const midDeck =
     (clouds.low < 0.3 || lowLevelsClear) &&
     clouds.mid > Math.max(0.15, clouds.low * 1.3) &&
@@ -263,10 +302,10 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   const thicknessKm = (topM - baseM) / 1000;
   // Only low/mid cloud dims the sun much — cirrus is τ ≲ 1 — so the
   // radiation is attributed to that cover alone.
-  const deck = Math.max(clouds.low, clouds.mid);
-  const closed = smoothstep(deck, 0.8, 1);
-  const tauPerKm = input.precipitating ? 35 : lerp(TAU_PER_KM_CUMULUS, TAU_PER_KM_DECK, closed);
-  const estimated = clamp(thicknessKm * tauPerKm * (input.thunder ? 1.6 : 1), 0.5, 250);
+  const deck = skyClosure(clouds);
+  const closed = deckClosing(deck);
+  const tauPerKm = input.precipitating ? TAU_PER_KM_RAIN : lerp(TAU_PER_KM_CUMULUS, TAU_PER_KM_DECK, closed);
+  const estimated = clamp(thicknessKm * tauPerKm * (input.thunder ? 1.6 : 1), 0.5, MAX_OPTICAL_DEPTH);
   let opticalDepth = estimated;
   let opticalDepthMeasured = false;
   let directFraction: number | null = null;
@@ -297,7 +336,7 @@ export function deriveCloudPhysics(input: CloudPhysicsInput): CloudPhysics {
   const minDepth = input.precipitating
     ? MIN_RAIN_OPTICAL_DEPTH
     : lerp(MIN_OPTICAL_DEPTH, MIN_DECK_OPTICAL_DEPTH, closed);
-  opticalDepth = clamp(opticalDepth, minDepth, 250);
+  opticalDepth = clamp(opticalDepth, minDepth, MAX_OPTICAL_DEPTH);
   if (override?.opticalDepth != null) {
     opticalDepth = override.opticalDepth;
     opticalDepthMeasured = false;

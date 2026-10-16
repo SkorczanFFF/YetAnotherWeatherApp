@@ -2,8 +2,9 @@
 
 import { DateTime } from "luxon";
 import { clamp, clamp01 } from "../utils/math";
-import { deriveCloudPhysics, dewPointFromHumidity } from "./cloudPhysics";
-import { FOG_VISIBILITY_M } from "./codes";
+import { dewPointFromHumidity, physicsFor } from "./cloudPhysics";
+import { RIME_VISIBILITY_M } from "./fog";
+import { finalizePrecip } from "./precip";
 import type { CloudLayers, QualityTier, SceneParams } from "./sceneParams";
 
 export type Auto<T> = T | "auto";
@@ -84,9 +85,6 @@ function isSet<T>(override: Auto<T> | undefined): override is T {
 function pick<T>(override: Auto<T> | undefined, base: T): T {
   return isSet(override) ? override : base;
 }
-
-/** Rime needs supercooled fog: caps visibility when only the flag is pinned. */
-const RIME_VISIBILITY_M = 400;
 
 /** Resolves hour/date overrides to an instant in the location's timezone. */
 function resolveTime(o: SceneOverrides, timezone: string): number | null {
@@ -172,51 +170,36 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
     base.atmosphere && windTouched
       ? { ...base.atmosphere, windLow: undefined, windHigh: undefined }
       : base.atmosphere;
-  const cloudPhysics = deriveCloudPhysics({
-    atmosphere,
-    temperatureC,
-    dewPointC,
-    clouds,
-    surfaceWind: wind,
-    thunder,
-    showers,
-    precipitating,
-    fog: visibilityM < FOG_VISIBILITY_M || rime,
-    measuredSky: !skyTouched,
-    override: {
-      baseM: isSet(o.cloudBase) ? o.cloudBase : undefined,
-      topM: isSet(o.cloudTop) ? o.cloudTop : undefined,
-      cape: isSet(o.cape) ? o.cape : undefined,
-      opticalDepth: isSet(o.opticalDepth) ? o.opticalDepth : undefined,
-    },
-  });
-
-  return {
+  const scene: Omit<SceneParams, "cloudPhysics"> = {
     time: resolveTime(o, base.timezone),
     lat: base.lat,
     lon: base.lon,
     timezone: base.timezone,
     clouds,
     wind,
-    precip: {
-      rainMmH,
-      snowCmH,
-      drizzle: drizzle && rainMmH > 0,
-      freezing:
-        rainMmH > 0 &&
-        pick(o.freezing, base.precip.freezing || temperatureC < 0),
+    precip: finalizePrecip(rainMmH, snowCmH, {
+      drizzle,
+      freezing: pick(o.freezing, base.precip.freezing || temperatureC < 0),
       showers,
       hail,
-      grains: grains && snowCmH > 0,
-    },
+      grains,
+    }),
     thunder,
     fog: { visibilityM, rime },
     temperatureC,
     dewPointC,
     humidity,
-    cloudPhysics,
     atmosphere,
     parallaxAmount: pick(o.parallax, base.parallaxAmount),
     quality: pick<QualityTier | null>(o.quality, base.quality),
+  };
+  return {
+    ...scene,
+    cloudPhysics: physicsFor(scene, !skyTouched, {
+      baseM: isSet(o.cloudBase) ? o.cloudBase : undefined,
+      topM: isSet(o.cloudTop) ? o.cloudTop : undefined,
+      cape: isSet(o.cape) ? o.cape : undefined,
+      opticalDepth: isSet(o.opticalDepth) ? o.opticalDepth : undefined,
+    }),
   };
 }

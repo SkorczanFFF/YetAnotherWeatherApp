@@ -22,9 +22,6 @@ export interface CodeInfo {
   rime?: boolean;
 }
 
-/** WMO definition of fog: visibility under 1 km. */
-export const FOG_VISIBILITY_M = 1000;
-
 /** Cloud cover assumed under any precipitation code. */
 const WET = 0.85;
 
@@ -62,6 +59,10 @@ const CODES: Record<number, CodeInfo> = {
 const UNKNOWN: CodeInfo = { label: "Unknown", kind: "clear", intensity: "light", cover: 0.6 };
 
 export const codeInfo = (code: number): CodeInfo => CODES[Math.floor(code)] ?? UNKNOWN;
+
+/** Rain, drizzle and storms fall as liquid (snow codes as snow, the rest not at all). */
+export const fallsLiquid = (info: CodeInfo): boolean =>
+  info.kind === "rain" || info.kind === "drizzle" || info.kind === "thunder";
 
 /**
  * The 15-min weather_code is the step of the coming hour while cloud_cover is

@@ -52,7 +52,10 @@ src/
     sceneParams.ts              WeatherData + units → SceneParams (fromWeather, DEFAULT_PARAMS, mapToSceneParams)
     overrides.ts                SceneOverrides, key set, isOverridesDirty, applyOverrides
     frost.ts                    getFrostAmount
-    cloudPhysics.ts             API atmosphere → cloud base/top/τ/convection/winds aloft (with fallbacks)
+    precip.ts                   PrecipState, gauge/code → rates (fallbacks), finalizePrecip (flags only where something falls)
+    fog.ts                      visibility thresholds (fog, fog-code cap, rime cap, clear default)
+    cloudPhysics.ts             API atmosphere → cloud base/top/τ/convection/winds aloft (with fallbacks); physicsFor(scene)
+                                is the one way in; deckCover (drawn shell) vs skyClosure (unweighted), deckClosing, TWO_STREAM_K
     scenePresets.ts             debug presets — one per weather-catalogue row
     codes.ts                    the WMO table: label, kind, intensity, flags, cover fallback (scene, labels, icons)
     units.ts                    metric/imperial: API unit names, labels, conversions to SI

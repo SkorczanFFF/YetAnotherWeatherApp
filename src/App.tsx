@@ -115,11 +115,7 @@ const App = (): React.ReactElement => {
                       <span>Open-Meteo · Live data</span>
                     </div>
                     <div className="attrib">
-                      {weather.lat != null && weather.lon != null && (
-                        <span>
-                          {formatLatLon(weather.lat, weather.lon)}
-                        </span>
-                      )}
+                      <span>{formatLatLon(weather.lat, weather.lon)}</span>
                       {gmtOffset && <span>{gmtOffset}</span>}
                     </div>
                   </div>
@@ -148,11 +144,7 @@ const App = (): React.ReactElement => {
         open={mapPanelOpen}
         onClose={() => setMapPanelOpen(false)}
         onPickLocation={(lat, lon) => requestQuery({ lat, lon }, "map")}
-        initialCenter={
-          weather?.lat != null && weather?.lon != null
-            ? [weather.lat, weather.lon]
-            : undefined
-        }
+        initialCenter={weather ? [weather.lat, weather.lon] : undefined}
       />
       <DebugMenu
         open={debugOpen}

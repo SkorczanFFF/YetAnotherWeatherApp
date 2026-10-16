@@ -65,6 +65,13 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Named exports everywhere except `App`; README brought up to date.
 
 ### Changed (single sources of truth)
+- Weather domain (no visible change; checked on 20 000 random weathers and override sets, every SceneParams field identical apart from one edge below):
+  - The cloud-physics input is built in one place, `physicsFor(scene, measuredSky, override)`. It was written out by hand three times: the default scene, the measured weather and the debug overrides. Their fog flags read differently but always agreed, since a fog code caps visibility under 1 km. The default scene no longer writes its temperature and dew point twice.
+  - Precipitation lives in `weather/precip.ts`: the state, the gauge/code mapping with its fallback rates, and one `finalizePrecip()` that keeps each flag only where something falls (drizzle and glaze need rain, grains need snow). The measured path used to keep the grains flag of code 77 when the hourly split reported no snow; the debug path already dropped it.
+  - The WMO table is read directly (`codeInfo` + `fallsLiquid`) instead of being copied into a parallel set of booleans.
+  - Visibility thresholds in `weather/fog.ts`: fog under 1 km, the 700 m cap under fog codes, the 400 m rime cap, the 24 km default. They were spread over three files.
+  - `cloudPhysics` names its numbers: band and clear-level cover, the τ per km of rain cloud, the τ ceiling. It names its two cover measures too: `deckCover` (the drawn shell, mid weighted 0.85) and `skyClosure` (unweighted, what dims the sun). `deckClosing` is the one 80 → 100 % ramp. `TWO_STREAM_K` is derived from the droplet asymmetry instead of copied as 0.1125.
+  - Weather data always carries its coordinates, so the guards against missing lat/lon are gone.
 - One WMO table (`weather/codes.ts`) for the scene, the labels and the icons. Fixes light freezing drizzle (56) and snow grains (77), which were treated as heavy (1 mm/h and 1.2 cm/h fallbacks).
 - Units, requested API fields, override and shell keys (type-checked), quality tiers, render orders, tone exposure, frame-delta cap, scene palette, shared GLSL helpers, display formatting (`utils/format.ts`), math helpers, the forecast day count and the default location each defined once.
 - The freezing level falls back to the standard lapse rate (was a flat 3 km); a debug-pinned cloud base is no longer overridden under fog.
