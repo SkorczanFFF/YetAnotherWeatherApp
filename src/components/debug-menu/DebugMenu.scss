@@ -162,3 +162,13 @@
   font-variant-numeric: tabular-nums;
   color: var(--fg-dim);
 }
+
+/* drei <Stats> panels (the perf tool) stacked in a column, top-left. */
+.debug-stats {
+  left: 4px !important;
+  right: auto !important;
+  z-index: $z-debug-stats;
+}
+.debug-stats--fps { top: 30px !important; }
+.debug-stats--ms { top: 82px !important; }
+.debug-stats--mb { top: 134px !important; }

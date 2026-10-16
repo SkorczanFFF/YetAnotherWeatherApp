@@ -19,6 +19,8 @@ interface NavbarProps {
   pending: LoadSource | null;
 }
 
+const UNIT_OPTIONS: Units[] = ["metric", "imperial"];
+
 /** Letters, spaces, hyphens, apostrophes and dots; 2–100 characters (already trimmed). */
 const isValidCityName = (name: string): boolean =>
   name.length >= 2 && name.length <= 100 && /^[\p{L}\s\-'.]+$/u.test(name);
@@ -36,7 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const locBusy = locating || pending === "location";
   const searchBusy = pending === "search";
 
-  const handleSearch = (): void => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
     const trimmedCity = city.trim();
     if (!trimmedCity) return;
     if (!isValidCityName(trimmedCity)) {
@@ -44,11 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       return;
     }
     setQuery({ q: trimmedCity }, "search");
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
-    e.preventDefault();
-    handleSearch();
   };
 
   const handleLocation = (): void => {
@@ -147,22 +145,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       <div className="tools">
         <div className="unit-toggle" role="group" aria-label="Units" aria-busy={pending === "units"}>
-          <button
-            type="button"
-            className={units === "metric" ? "on" : ""}
-            aria-pressed={units === "metric"}
-            onClick={() => setUnits("metric")}
-          >
-            {UNITS.metric.tempSymbol}
-          </button>
-          <button
-            type="button"
-            className={units === "imperial" ? "on" : ""}
-            aria-pressed={units === "imperial"}
-            onClick={() => setUnits("imperial")}
-          >
-            {UNITS.imperial.tempSymbol}
-          </button>
+          {UNIT_OPTIONS.map((u) => (
+            <button
+              key={u}
+              type="button"
+              className={units === u ? "on" : ""}
+              aria-pressed={units === u}
+              onClick={() => setUnits(u)}
+            >
+              {UNITS[u].tempSymbol}
+            </button>
+          ))}
         </div>
       </div>
     </header>

@@ -194,3 +194,12 @@
   .loader-pill,
   .loader-pill[data-visible="false"] { transform: none; }
 }
+
+// A size up, for the refetch pill centred in the viewport (App).
+.loader-pill--lg {
+  gap: 12px;
+  padding: 12px 22px 12px 15px;
+  font-size: 12px;
+
+  .loader-spinner { --spinner-size: 19px; }
+}

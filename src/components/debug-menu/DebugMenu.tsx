@@ -1,22 +1,27 @@
-import React, { useEffect, useState } from "react";
-import * as SunCalc from "suncalc";
-import { DateTime } from "luxon";
+import React, { useMemo, useRef } from "react";
 import type { SceneParams } from "../../weather/sceneParams";
-import { QUALITY_TIERS, type QualityTier } from "../../weather-scene/core/quality";
-import type { Auto, BoolOverrideKey, SceneOverrides } from "../../weather/overrides";
-import { getFrostAmount } from "../../weather/frost";
+import type { SceneOverrides } from "../../weather/overrides";
 import { WEATHER_PRESETS } from "../../weather/scenePresets";
-import { DEFAULT_PARALLAX, describeScreenDrift, facingFor } from "../../weather-scene/core/worldFrame";
-import { perfStats } from "../../weather-scene/debug/perfStats";
-import { formatToLocalTime, toCardinal } from "../../utils/format";
 import { CloseIcon, LineIcon } from "../icons";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
+import { DebugContext, type DebugState } from "./helpers";
+import {
+  AtmosphereSection,
+  CloudSection,
+  PrecipSection,
+  PresetSection,
+  TimeSection,
+  ToolsSection,
+  WindSection,
+} from "./sections";
 import "./DebugMenu.scss";
 
 interface DebugMenuProps {
   open: boolean;
   onClose: () => void;
   overrides: SceneOverrides | null;
-  onOverridesChange: (overrides: SceneOverrides | null) => void;
+  /** A state setter: updates go through the latest overrides, so two in one tick both land. */
+  onOverridesChange: React.Dispatch<React.SetStateAction<SceneOverrides | null>>;
   /** Weather-driven values (no overrides) — shown as the "auto" hint. */
   currentParams: SceneParams;
   /** What the scene is actually rendering. */
@@ -26,115 +31,33 @@ interface DebugMenuProps {
   onForceLightning: () => void;
 }
 
-const COMPASS = [0, 45, 90, 135, 180, 225, 270, 315];
-const QUALITY_OPTIONS: Auto<QualityTier>[] = ["auto", ...QUALITY_TIERS];
 /** Keys a preset owns — "Auto" preset clears exactly these. */
 const PRESET_KEYS = Object.keys(WEATHER_PRESETS[0].overrides) as (keyof SceneOverrides)[];
-
-function numericOrAuto(v: string): number | "auto" {
-  if (v === "") return "auto";
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : "auto";
-}
-
-const fmt = (v: number, digits = 1) => v.toFixed(digits).replace(/\.0+$/, "");
-
-function moonPhaseName(phase: number): string {
-  const names = [
-    "new",
-    "waxing crescent",
-    "first quarter",
-    "waxing gibbous",
-    "full",
-    "waning gibbous",
-    "last quarter",
-    "waning crescent",
-  ];
-  return names[Math.round(phase * 8) % 8];
-}
-
-interface NumericFieldProps {
-  label: string;
-  field: keyof SceneOverrides;
-  step: number;
-  min?: number;
-  max?: number;
-  current: string;
-  overrides: SceneOverrides;
-  onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
-}
-
-function NumericField({ label, field, step, min, max, current, overrides, onSet }: NumericFieldProps) {
-  const raw = overrides[field];
-  const display = raw === undefined || raw === "auto" ? "" : String(raw);
-  return (
-    <div className="debug-menu-group debug-menu-group--half">
-      <label>
-        {label} <span className="debug-menu-current">({current})</span>
-        <input
-          type="number"
-          step={step}
-          min={min}
-          max={max}
-          placeholder={`auto (${current})`}
-          value={display}
-          onChange={(e) => onSet(field, numericOrAuto(e.target.value.trim()) as never)}
-        />
-      </label>
-    </div>
-  );
-}
-
-interface FlagChipProps {
-  label: string;
-  field: BoolOverrideKey;
-  effective: boolean;
-  overrides: SceneOverrides;
-  onSet: <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => void;
-}
-
-/** Tri-state chip: auto → on → off → auto. */
-function FlagChip({ label, field, effective, overrides, onSet }: FlagChipProps) {
-  const raw = overrides[field];
-  const state = raw === undefined || raw === "auto" ? "auto" : raw ? "on" : "off";
-  const next = state === "auto" ? true : state === "on" ? false : "auto";
-  return (
-    <button
-      type="button"
-      className={`debug-menu-option-btn${state !== "auto" ? " debug-menu-option-btn--active" : ""}`}
-      onClick={() => onSet(field, next)}
-      title="auto → on → off"
-    >
-      {label}: {state === "auto" ? `auto (${effective ? "on" : "off"})` : state}
-    </button>
-  );
-}
-
-function PerfReadout() {
-  const [stats, setStats] = useState({ ...perfStats });
-  useEffect(() => {
-    const id = window.setInterval(() => setStats({ ...perfStats }), 500);
-    return () => window.clearInterval(id);
-  }, []);
-  return (
-    <div className="debug-menu-readout">
-      {stats.fps} fps · {stats.calls} draws · {stats.triangles} tris · {stats.points} pts · tier {stats.tier}
-    </div>
-  );
-}
 
 export const DebugMenu: React.FC<DebugMenuProps> = ({
   open,
   onClose,
   overrides,
   onOverridesChange,
-  currentParams: c,
-  effectiveParams: e,
+  currentParams,
+  effectiveParams,
   showPerf,
   onShowPerfChange,
   onForceLightning,
 }) => {
-  const o = overrides ?? {};
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useDialogFocus(open, panelRef, onClose, closeRef);
+  const o = useMemo(() => overrides ?? {}, [overrides]);
+  const state = useMemo<DebugState>(
+    () => ({
+      o,
+      set: (key, value) => onOverridesChange((prev) => ({ ...prev, [key]: value })),
+      current: currentParams,
+      effective: effectiveParams,
+    }),
+    [o, onOverridesChange, currentParams, effectiveParams],
+  );
 
   if (!open) return null;
 
@@ -143,227 +66,49 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
     ? null
     : (WEATHER_PRESETS.find((p) => PRESET_KEYS.every((k) => o[k] === p.overrides[k]))?.id ?? "custom");
 
-  const set = <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => {
-    onOverridesChange({ ...o, [key]: value });
-  };
-
-  const applyPreset = (id: string | null) => {
-    const cleared: SceneOverrides = { ...o };
-    PRESET_KEYS.forEach((k) => delete cleared[k]);
-    const preset = WEATHER_PRESETS.find((p) => p.id === id);
-    onOverridesChange(preset ? { ...cleared, ...preset.overrides } : cleared);
-  };
-
-  const resetAll = () => onOverridesChange(null);
-
-  const time = e.time ?? Date.now();
-  const sunAlt = SunCalc.getPosition(new Date(time), e.lat, e.lon).altitude;
-  const moon = SunCalc.getMoonIllumination(new Date(time));
-  const facing = facingFor(e.lat);
-  const hourValue = typeof o.hour === "number" ? o.hour : null;
-  const local = DateTime.fromMillis(time).setZone(e.timezone);
-  const liveHour = local.hour + local.minute / 60;
+  const applyPreset = (id: string | null) =>
+    onOverridesChange((prev) => {
+      const cleared: SceneOverrides = { ...prev };
+      PRESET_KEYS.forEach((k) => delete cleared[k]);
+      const preset = WEATHER_PRESETS.find((p) => p.id === id);
+      return preset ? { ...cleared, ...preset.overrides } : cleared;
+    });
 
   return (
-    <div
-      className="debug-menu-backdrop"
-      onClick={onClose}
-      role="dialog"
-      aria-label="Debug menu"
-    >
-      <div className="debug-menu-panel" onClick={(ev) => ev.stopPropagation()}>
+    <div className="debug-menu-backdrop" onClick={onClose}>
+      <div
+        ref={panelRef}
+        className="debug-menu-panel"
+        onClick={(ev) => ev.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Debug menu"
+      >
         <div className="debug-menu-header">
           <h2>Debug panel</h2>
           <div className="debug-menu-header-actions">
-            <button type="button" className="debug-menu-icon-btn" onClick={resetAll} title="Reset all to auto" aria-label="Reset all to auto">
+            <button type="button" className="debug-menu-icon-btn" onClick={() => onOverridesChange(null)} title="Reset all to auto" aria-label="Reset all to auto">
               <LineIcon strokeWidth={2}>
                 <path d="M4 12a8 8 0 1 0 2.3-5.6" />
                 <path d="M4 4v4h4" />
               </LineIcon>
             </button>
-            <button type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close" aria-label="Close debug menu">
+            <button ref={closeRef} type="button" className="debug-menu-icon-btn" onClick={onClose} title="Close" aria-label="Close debug menu">
               <CloseIcon />
             </button>
           </div>
         </div>
-        <div className="debug-menu-body">
-          <div className="debug-menu-group">
-            <label>Weather preset</label>
-            <div className="debug-menu-button-group">
-              <button
-                type="button"
-                className={`debug-menu-option-btn${activePreset === null ? " debug-menu-option-btn--active" : ""}`}
-                onClick={() => applyPreset(null)}
-              >
-                auto
-              </button>
-              {WEATHER_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`debug-menu-option-btn${activePreset === p.id ? " debug-menu-option-btn--active" : ""}`}
-                  onClick={() => applyPreset(p.id)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+        <DebugContext.Provider value={state}>
+          <div className="debug-menu-body">
+            <PresetSection active={activePreset} onApply={applyPreset} />
+            <TimeSection />
+            <CloudSection />
+            <WindSection />
+            <PrecipSection onForceLightning={onForceLightning} />
+            <AtmosphereSection />
+            <ToolsSection showPerf={showPerf} onShowPerfChange={onShowPerfChange} />
           </div>
-
-          <div className="debug-menu-group">
-            <label>
-              Local hour{" "}
-              <span className="debug-menu-current">
-                ({hourValue === null ? "live" : "pinned"} {formatToLocalTime(time / 1000, e.timezone, "HH:mm")})
-              </span>
-            </label>
-            <div className="debug-menu-row">
-              <input
-                type="range"
-                min={0}
-                max={24}
-                step={0.25}
-                value={hourValue ?? liveHour}
-                onChange={(ev) => set("hour", parseFloat(ev.target.value))}
-              />
-              <button type="button" className={`debug-menu-option-btn${hourValue === null ? " debug-menu-option-btn--active" : ""}`} onClick={() => set("hour", "auto")}>
-                live
-              </button>
-            </div>
-          </div>
-          <div className="debug-menu-row">
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>
-                Date
-                <input
-                  type="text"
-                  placeholder="auto (today) YYYY-MM-DD"
-                  value={typeof o.date === "string" && o.date !== "auto" ? o.date : ""}
-                  onChange={(ev) => set("date", ev.target.value.trim() === "" ? "auto" : ev.target.value.trim())}
-                />
-              </label>
-            </div>
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Sky</label>
-              <div className="debug-menu-readout">
-                sun {fmt(sunAlt)}° · moon {moonPhaseName(moon.phase)} {Math.round(moon.fraction * 100)}%
-              </div>
-            </div>
-          </div>
-
-          <div className="debug-menu-row">
-            <NumericField label="Cloud low" field="cloudLow" step={0.05} min={0} max={1} current={fmt(c.clouds.low, 2)} overrides={o} onSet={set} />
-            <NumericField label="mid" field="cloudMid" step={0.05} min={0} max={1} current={fmt(c.clouds.mid, 2)} overrides={o} onSet={set} />
-            <NumericField label="high" field="cloudHigh" step={0.05} min={0} max={1} current={fmt(c.clouds.high, 2)} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-row">
-            <NumericField label="Base m" field="cloudBase" step={100} min={0} current={fmt(c.cloudPhysics.baseM, 0)} overrides={o} onSet={set} />
-            <NumericField label="Top m" field="cloudTop" step={250} min={0} current={fmt(c.cloudPhysics.topM, 0)} overrides={o} onSet={set} />
-            <NumericField label="CAPE J/kg" field="cape" step={100} min={0} current={fmt(c.cloudPhysics.cape, 0)} overrides={o} onSet={set} />
-            <NumericField label="τ" field="opticalDepth" step={2} min={0} current={fmt(c.cloudPhysics.opticalDepth)} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-group">
-            <div className="debug-menu-readout">
-              {e.cloudPhysics.midDeck
-                ? `mid deck ${fmt(e.cloudPhysics.deckBaseM, 0)}–${fmt(e.cloudPhysics.deckTopM, 0)} m (LCL ${fmt(e.cloudPhysics.baseM, 0)} m)`
-                : `clouds ${fmt(e.cloudPhysics.baseM, 0)}–${fmt(e.cloudPhysics.topM, 0)} m`}
-              {e.cloudPhysics.midLayer && ` + mid layer ~${fmt(e.cloudPhysics.midAltM, 0)} m`}
-              {` · τ ${fmt(e.cloudPhysics.opticalDepth)}`}
-              {e.cloudPhysics.opticalDepthMeasured ? " (radiation)" : " (estimated)"} · convection {Math.round(e.cloudPhysics.convection * 100)}%
-              {e.cloudPhysics.liftedIndex != null && ` · LI ${fmt(e.cloudPhysics.liftedIndex)}`}
-              {e.cloudPhysics.boundaryLayerM != null && ` · BL ${fmt(e.cloudPhysics.boundaryLayerM, 0)} m`}
-              {` · 0 °C at ${fmt(e.cloudPhysics.freezingLevelM, 0)} m`}
-              {e.cloudPhysics.directFraction != null && ` · sun through clouds ${Math.round(e.cloudPhysics.directFraction * 100)}%`}
-              {` · frost ${Math.round(getFrostAmount(e) * 100)}%`}
-            </div>
-          </div>
-
-          <div className="debug-menu-row">
-            <NumericField label="Wind m/s" field="windSpeed" step={1} min={0} current={fmt(c.wind.speedMs)} overrides={o} onSet={set} />
-            <NumericField label="Gust m/s" field="windGust" step={1} min={0} current={fmt(c.wind.gustMs)} overrides={o} onSet={set} />
-            <NumericField label="From °" field="windFrom" step={15} min={0} max={360} current={`${Math.round(c.wind.fromDeg)} ${toCardinal(c.wind.fromDeg)}`} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-group">
-            <div className="debug-menu-button-group">
-              {COMPASS.map((deg) => (
-                <button
-                  key={deg}
-                  type="button"
-                  className={`debug-menu-option-btn${o.windFrom === deg ? " debug-menu-option-btn--active" : ""}`}
-                  onClick={() => set("windFrom", deg)}
-                >
-                  {toCardinal(deg)}
-                </button>
-              ))}
-            </div>
-            <div className="debug-menu-readout">
-              surface from {toCardinal(e.wind.fromDeg)} · 850 hPa {fmt(e.cloudPhysics.windLow.speedMs)} m/s from {toCardinal(e.cloudPhysics.windLow.fromDeg)} → clouds drift {describeScreenDrift(e.cloudPhysics.windLow.fromDeg, facing)} · 300 hPa (cirrus) {fmt(e.cloudPhysics.windHigh.speedMs)} m/s from {toCardinal(e.cloudPhysics.windHigh.fromDeg)} (facing {facing})
-            </div>
-          </div>
-
-          <div className="debug-menu-row">
-            <NumericField label="Rain mm/h" field="rain" step={0.5} min={0} current={fmt(c.precip.rainMmH)} overrides={o} onSet={set} />
-            <NumericField label="Snow cm/h" field="snow" step={0.25} min={0} current={fmt(c.precip.snowCmH, 2)} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-group">
-            <div className="debug-menu-button-group">
-              <FlagChip label="drizzle" field="drizzle" effective={e.precip.drizzle} overrides={o} onSet={set} />
-              <FlagChip label="freezing" field="freezing" effective={e.precip.freezing} overrides={o} onSet={set} />
-              <FlagChip label="showers" field="showers" effective={e.precip.showers} overrides={o} onSet={set} />
-              <FlagChip label="hail" field="hail" effective={e.precip.hail} overrides={o} onSet={set} />
-              <FlagChip label="grains" field="grains" effective={e.precip.grains} overrides={o} onSet={set} />
-              <FlagChip label="thunder" field="thunder" effective={e.thunder} overrides={o} onSet={set} />
-              <button type="button" className="debug-menu-option-btn" onClick={onForceLightning}>
-                ⚡ force lightning
-              </button>
-            </div>
-          </div>
-
-          <div className="debug-menu-row">
-            <NumericField label="Visibility m" field="visibility" step={100} min={50} current={fmt(c.fog.visibilityM, 0)} overrides={o} onSet={set} />
-            <NumericField label="Temp °C" field="temperature" step={1} current={fmt(c.temperatureC)} overrides={o} onSet={set} />
-            <NumericField label="Humidity" field="humidity" step={0.05} min={0} max={1} current={fmt(c.humidity, 2)} overrides={o} onSet={set} />
-          </div>
-          <div className="debug-menu-row">
-            <NumericField label="Parallax 0–1" field="parallax" step={0.05} min={0} max={1} current={fmt(DEFAULT_PARALLAX, 2)} overrides={o} onSet={set} />
-            <div className="debug-menu-group debug-menu-group--half">
-              <label>Rime</label>
-              <div className="debug-menu-button-group">
-                <FlagChip label="rime" field="rime" effective={e.fog.rime} overrides={o} onSet={set} />
-              </div>
-            </div>
-          </div>
-
-          <div className="debug-menu-group">
-            <label>Quality tier</label>
-            <div className="debug-menu-button-group">
-              {QUALITY_OPTIONS.map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  className={`debug-menu-option-btn${(o.quality ?? "auto") === q ? " debug-menu-option-btn--active" : ""}`}
-                  onClick={() => set("quality", q)}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="debug-menu-group">
-            <label>Tools</label>
-            <div className="debug-menu-button-group">
-              <button
-                type="button"
-                className={`debug-menu-option-btn${showPerf ? " debug-menu-option-btn--active" : ""}`}
-                onClick={() => onShowPerfChange(!showPerf)}
-              >
-                perf
-              </button>
-            </div>
-            {showPerf && <PerfReadout />}
-          </div>
-        </div>
+        </DebugContext.Provider>
       </div>
     </div>
   );

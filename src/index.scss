@@ -155,14 +155,6 @@ body {
   transform: translate(-50%, -50%);
   z-index: $z-refresh-pill;
   pointer-events: none;
-
-  .loader-pill {
-    gap: 12px;
-    padding: 12px 22px 12px 15px;
-    font-size: 12px;
-
-    .loader-spinner { --spinner-size: 19px; }
-  }
 }
 
 .error {
@@ -270,12 +262,3 @@ body {
   .stack .forecast .day > * { transition: none; }
 }
 
-/* drei <Stats> panels stacked in a column, top-left. */
-.debug-stats {
-  left: 4px !important;
-  right: auto !important;
-  z-index: $z-debug-stats;
-}
-.debug-stats--fps { top: 30px !important; }
-.debug-stats--ms { top: 82px !important; }
-.debug-stats--mb { top: 134px !important; }

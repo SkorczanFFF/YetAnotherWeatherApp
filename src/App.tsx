@@ -141,7 +141,7 @@ const App = (): React.ReactElement => {
         </main>
       </div>
       <div className="refresh-indicator">
-        <LoaderPill label={label} visible={refreshing} />
+        <LoaderPill label={label} visible={refreshing} large />
       </div>
       <MapPicker
         open={mapPanelOpen}

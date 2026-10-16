@@ -10,12 +10,14 @@ interface LoaderPillProps {
   label: string;
   /** Kept mounted while hidden so it can fade out with its last label. */
   visible: boolean;
+  /** A size up (the refetch pill centred in the viewport). */
+  large?: boolean;
 }
 
 /** Floating liquid-glass capsule: spinner + short status label. */
-export const LoaderPill = ({ label, visible }: LoaderPillProps): React.ReactElement => (
+export const LoaderPill = ({ label, visible, large = false }: LoaderPillProps): React.ReactElement => (
   <div
-    className="loader-pill"
+    className={`loader-pill${large ? " loader-pill--lg" : ""}`}
     data-visible={visible}
     role="status"
     aria-live="polite"

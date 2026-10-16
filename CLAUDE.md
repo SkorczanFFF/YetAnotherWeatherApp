@@ -44,7 +44,8 @@ WeatherQuery {q | lat,lon}
 ```
 src/
   App.tsx                       top-level state + layout
-  hooks/                        useWeather, useDebugToggle (F7, or 5 taps on the footer status), useGlassSpotlight
+  hooks/                        useWeather, useDebugToggle (F7, or 5 taps on the footer status), useGlassSpotlight,
+                                useLiveClock (location time, 15 s), useDialogFocus (modal panels: focus in, Tab trap, Escape, focus back)
   services/                     weatherService (fetchWeather), weatherApi (+ requested field lists), geocoder,
                                 openMeteoMapper (API → WeatherData), errors
   utils/                        format.ts (display: times, °, speeds, compass, coords), math.ts (clamp, smoothstep, lerp)
@@ -60,7 +61,9 @@ src/
     codes.ts                    the WMO table: label, kind, intensity, flags, cover fallback (scene, labels, icons)
     units.ts                    metric/imperial: API unit names, labels, conversions to SI
     types.ts                    API/domain types
-  components/                   UI only (navbar, map-picker, cards, loader, debug-menu, icons.tsx)
+  components/                   UI only (navbar, map-picker, cards, loader, debug-menu, icons.tsx);
+                                debug-menu = shell + sections + fields (OptionButton, NumericField, FlagChip) over a DebugContext;
+                                weather/current = hero + HeroStats (data array) + SunArc; map-picker/hooks = drawer resize, slow tile loading
   styles/                       _glass.scss (liquid glass + cursor reveal mixins), _tokens.scss (breakpoints, label mixin)
   weather-scene/
     WeatherSceneContainer.tsx   error boundary around the scene (the UI's entry point)
@@ -188,7 +191,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 
 ## Debug menu & overrides
 
-- **F7** toggles the menu (on phones: 5 quick taps on the footer "Open-Meteo · Live data" status). F7 works even with an input focused (a function key types nothing); Escape in the map drawer closes it.
+- **F7** toggles the menu (on phones: 5 quick taps on the footer "Open-Meteo · Live data" status). F7 works even with an input focused (a function key types nothing); Escape closes the debug menu or the map drawer (the top one when both are open); both move focus in, trap Tab and give focus back (`hooks/useDialogFocus`).
 - **Presets** (`weather/scenePresets.ts`) pin every weather key, one per catalogue row (clear → hailstorm, fog, rime, sleet, blizzard, diamond dust, heat, gale…). "auto" clears exactly those keys.
 - Time: local-hour slider (location timezone) + date; a pinned time stops the live clock. The readout shows sun altitude and moon phase.
 - Every override is a literal or `"auto"`. `isOverridesDirty()` (in `overrides.ts`) drives the Navbar `DEBUG` badge; it iterates `OVERRIDE_KEYS`, derived from `OVERRIDE_KEY_SET` (a `Record<keyof SceneOverrides, 1>`, so a missing key is a type error).

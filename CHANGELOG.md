@@ -25,6 +25,10 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - The 2D noise texture is baked only when frost or the potato deck first shows; the star field no longer reshuffles on resize.
 
 ### Fixed
+- **Debug menu keyboard handling.** It now closes on Escape, moves focus to its close button, keeps Tab inside, and gives focus back on close, like the map drawer. Its dialog role sits on the panel, not the backdrop.
+  - With both the menu and the drawer open, Escape closes only the top one. Before, it closed the drawer underneath.
+  - The drawer's Escape listener is registered only while it is open.
+- **Debug pins.** Two changes in the same tick both land; the second used to overwrite the first.
 - Clouds on a page left open for days: the wind drifts grew without bound and went to the GPU as float32 — within about a day the 520 m detail noise moved in visible steps, and the mid layer and cirrus followed after a few days. The drifts stay in JS doubles and are handed over wrapped by the common tile period of every noise lookup that reads them: low cover and shape 2000 km, detail 520 m, mid layer 400 km, the potato deck's low cover 10 tiles. The cirrus, read in the rotated wind frame, gets fractions of its own tiles. The tile sizes are exported from the GLSL modules and checked against the periods in dev. It draws the same: 100 000 drifts up to 1e9 m land on the same noise coordinate to within 1e-10 of a tile.
 - Moon lens flare: night and overcast were counted twice (once in the clouds' moonlight `moonIntensity`, once in the flare), so its fade through twilight was squared. Night, altitude, phase and clouds/haze now count once each. A clear full moon is exactly as bright as before (`MOON_GAIN` 0.05 → 0.0225); twilight and thin cloud no longer kill the flare early.
 - Cloud aerial haze uses the same visibility as the sky's haze (heat shimmer included); at 30 °C+ distant clouds sank into a clearer haze than the horizon behind them.
@@ -55,6 +59,19 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
 
 ### Changed (file organisation)
+- **UI components split.**
+  - **Checks:** the rendered DOM was compared before and after in Chrome, normalised (digits, generated ids): identical for the hero, navbar, chart, forecast and map drawer. The debug menu differs only in its dialog role. The compiled CSS moved declaration-identical. Keyboard behaviour was tested in Chrome.
+  - **`DebugMenu.tsx` (371 → 105 lines):**
+    - `helpers.ts`: formatting and a `DebugContext` carrying the pins, the setter and the current/effective params. The fields no longer take `overrides={o} onSet={set}`, which was passed 23 times.
+    - `fields.tsx`: `OptionButton` replaces seven copies of the active-class pattern; plus `NumericField`, `FlagChip` and `PerfReadout`.
+    - `sections.tsx`: presets, time, clouds, wind, precipitation, atmosphere, tools.
+  - **`CurrentWeather.tsx` (295 → 58 lines):**
+    - `HeroStats.tsx`: the eight tiles from one data array instead of eight hand-written blocks;
+    - `SunArc.tsx`: the arc, with its day/night window as a pure function;
+    - `hooks/useLiveClock.ts`: the ticking location time.
+  - **`MapPicker.tsx` (288 → 199 lines):** `useDrawerResize` and `useSlowTileLoading` (`map-picker/hooks.ts`), and the shared `hooks/useDialogFocus`. The `useCallback`s that bought nothing are gone.
+  - **Navbar:** the search handler is merged into the submit, and the °C/°F buttons are one map.
+  - **Global sheet:** the refetch pill's size is a `loader-pill--lg` modifier (`large` prop) instead of a global override. The perf-stats panels' rules moved to the debug sheet.
 - **Weather domain and precipitation (no behaviour change).** Checked bit-identical on 20 000 random weathers and override sets: every SceneParams and shell field. Rain, sleet and hail were checked in Chrome.
   - **`deriveCloudPhysics`:** was one 152-line function. Now it composes named pure steps, each with its own inputs and outputs: `estimateConvection`, `estimateBase`, `estimateTop`, `layerHeights` (mid/cirrus heights, where the drawn deck sits), `estimateOpticalDepth` and `windsAloft`.
   - **`applyOverrides`:** was 120 lines. It hands the precipitation pins (`precipFromOverrides`, including the "pinned on with no rate" defaults) and the cloud pins (`cloudsFromOverrides`, including the deck that pinned precipitation brings) to their own functions.
