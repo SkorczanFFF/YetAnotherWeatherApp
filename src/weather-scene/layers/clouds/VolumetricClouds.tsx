@@ -20,9 +20,13 @@ import {
 } from "./cloudPasses";
 import { drawRays } from "./godRays";
 import { SHELL_KEYS, shellTargets, type ShellTargets } from "./shellTargets";
+import { COVER_FADE_IN } from "../../shaders/clouds/density.glsl";
+import { LAYER_MIN } from "../../shaders/clouds/layers.glsl";
 
 /** Shell fields eased between weathers (1/s): ~95 % of the way in a second. */
 const SHELL_EASE = 3;
+/** Shell cover under which the march is skipped: well inside its fade-in (COVER_FADE_IN), a cell draws next to nothing. */
+const COVER_SKIP = 0.3 * COVER_FADE_IN;
 
 interface VolumetricCloudsProps {
   params: SceneParams;
@@ -108,9 +112,8 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     const camera = frameState.camera;
     const gl = frameState.gl;
 
-    // Below the shader's own cut-offs (cover fades in over 0..0.05, cirrus is skipped under 0.01).
     // A clear sky skips the march but keeps the glare round the sun.
-    if (sh.coverage < 0.015 && sh.high < 0.01 && sh.midLayer < 0.01) {
+    if (sh.coverage < COVER_SKIP && sh.high < LAYER_MIN && sh.midLayer < LAYER_MIN) {
       st.historyValid = false;
       composite.uniforms.uClouds.value = NO_CLOUD_COVER;
       s.cloudCover = NO_CLOUD_COVER;

@@ -11,9 +11,15 @@ export interface SceneSignals {
   /** Display directions (compressed into the frame), unit vectors. */
   sunDir: Vector3;
   moonDir: Vector3;
-  /** Real altitudes, radians. */
+  /** Light directions for the cloud march: display azimuth, REAL altitude, unit vectors. */
+  sunLightDir: Vector3;
+  moonLightDir: Vector3;
+  /** Real altitudes, radians… */
   sunAlt: number;
   moonAlt: number;
+  /** …and degrees. */
+  sunAltDeg: number;
+  moonAltDeg: number;
   /** suncalc: 0 new, 0.25 first quarter, 0.5 full, 0.75 last quarter. */
   moonPhase: number;
   moonFraction: number;
@@ -33,6 +39,8 @@ export interface SceneSignals {
   haze: number;
   horizonColor: Color;
   sunColor: Color;
+  /** sunColor sRGB-encoded, for layers that draw in display space (glow, flare, god rays). */
+  sunColorDisplay: Color;
   moonIntensity: number;
   /** Sky / ground ambient colours (cloud ambient). */
   hemiSky: Color;
@@ -62,8 +70,12 @@ export function createSceneSignals(): SceneSignals {
   return {
     sunDir: new Vector3(0, 0, -1),
     moonDir: new Vector3(0, 0, -1),
+    sunLightDir: new Vector3(0, 1, 0),
+    moonLightDir: new Vector3(0, 1, 0),
     sunAlt: 0,
     moonAlt: 0,
+    sunAltDeg: 0,
+    moonAltDeg: 0,
     moonPhase: 0,
     moonFraction: 0,
     day: 0,
@@ -75,6 +87,7 @@ export function createSceneSignals(): SceneSignals {
     haze: 0,
     horizonColor: new Color(),
     sunColor: new Color(),
+    sunColorDisplay: new Color(),
     moonIntensity: 0,
     hemiSky: new Color(),
     hemiGround: new Color(),

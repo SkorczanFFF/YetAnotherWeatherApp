@@ -2,6 +2,9 @@
 // dots via gl_PointCoord. One uniform fades the whole field (drei <Stars>
 // has no continuous opacity — that's why this exists).
 
+import { STAR } from "../core/palette";
+import { glslColor } from "./chunks.glsl";
+
 export const STARS_VERT = /* glsl */ `
 attribute float aSize;
 attribute float aPhase;
@@ -25,6 +28,6 @@ void main() {
   float d = length(gl_PointCoord - 0.5);
   float a = smoothstep(0.5, 0.1, d) * uOpacity * vTwinkle;
   if (a < 0.01) discard;
-  gl_FragColor = vec4(vec3(0.92, 0.95, 1.0), a);
+  gl_FragColor = vec4(${glslColor(STAR)}, a);
 }
 `;

@@ -24,17 +24,14 @@ import {
 } from "../core/worldFrame";
 import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
 import { RENDER_ORDER } from "../core/constants";
+import { DECK_DAY_LIT, DECK_NIGHT_LIT, DECK_SHADE, DECK_STORM } from "../core/palette";
+import { stormDim } from "./clouds/shellTargets";
 import { deckDrift } from "./clouds/cloudDrift";
 
 interface CloudDeckProps {
   params: SceneParams;
   frame: ViewFrame;
 }
-
-const DAY_LIT = new Color("#f4f6f9");
-const NIGHT_LIT = new Color("#2b3244");
-const SHADE_TINT = new Color("#7d8796");
-const STORM = new Color("#3c4049");
 
 /** The trapezoid the frustum cuts out of the plane y = DECK_Y. */
 function deckFootprint(frame: ViewFrame) {
@@ -101,8 +98,8 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
   );
   useEffect(() => () => material.dispose(), [material]);
 
-  const { clouds, precip, thunder } = params;
-  const storm = thunder ? 1 : Math.min(0.6, precip.rainMmH / 12 + precip.snowCmH / 6);
+  const { clouds } = params;
+  const storm = stormDim(params);
   const fogDensity = fogDensityFor(effectiveVisibilityM(params.fog.visibilityM, params.temperatureC));
 
   useFrame(() => {
@@ -133,10 +130,10 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     u.uFogDensity.value = fogDensity;
 
     const lit = u.uLit.value as Color;
-    lit.copy(NIGHT_LIT).lerp(DAY_LIT, s.day);
+    lit.copy(DECK_NIGHT_LIT).lerp(DECK_DAY_LIT, s.day);
     lit.lerp(s.sunColor, s.warmth * 0.55 * (1 - s.overcast));
-    lit.lerp(STORM, storm * 0.75);
-    (u.uShade.value as Color).copy(lit).multiply(SHADE_TINT).lerp(STORM, storm * 0.5);
+    lit.lerp(DECK_STORM, storm * 0.75);
+    (u.uShade.value as Color).copy(lit).multiply(DECK_SHADE).lerp(DECK_STORM, storm * 0.5);
     (u.uHighColor.value as Color).copy(lit).lerp(s.sunColor, s.warmth * 0.4);
   });
 

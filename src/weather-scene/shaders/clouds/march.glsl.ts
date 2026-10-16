@@ -16,10 +16,11 @@
 // "sky units"), a = 1 − transmittance.
 
 import { EARTH_RADIUS_M } from "../../core/worldFrame";
-import { CIRRUS_ALPHA, FBM_WEIGHTS, IGN, NOISE_RANK, REMAP } from "../chunks.glsl";
+import { CLOUD_LIGHTNING } from "../../core/palette";
+import { CIRRUS_ALPHA, FBM_WEIGHTS, glslColor, IGN, NOISE_RANK, REMAP } from "../chunks.glsl";
 import { BLOCK_OFFSET, VIEW_RAY } from "./common.glsl";
 import { CLOUD_DENSITY } from "./density.glsl";
-import { CLOUD_LAYERS } from "./layers.glsl";
+import { CLOUD_LAYERS, LAYER_MIN } from "./layers.glsl";
 import { CLOUD_LIGHTING } from "./lighting.glsl";
 
 export const CLOUD_MARCH_FRAG = /* glsl */ `
@@ -143,7 +144,7 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
         vec3 ambient = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.9, hf)) * mix(1.15, 0.7, d);
         vec3 L = uLightColor * max(sunEnergy(od, cosTheta), diffuseLight(od, hf, column)) + ambient;
         // Lightning lights the cloud from inside.
-        L += vec3(0.8, 0.85, 1.0) * uFlash * 6.0 * exp(-distance(p, uFlashPos) / 1800.0);
+        L += ${glslColor(CLOUD_LIGHTNING)} * uFlash * 6.0 * exp(-distance(p, uFlashPos) / 1800.0);
         float tr = exp(-sigma * dt);
         scat += T * L * (1.0 - tr);
         T *= tr;
@@ -159,7 +160,7 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
 
   if (tFirst > 0.0) {
     // Aerial perspective: distant clouds sink into the horizon haze.
-    float fog = 1.0 - exp(-tFirst / uHazeDist);
+    float fog = aerial(tFirst, 1.0);
     scat = mix(scat, uHazeColor * (1.0 - T), fog);
     float edge = smoothstep(uMaxDist * 0.45, uMaxDist, tFirst);
     scat *= 1.0 - edge;
@@ -167,8 +168,8 @@ vec4 march(vec3 ro, vec3 rd, float jitter) {
   }
 
   // The 2D sheets lie behind the volume, nearest first.
-  if (uMid > 0.01 && T > 0.02) midLayer(ro, rd, cosTheta, scat, T);
-  if (uHigh > 0.01 && T > 0.02) cirrusLayer(ro, rd, cosTheta, scat, T);
+  if (uMid > ${LAYER_MIN} && T > 0.02) midLayer(ro, rd, cosTheta, scat, T);
+  if (uHigh > ${LAYER_MIN} && T > 0.02) cirrusLayer(ro, rd, cosTheta, scat, T);
 
   return vec4(scat, 1.0 - T);
 }

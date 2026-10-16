@@ -41,6 +41,10 @@ const SHELL_KEY_SET = {
 } satisfies Record<keyof ShellTargets, 1>;
 export const SHELL_KEYS = Object.keys(SHELL_KEY_SET) as (keyof ShellTargets)[];
 
+/** How dark storms and precipitation make the clouds, 0..1: a storm 1, heavy rain or snow up to 0.6. */
+export const stormDim = (params: SceneParams): number =>
+  params.thunder ? 1 : Math.min(0.6, params.precip.rainMmH / 12 + params.precip.snowCmH / 6);
+
 export function shellTargets(params: SceneParams): ShellTargets {
   const { low, mid, high, total } = params.clouds;
   const p = params.cloudPhysics;

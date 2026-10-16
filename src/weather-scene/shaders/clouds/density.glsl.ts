@@ -8,6 +8,8 @@ export const DETAIL_TILE_M = 520;
 export const COVER_TILE_M = 10000;
 /** The cover field's lookups, × the cover tile's scale: large cells, their mid part, the fine rims. */
 export const COVER_OCTAVES = [1, 0.43, 2.3] as const;
+/** The shell's cover fades in over 0..this (VolumetricClouds skips the march well inside it). */
+export const COVER_FADE_IN = 0.05;
 
 export const CLOUD_DENSITY = /* glsl */ `
 const float SHAPE_SCALE = 1.0 / ${SHAPE_TILE_M}.0;
@@ -58,6 +60,21 @@ const float COVER_EDGE = 0.18;   // half-width of a cell edge, in rank
 // for the fine component to still raise cloud: it shapes the rims of cells
 // but spawns no isolated islands — each floated as a smooth round ball.
 const float ISLAND_REACH = 0.12;
+// The shell's cover fades in over 0..COVER_FADE_IN.
+const float COVER_FADE_IN = ${COVER_FADE_IN};
+
+// A cell's share of cover c from its ranks. Deliberately wide edge: the cover
+// falling off at a cell's rim rounds its top; a sharp mask extrudes into
+// vertical walls. Gated by the large-scale rank (ISLAND_REACH).
+float coverMask(vec2 ranks, float c) {
+  return smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, ranks.x)
+    * smoothstep(1.0 - c - ISLAND_REACH - 0.1, 1.0 - c - ISLAND_REACH, ranks.y);
+}
+
+// A closing deck fills the gaps between its cells.
+float closeGaps(float cov, float c) {
+  return clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
+}
 
 // Rank (0..1) of the slowly scrolling weather noise — the top uCoverage share
 // is cloud — and (y) the rank of its large-scale part alone.
@@ -88,20 +105,17 @@ float density(vec3 p, float hf, bool detail) {
   float c = uCoverage;
   vec2 ranks = coverRank(xz, hf);
   float rank = ranks.x;
-  // Deliberately wide edge: the cover falling off at a cell's rim rounds its
-  // top; a sharp mask extrudes into vertical walls.
-  float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, rank) * smoothstep(0.0, 0.05, c)
-    * smoothstep(1.0 - c - ISLAND_REACH - 0.1, 1.0 - c - ISLAND_REACH, ranks.y);
+  float cov = coverMask(ranks, c) * smoothstep(0.0, COVER_FADE_IN, c);
   // Convective towers narrow with height (stacked, rounded tops), so even a
   // tall cumulonimbus isn't its cell's footprint extruded into a column.
   cov *= 1.0 - 0.45 * smoothstep(0.35, 0.9, uType) * smoothstep(0.15, 1.0, hf);
   // Cumulonimbus anvil: near the top each cell spreads into a wider halo of
   // its own — not into the clear air between cells.
   if (uType > 0.9) {
-    float halo = smoothstep(1.0 - c - COVER_EDGE - 0.25, 1.0 - c, rank) * smoothstep(0.0, 0.05, c);
+    float halo = smoothstep(1.0 - c - COVER_EDGE - 0.25, 1.0 - c, rank) * smoothstep(0.0, COVER_FADE_IN, c);
     cov = max(cov, smoothstep(0.75, 0.95, hf) * 0.85 * halo);
   }
-  cov = clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
+  cov = closeGaps(cov, c);
   if (cov < 0.01) return 0.0;
 
   vec3 uvw = vec3(xz.x, y + uEvolve * 400.0, xz.y) * SHAPE_SCALE;

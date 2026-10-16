@@ -4,6 +4,7 @@ import type { Material, Points } from "three";
 import type { SceneParams } from "../../weather/sceneParams";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
 import { RENDER_ORDER } from "../core/constants";
+import { DIAMOND_DUST } from "../core/palette";
 
 interface DiamondDustProps {
   params: SceneParams;
@@ -58,7 +59,7 @@ export function DiamondDust({ params, frame, count }: DiamondDustProps) {
       size={6}
       speed={0.15}
       opacity={1}
-      color="#ffffff"
+      color={DIAMOND_DUST}
       noise={0.6}
       renderOrder={RENDER_ORDER.diamondDust}
     />

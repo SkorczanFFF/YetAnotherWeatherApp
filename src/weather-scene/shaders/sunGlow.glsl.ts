@@ -5,14 +5,6 @@
 // colour, never sRGB-encoded: the encoding's toe lifted the faint halo ×10
 // into a white blob the size of a fist.
 
-export const SUN_GLOW_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
 export const SUN_GLOW_FRAG = /* glsl */ `
 uniform vec3 uColor;      // display space, × strength
 uniform float uSpread;    // rim + halo gain: low with a high sun, whose sky is already near white

@@ -2,6 +2,8 @@
 // cirrus. Each composites itself into the march's (scat, T). Interpolated
 // into CLOUD_MARCH_FRAG after CLOUD_DENSITY and CLOUD_LIGHTING.
 
+/** A mid or cirrus layer with less cover than this isn't drawn (the march skips it, VolumetricClouds the pass). */
+export const LAYER_MIN = 0.01;
 /** Mid layer: cover cells ~2.5× smaller than the shell's (noise space ×), broken by a finer field of this tile, m. */
 export const MID_CELL_SCALE = 2.5;
 export const MID_CELLS_TILE_M = 1600;
@@ -26,16 +28,14 @@ void midLayer(vec3 ro, vec3 rd, float cosTheta, inout vec3 scat, inout float T) 
     vec2 xz = (ro + rd * tm).xz - uMidDrift;
     vec2 ranks = coverRank(xz * MID_CELL_SCALE, 0.5);
     float c = uMid;
-    float cov = smoothstep(1.0 - c - COVER_EDGE, 1.0 - c + COVER_EDGE, ranks.x)
-      * smoothstep(1.0 - c - ISLAND_REACH - 0.1, 1.0 - c - ISLAND_REACH, ranks.y);
-    cov = clamp(cov + smoothstep(0.85, 1.0, c), 0.0, 1.0);
+    float cov = closeGaps(coverMask(ranks, c), c);
     float cells = noise3(vec3(xz / ${MID_CELLS_TILE_M}.0, 0.83)).g;
     float a = smoothstep(0.05, 0.95, cov * mix(0.45, 1.25, cells)) * MID_ALPHA
       * (1.0 - smoothstep(60000.0, 120000.0, tm));
     // Thicker cores shade themselves; the forward lobe lights the sunward rims.
     vec3 col = (uLightColor * mix(hg(cosTheta, 0.55), 1.0, 0.55) * mix(0.95, 0.55, a)
       + mix(uAmbientBottom, uAmbientTop, 0.6) * 1.15) * mix(0.62, 1.05, cells);
-    col = mix(col, uHazeColor, 1.0 - exp(-tm / (uHazeDist * 2.0)));
+    col = mix(col, uHazeColor, aerial(tm, 2.0));
     scat += T * col * a;
     T *= 1.0 - a;
   }
@@ -52,7 +52,7 @@ void cirrusLayer(vec3 ro, vec3 rd, float cosTheta, inout vec3 scat, inout float 
     n = n * 0.7 + noise3(vec3(qw / vec2(${CIRRUS_TILES_M[1][0]}.0, ${CIRRUS_TILES_M[1][1]}.0) - uCirrusDrift.zw, 0.11)).b * 0.3;
     float a = cirrusAlpha(noiseRank(n, CIRRUS_NOISE), uHigh) * (1.0 - smoothstep(60000.0, 160000.0, tc));
     vec3 col = uLightColor * mix(hg(cosTheta, 0.6), 1.0, 0.5) * 0.9 + uAmbientTop * 1.2;
-    col = mix(col, uHazeColor, 1.0 - exp(-tc / (uHazeDist * 2.5)));
+    col = mix(col, uHazeColor, aerial(tc, 2.5));
     scat += T * col * a;
     T *= 1.0 - a;
   }

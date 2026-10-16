@@ -1,9 +1,10 @@
 import { Color, MathUtils, Vector3 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
+import { deckClosing, TWO_STREAM_K } from "../../../weather/cloudPhysics";
 import type { SceneSignals } from "../../core/sceneSignals";
-import { directionFromRelative, effectiveVisibilityM } from "../../core/worldFrame";
-import { CLOUD_MOON, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../../core/palette";
-import type { ShellTargets } from "./shellTargets";
+import { effectiveVisibilityM } from "../../core/worldFrame";
+import { CLOUD_MOON, CLOUD_NIGHT_GLOW, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../../core/palette";
+import { stormDim, type ShellTargets } from "./shellTargets";
 
 // The clouds' light for this frame: key light (sun ↔ moon crossfade), its
 // march and phase directions, ambient, adaptation and aerial-perspective haze.
@@ -35,20 +36,17 @@ export function createCloudLight(): CloudLight {
   };
 }
 
-const NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
 /**
  * Under a closed deck the eye adapts: by day the cloud light is raised by
- * (1 + 0.1125·τ)^ADAPT_POWER, at most ADAPT_MAX — thick decks stay darker
+ * (1 + TWO_STREAM_K·τ)^ADAPT_POWER, at most ADAPT_MAX — thick decks stay darker
  * than thin ones, but grey, not black. The horizon haze isn't raised, so the
  * deck overhead ends up brighter than at the horizon, as a real overcast sky.
  */
 const ADAPT_POWER = 0.35;
 const ADAPT_MAX = 2.2;
-const scratch = {
-  sun: new Vector3(),
-  moon: new Vector3(),
-  moonColor: new Color(),
-};
+/** Ambient lost under a storm (stormDim 1); heavy rain or snow (0.6) lose 0.3. */
+const STORM_GLOOM = 0.5;
+const moonColor = new Color();
 
 export function cloudLighting(
   s: SceneSignals,
@@ -56,29 +54,25 @@ export function cloudLighting(
   params: SceneParams,
   out: CloudLight,
 ): CloudLight {
-  const sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
   // Key light: the sun keeps lighting cloud bases ~6° after it sets
   // (that's the red underside glow), then the moon takes over.
-  const sunVis = MathUtils.smoothstep(sunAltDeg, -6, 2);
+  const sunVis = MathUtils.smoothstep(s.sunAltDeg, -6, 2);
   // Sun and moon crossfade (a hard switch jumped ~6× in brightness at dusk).
-  // The light march uses the on-screen azimuth but the REAL altitude: the
-  // squeezed display altitude would light every cloud almost horizontally and
-  // outline it. The phase (silver lining, forward glow) uses the full display
-  // direction, so it sits around the visible disc, not off-frame above it.
+  // The light march uses the real altitude (signals.sunLightDir); the phase
+  // (silver lining, forward glow) the full display direction, so it sits
+  // around the visible disc, not off-frame above it.
   const sunEnergy = 1.3 * sunVis;
   const moonEnergy = 1.4 * s.moonIntensity * (1 - sunVis);
   const lightColor = out.lightColor
     .copy(CLOUD_SUN_LOW)
-    .lerp(CLOUD_SUN_HIGH, MathUtils.smoothstep(sunAltDeg, -3, 22))
+    .lerp(CLOUD_SUN_HIGH, MathUtils.smoothstep(s.sunAltDeg, -3, 22))
     .multiplyScalar(sunEnergy);
-  lightColor.add(scratch.moonColor.copy(CLOUD_MOON).multiplyScalar(moonEnergy));
-  directionFromRelative(Math.atan2(s.sunDir.x, -s.sunDir.z), s.sunAlt, scratch.sun);
-  directionFromRelative(Math.atan2(s.moonDir.x, -s.moonDir.z), s.moonAlt, scratch.moon);
+  lightColor.add(moonColor.copy(CLOUD_MOON).multiplyScalar(moonEnergy));
   const lightDir = out.lightDir
-    .copy(scratch.sun)
+    .copy(s.sunLightDir)
     .multiplyScalar(sunEnergy)
-    .addScaledVector(scratch.moon, moonEnergy);
-  if (lightDir.lengthSq() < 1e-8) lightDir.copy(scratch.sun);
+    .addScaledVector(s.moonLightDir, moonEnergy);
+  if (lightDir.lengthSq() < 1e-8) lightDir.copy(s.sunLightDir);
   lightDir.normalize();
   const phaseDir = out.phaseDir
     .copy(s.sunDir)
@@ -87,12 +81,12 @@ export function cloudLighting(
   if (phaseDir.lengthSq() < 1e-8) phaseDir.copy(s.sunDir);
   phaseDir.normalize();
   // Daylight adaptation under a closed deck (see ADAPT_POWER).
-  const closed = MathUtils.smoothstep(shell.coverage, 0.8, 1);
+  const closed = deckClosing(shell.coverage);
   const adapt =
-    1 + closed * s.day * (Math.min(ADAPT_MAX, Math.pow(1 + 0.1125 * shell.opticalDepth, ADAPT_POWER)) - 1);
+    1 + closed * s.day * (Math.min(ADAPT_MAX, Math.pow(1 + TWO_STREAM_K * shell.opticalDepth, ADAPT_POWER)) - 1);
   lightColor.multiplyScalar(adapt);
-  // Thick storm towers starve their own bases of light.
-  const gloom = params.thunder ? 0.5 : params.precip.rainMmH > 4 ? 0.3 : 0;
+  // Thick storm and rain clouds starve their own bases of light.
+  const gloom = STORM_GLOOM * stormDim(params);
   out.ambientTop.copy(s.hemiSky).multiplyScalar(1.35 * (1 - gloom) * adapt);
   const ambientBottom = out.ambientBottom
     .copy(s.hemiGround)
@@ -100,9 +94,9 @@ export function cloudLighting(
     .lerp(s.hemiSky, 0.4)
     .multiplyScalar((1 - gloom) * adapt);
   // Night: undersides pick up a faint warm glow from towns below.
-  ambientBottom.r += NIGHT_GLOW.r * s.night;
-  ambientBottom.g += NIGHT_GLOW.g * s.night;
-  ambientBottom.b += NIGHT_GLOW.b * s.night;
+  ambientBottom.r += CLOUD_NIGHT_GLOW.r * s.night;
+  ambientBottom.g += CLOUD_NIGHT_GLOW.g * s.night;
+  ambientBottom.b += CLOUD_NIGHT_GLOW.b * s.night;
   // Sky radiance is tone-mapped at exposure 0.5 — the haze target is in the same units.
   out.hazeColor.copy(s.horizonColor).multiplyScalar(1.4);
   // The same visibility as the sky's haze (heat shimmer included).

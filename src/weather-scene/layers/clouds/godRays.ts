@@ -28,7 +28,7 @@ const horizon: ScreenPoint = { u: 0, v: 0, w: 0, offFrame: 0 };
 /** 0 = no rays: the sun up and near the frame, cloud to cut shafts, haze to show them, no fog. */
 export function rayStrength(s: SceneSignals, sunOnScreen: ScreenPoint, coverage: number): number {
   return sunOnScreen.w > 0
-    ? MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -1, 6) *
+    ? MathUtils.smoothstep(s.sunAltDeg, -1, 6) *
         (1 - MathUtils.smoothstep(sunOnScreen.offFrame, 0, 0.4)) *
         MathUtils.lerp(RAY_CLEAR_FLOOR, 1, MathUtils.smoothstep(coverage, 0.08, 0.35)) *
         // Haze makes the shafts visible; fog swallows them.
@@ -78,7 +78,7 @@ export function drawRays(
   gl.setRenderTarget(targets.rays);
   gl.render(rays.scene, rays.camera);
   gl.setRenderTarget(previous);
-  rayColor.copy(s.sunColor).convertLinearToSRGB().multiplyScalar(strength * RAY_GAIN);
+  rayColor.copy(s.sunColorDisplay).multiplyScalar(strength * RAY_GAIN);
   composite.uniforms.uRayShadow.value = strength * RAY_SHADOW_GAIN;
   return true;
 }

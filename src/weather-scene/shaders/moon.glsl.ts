@@ -4,14 +4,6 @@
 // from the on-screen sun so the bright limb points at the sun shown in the
 // scene. Additive — only lit surface brightens the sky, like the real thing.
 
-export const MOON_VERT = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
 export const MOON_FRAG = /* glsl */ `
 #define PI 3.141592653589793
 uniform sampler2D uMap;

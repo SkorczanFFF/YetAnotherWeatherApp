@@ -3,7 +3,6 @@ import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import {
   AdditiveBlending,
-  Color,
   type Mesh,
   MathUtils,
   ShaderMaterial,
@@ -12,13 +11,15 @@ import {
   Vector3,
 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
-import { MOON_FRAG, MOON_VERT } from "../shaders/moon.glsl";
-import { RENDER_ORDER } from "../core/constants";
+import { MOON_FRAG } from "../shaders/moon.glsl";
+import { BILLBOARD_VERT } from "../shaders/chunks.glsl";
+import { placeBillboard } from "../core/celestial";
+import { CELESTIAL_DISTANCE, RENDER_ORDER } from "../core/constants";
+import { MOON_DISC } from "../core/palette";
 
-const DISTANCE = 1400;
 /** Drawn ~4× the real 0.5° so it reads at phone sizes. */
 const ANGULAR_DIAMETER = MathUtils.degToRad(2.2);
-const SIZE = 2 * DISTANCE * Math.tan(ANGULAR_DIAMETER / 2);
+const SIZE = 2 * CELESTIAL_DISTANCE * Math.tan(ANGULAR_DIAMETER / 2);
 
 /** Textured moon with the real phase; the lit limb faces the on-screen sun. */
 export function Moon() {
@@ -38,9 +39,9 @@ export function Moon() {
         uSunDir2D: { value: new Vector2(1, 0) },
         uPhaseAngle: { value: Math.PI },
         uOpacity: { value: 0 },
-        uTint: { value: new Color("#f4f1ea") },
+        uTint: { value: MOON_DISC },
       },
-      vertexShader: MOON_VERT,
+      vertexShader: BILLBOARD_VERT,
       fragmentShader: MOON_FRAG,
       transparent: true,
       depthWrite: false,
@@ -54,12 +55,12 @@ export function Moon() {
     if (!mesh) return;
     // Daytime moon is pale and only shows when enough of it is lit (a thin
     // crescent next to the sun is lost in the glare); clouds and haze hide it.
-    const above = MathUtils.smoothstep(s.moonAlt * MathUtils.RAD2DEG, -1, 2);
+    const above = MathUtils.smoothstep(s.moonAltDeg, -1, 2);
     // Low over the horizon a daytime moon is lost in the haze altogether.
     const dayVisibility =
       0.45 *
       MathUtils.smoothstep(s.moonFraction, 0.05, 0.35) *
-      MathUtils.smoothstep(s.moonAlt * MathUtils.RAD2DEG, 2, 12);
+      MathUtils.smoothstep(s.moonAltDeg, 2, 12);
     const opacity =
       above *
       MathUtils.lerp(dayVisibility, 1, s.night) *
@@ -69,8 +70,7 @@ export function Moon() {
     if (!mesh.visible) return;
 
     const camera = state.camera;
-    mesh.position.copy(camera.position).addScaledVector(s.moonDir, DISTANCE);
-    mesh.quaternion.copy(camera.quaternion);
+    placeBillboard(mesh, camera, s.moonDir);
 
     // Sun direction relative to the moon, in camera space.
     const inv = camera.matrixWorldInverse;

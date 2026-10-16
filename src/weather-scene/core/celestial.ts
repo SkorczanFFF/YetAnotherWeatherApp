@@ -1,6 +1,7 @@
-import { type Camera, MathUtils, type Vector3, Vector4 } from "three";
+import { type Camera, MathUtils, type Object3D, type Vector3, Vector4 } from "three";
 import type { ViewFrame } from "./viewVolume";
 import { CAMERA_PITCH, directionFromRelative } from "./worldFrame";
+import { CELESTIAL_DISTANCE } from "./constants";
 
 // Sun and moon on screen: real altitude/azimuth → the display direction
 // squeezed into the frame (see CLAUDE.md › World convention), and the screen
@@ -87,9 +88,18 @@ function pairedMoonAzimuth(moonRel: number, sunRel: number, moonAlt: number, sun
   return MathUtils.lerp(moonRel, -moonRel, both * inside);
 }
 
+interface CelestialDirections {
+  sunDir: Vector3;
+  moonDir: Vector3;
+  sunLightDir: Vector3;
+  moonLightDir: Vector3;
+}
+
 /**
  * Display directions (unit vectors) of the sun and moon from their real
- * altitudes and azimuths relative to the facing direction (radians).
+ * altitudes and azimuths relative to the facing direction (radians), and the
+ * clouds' light directions: the same azimuth at the real altitude — the
+ * squeezed one would light every cloud almost horizontally and outline it.
  */
 export function displayDirections(
   frame: ViewFrame,
@@ -97,18 +107,17 @@ export function displayDirections(
   sunRel: number,
   moonAlt: number,
   moonRel: number,
-  outSun: Vector3,
-  outMoon: Vector3,
+  out: CelestialDirections,
 ): void {
   const altTop = frame.topElevRaw - ZENITH_MARGIN;
   const sunAltD = displayAltitude(sunAlt, altTop);
   const moonAltD = displayAltitude(moonAlt, altTop);
-  directionFromRelative(displayAzimuth(sunRel, sunAltD, frame), sunAltD, outSun);
-  directionFromRelative(
-    displayAzimuth(pairedMoonAzimuth(moonRel, sunRel, moonAlt, sunAlt), moonAltD, frame, MOON_CROSS_SHARE),
-    moonAltD,
-    outMoon,
-  );
+  const sunAz = displayAzimuth(sunRel, sunAltD, frame);
+  const moonAz = displayAzimuth(pairedMoonAzimuth(moonRel, sunRel, moonAlt, sunAlt), moonAltD, frame, MOON_CROSS_SHARE);
+  directionFromRelative(sunAz, sunAltD, out.sunDir);
+  directionFromRelative(moonAz, moonAltD, out.moonDir);
+  directionFromRelative(sunAz, sunAlt, out.sunLightDir);
+  directionFromRelative(moonAz, moonAlt, out.moonLightDir);
 }
 
 export interface ScreenPoint {
@@ -119,6 +128,12 @@ export interface ScreenPoint {
   w: number;
   /** How far outside the frame (in screen units), 0 inside it. */
   offFrame: number;
+}
+
+/** Puts a camera-facing quad (sun glow, moon) at CELESTIAL_DISTANCE along `dir`. */
+export function placeBillboard(mesh: Object3D, camera: Camera, dir: Vector3): void {
+  mesh.position.copy(camera.position).addScaledVector(dir, CELESTIAL_DISTANCE);
+  mesh.quaternion.copy(camera.quaternion);
 }
 
 const clip = new Vector4();

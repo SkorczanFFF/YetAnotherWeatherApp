@@ -1,5 +1,6 @@
 import { Color, MathUtils } from "three";
 import type { SceneParams } from "../../weather/sceneParams";
+import { skyClosure } from "../../weather/cloudPhysics";
 import type { SceneSignals } from "./sceneSignals";
 import { effectiveVisibilityM, heatShimmer } from "./worldFrame";
 import {
@@ -33,7 +34,7 @@ const scratch = new Color();
  * sunAlt, moonAlt and moonFraction.
  */
 export function updateSkyLight(s: SceneSignals, params: SceneParams): void {
-  const a = s.sunAlt * MathUtils.RAD2DEG;
+  const a = s.sunAltDeg;
   daylight(s, a);
   deckShading(s, params.clouds);
   hazeAndHorizon(s, params, a);
@@ -48,19 +49,18 @@ function daylight(s: SceneSignals, a: number): void {
   s.lowSun = 1 - smoothstep(a, 0, 10);
 }
 
+/** The low cover closing from `lowFrom`, or (× 0.8) the low/mid sky closing from `skyFrom`. */
+function deckRamp(clouds: SceneParams["clouds"], lowFrom: number, skyFrom: number): number {
+  return Math.max(smoothstep(clouds.low, lowFrom, 1.0), smoothstep(skyClosure(clouds), skyFrom, 1.0) * 0.8);
+}
+
 function deckShading(s: SceneSignals, clouds: SceneParams["clouds"]): void {
   // Only a closing low/mid deck greys the sky — the gaps of a broken one
   // show clear blue; cirrus (in the total) only veils it.
-  s.overcast = Math.max(
-    smoothstep(clouds.low, 0.8, 1.0),
-    smoothstep(Math.max(clouds.low, clouds.mid), 0.85, 1.0) * 0.8,
-  );
+  s.overcast = deckRamp(clouds, 0.8, 0.85);
   // The frame never shows the zenith, so a broken deck already fills most
   // of it with bright cloud (what the UI glass sits over).
-  s.cloudFill = Math.max(
-    smoothstep(clouds.low, 0.55, 1.0),
-    smoothstep(Math.max(clouds.low, clouds.mid), 0.7, 1.0) * 0.8,
-  );
+  s.cloudFill = deckRamp(clouds, 0.55, 0.7);
 }
 
 function hazeAndHorizon(s: SceneSignals, params: SceneParams, a: number): void {
@@ -96,9 +96,10 @@ function hazeAndHorizon(s: SceneSignals, params: SceneParams, a: number): void {
 /** Light colours for the clouds. */
 function lightColours(s: SceneSignals, a: number): void {
   s.sunColor.copy(SUN_LOW).lerp(SUN_HIGH, smoothstep(a, 0, 20));
+  s.sunColorDisplay.copy(s.sunColor).convertLinearToSRGB();
   s.moonIntensity =
     s.night *
-    smoothstep(s.moonAlt * MathUtils.RAD2DEG, -1, 5) *
+    smoothstep(s.moonAltDeg, -1, 5) *
     (0.25 + 0.75 * s.moonFraction) *
     0.45 *
     (1 - 0.7 * s.overcast);

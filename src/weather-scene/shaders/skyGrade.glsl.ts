@@ -3,6 +3,9 @@
 // fog → below-horizon ground haze → lightning flash. One draw call does all
 // the "what Preetham can't" work. z = w pins it to the far plane.
 
+import { SKY_FLASH, SKY_GROUND } from "../core/palette";
+import { glslColor } from "./chunks.glsl";
+
 export const SKY_GRADE_VERT = /* glsl */ `
 varying vec3 vDir;
 void main() {
@@ -48,9 +51,9 @@ void main() {
 
   // There is no ground mesh: below the horizon fades into a darker haze.
   float ground = smoothstep(0.012, -0.05, h);
-  acc = over(vec4(mix(uHazeColor * 0.45, vec3(0.012, 0.014, 0.018), 0.45), ground * 0.94), acc);
+  acc = over(vec4(mix(uHazeColor * 0.45, ${glslColor(SKY_GROUND)}, 0.45), ground * 0.94), acc);
 
-  acc = over(vec4(vec3(0.86, 0.9, 1.0), clamp(uFlash * 0.5, 0.0, 1.0)), acc);
+  acc = over(vec4(${glslColor(SKY_FLASH)}, clamp(uFlash * 0.5, 0.0, 1.0)), acc);
 
   gl_FragColor = acc;
   #include <colorspace_fragment>

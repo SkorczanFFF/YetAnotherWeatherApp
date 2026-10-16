@@ -39,3 +39,34 @@ export const SKY_OVERCAST_DUSK = new Color("#6a3a33");
 export const CLOUD_SUN_LOW = new Color("#ff5f2e");
 export const CLOUD_SUN_HIGH = new Color("#fff3e4");
 export const CLOUD_MOON = new Color("#a9bedf");
+/** Faint warm town glow on cloud undersides at night (linear, added to the ambient). */
+export const CLOUD_NIGHT_GLOW = new Color(0.03, 0.022, 0.017);
+/** Lightning lighting a cloud from inside (linear, GLSL in the march). */
+export const CLOUD_LIGHTNING = new Color(0.8, 0.85, 1.0);
+
+// Potato-tier deck (CloudDeck): lit day/night, the shade multiplier, storm grey.
+export const DECK_DAY_LIT = new Color("#f4f6f9");
+export const DECK_NIGHT_LIT = new Color("#2b3244");
+export const DECK_SHADE = new Color("#7d8796");
+export const DECK_STORM = new Color("#3c4049");
+
+// Sky overlay literals (linear, GLSL in SkyGrade): the ground band under the horizon and the lightning flash.
+export const SKY_GROUND = new Color(0.012, 0.014, 0.018);
+export const SKY_FLASH = new Color(0.86, 0.9, 1.0);
+
+// Night sky and moon.
+export const STAR = new Color(0.92, 0.95, 1.0);
+/** Moon disc albedo tint (Moon). */
+export const MOON_DISC = new Color("#f4f1ea");
+/** Moon lens flare, used as display values like the sun's (LensFlare). */
+export const MOON_FLARE = new Color("#dfe7ff");
+
+// Lightning bolt: glow and core (Thunder).
+export const BOLT_GLOW = new Color("#c9d6ff");
+export const BOLT_CORE = new Color("#f4f7ff");
+
+// Frost on the pane, by day and dimmed at night (FrostGlass).
+export const FROST_DAY = new Color("#e9f2fb");
+export const FROST_NIGHT = new Color("#5d6b82");
+
+export const DIAMOND_DUST = new Color("#ffffff");

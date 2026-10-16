@@ -52,6 +52,8 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       const illum = SunCalc.getMoonIllumination(date);
       s.sunAlt = sun.altitude * MathUtils.DEG2RAD;
       s.moonAlt = moon.altitude * MathUtils.DEG2RAD;
+      s.sunAltDeg = s.sunAlt * MathUtils.RAD2DEG;
+      s.moonAltDeg = s.moonAlt * MathUtils.RAD2DEG;
       sunAz.current = azimuthFromCompassDeg(sun.azimuth);
       moonAz.current = azimuthFromCompassDeg(moon.azimuth);
       s.moonPhase = illum.phase;
@@ -63,8 +65,7 @@ export function SceneDriver({ params, frame }: SceneDriverProps) {
       relativeAzimuth(sunAz.current, facing),
       s.moonAlt,
       relativeAzimuth(moonAz.current, facing),
-      s.sunDir,
-      s.moonDir,
+      s,
     );
     updateSkyLight(s, params);
 

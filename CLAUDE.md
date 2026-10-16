@@ -74,8 +74,8 @@ src/
       skyLight.ts               pure: day/night factors, overcast/cloudFill, haze, horizon + light colours → signals
       UiBacklight.tsx           scene brightness → `--scene-light` CSS var on <html> (drives the glass UI)
       quality.ts                low / medium / high budgets
-      constants.ts              RENDER_ORDER, TONE_EXPOSURE, MAX_DT
-      palette.ts                every scene colour (haze, sun, ambient, sky veil, cloud light)
+      constants.ts              RENDER_ORDER, TONE_EXPOSURE, MAX_DT, CELESTIAL_DISTANCE
+      palette.ts                every scene colour (haze, sun, ambient, sky veil, cloud light, deck, bolt, frost, stars, moon)
       CameraRig.tsx             static camera + subtle parallax (gyro / pointer); LOOK_TARGET
       useCoverColumn.ts         measures the page's content column ([data-scene-cover]) → ViewFrame.coverHalf
       FrameRateGate.tsx, useDeviceOrientation.ts, useIsMobile.ts
@@ -199,11 +199,11 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 ## Conventions
 
 - Files use named exports; only `App` (imported by `index.tsx`) default-exports.
-- New scene input: add it to `SceneParams` (+ `DEFAULT_PARAMS`, `fromWeather`), add a `SceneOverrides` key + `OVERRIDE_KEY_SET` entry + `applyOverrides` line (all in `overrides.ts`), add it to `CALM` in `scenePresets.ts` if it describes weather, and to the catalogue in `SCENE_REFACTOR.md`.
+- New scene input: add it to `SceneParams` (+ `DEFAULT_SCENE`, `fromWeather`; `physicsFor` if the cloud physics reads it), add a `SceneOverrides` key + `OVERRIDE_KEY_SET` entry + `applyOverrides` line (all in `overrides.ts`), add it to `CALM` in `scenePresets.ts` if it describes weather, and to the catalogue in `SCENE_REFACTOR.md`.
 - Per-frame values go through `SceneSignals` (written once in `SceneDriver`), not React state. No allocations in `useFrame` — use refs/scratch objects.
 - Materials, geometries and textures created in `useMemo` are disposed in an effect cleanup.
 - Display formatting (times in the location zone, degrees, speeds, compass labels, coordinates, GMT offset) lives in `utils/format.ts`. Don't duplicate.
-- Layer draw order comes from `core/constants.ts::RENDER_ORDER`, scene colours from `core/palette.ts`, the frame delta cap from `MAX_DT`.
+- Layer draw order comes from `core/constants.ts::RENDER_ORDER`, scene colours from `core/palette.ts` (into GLSL via `glslColor`), per-frame derived values (`sunAltDeg`, `sunLightDir`, `sunColorDisplay`, …) from `SceneSignals`, the frame delta cap from `MAX_DT`.
 - SCSS: breakpoints via `@include below($bp-tablet | $bp-phone)` and small labels via `@include mono-label(size, spacing)` from `styles/_tokens.scss`; accent tints are `color-mix(in oklch, var(--accent-warm) N%, transparent)`, never a copied OKLCH literal.
 
 ## Things that are NOT bugs

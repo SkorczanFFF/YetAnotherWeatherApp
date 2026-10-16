@@ -3,8 +3,16 @@
 // CLOUD_MARCH_FRAG after CLOUD_DENSITY.
 
 import { MAX_LIGHT_STEPS } from "../../core/quality";
+import { TWO_STREAM_K } from "../../../weather/cloudPhysics";
+import { glslFloat } from "../chunks.glsl";
 
 export const CLOUD_LIGHTING = /* glsl */ `
+// Aerial perspective: how far something t metres away has sunk into the
+// horizon haze; k stretches the distance (thin high layers sink slower).
+float aerial(float t, float k) {
+  return 1.0 - exp(-t / (uHazeDist * k));
+}
+
 float hg(float c, float g) {
   float g2 = g * g;
   return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * c, 1.5); // ×4π-normalised
@@ -68,7 +76,7 @@ float sunEnergy(float od, float cosTheta) {
 // base went black. Through a horizontal deck light forgets its slant, so the
 // depth is the deck's τ above the sample (at most the march's); it needs medium
 // to build up (no white rims) and scales with the irradiance of a low sun.
-const float TWO_STREAM_K = 0.1125;   // (1 − g)·0.75, g = 0.85
+const float TWO_STREAM_K = ${glslFloat(TWO_STREAM_K)};   // cloudPhysics.ts
 const float DIFFUSE_GAIN = 1.1;
 float diffuseLight(float od, float hf, float column) {
   // Thinner patches of a closed deck let more light through: seen from below

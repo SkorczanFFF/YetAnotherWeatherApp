@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
-import { RENDER_ORDER } from "../core/constants";
-import { SUN_GLOW_FRAG, SUN_GLOW_VERT } from "../shaders/sunGlow.glsl";
+import { CELESTIAL_DISTANCE, RENDER_ORDER } from "../core/constants";
+import { SUN_GLOW_FRAG } from "../shaders/sunGlow.glsl";
+import { BILLBOARD_VERT } from "../shaders/chunks.glsl";
+import { placeBillboard } from "../core/celestial";
 import { SUN_DISC_DEG } from "./SkyLayer";
 
-const DISTANCE = 1400;
 /** Half-size of the glow quad, degrees. */
 const HALF_DEG = 28;
-const SIZE = 2 * DISTANCE * Math.tan(MathUtils.degToRad(HALF_DEG));
+const SIZE = 2 * CELESTIAL_DISTANCE * Math.tan(MathUtils.degToRad(HALF_DEG));
 /** Display brightness of the glow at full strength (tuned by eye). */
 const GAIN = 1.0;
 /** Rim + halo gain with a sun high up: its sky is already near white, and more blew the disc out. */
@@ -29,7 +30,7 @@ export function SunGlow() {
           uDiscDeg: { value: SUN_DISC_DEG },
           uSpread: { value: 1 },
         },
-        vertexShader: SUN_GLOW_VERT,
+        vertexShader: BILLBOARD_VERT,
         fragmentShader: SUN_GLOW_FRAG,
         transparent: true,
         depthTest: false,
@@ -45,20 +46,18 @@ export function SunGlow() {
     const mesh = ref.current;
     if (!mesh) return;
     const strength =
-      MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, -1, 1.5) *
+      MathUtils.smoothstep(s.sunAltDeg, -1, 1.5) *
       (1 - s.overcast) *
       (1 - MathUtils.smoothstep(s.haze, 0.55, 1));
     mesh.visible = strength > 0.01;
     if (!mesh.visible) return;
-    const camera = state.camera;
-    mesh.position.copy(camera.position).addScaledVector(s.sunDir, DISTANCE);
-    mesh.quaternion.copy(camera.quaternion);
+    placeBillboard(mesh, state.camera, s.sunDir);
     material.uniforms.uSpread.value = MathUtils.lerp(
       1,
       HIGH_SUN_SPREAD,
-      MathUtils.smoothstep(s.sunAlt * MathUtils.RAD2DEG, 8, 35),
+      MathUtils.smoothstep(s.sunAltDeg, 8, 35),
     );
-    (material.uniforms.uColor.value as Color).copy(s.sunColor).convertLinearToSRGB().multiplyScalar(strength * GAIN);
+    (material.uniforms.uColor.value as Color).copy(s.sunColorDisplay).multiplyScalar(strength * GAIN);
   });
 
   return (

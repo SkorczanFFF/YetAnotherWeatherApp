@@ -20,3 +20,6 @@ export const TONE_EXPOSURE = 0.5;
 
 /** Frame delta cap, s — a tab switch or hitch must not jump the simulation. */
 export const MAX_DT = 0.1;
+
+/** The sun glow and moon billboards sit this far out along their display direction (inside the sky box). */
+export const CELESTIAL_DISTANCE = 1400;

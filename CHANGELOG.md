@@ -65,6 +65,25 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Named exports everywhere except `App`; README brought up to date.
 
 ### Changed (single sources of truth)
+- **Scene.** Every output was checked old vs new on 20 000 random skies, cameras and weathers: bit-identical except the rain/snow ambient below and float rounding (≤ 1e-15). The shaders were compared as normalised text.
+  - **SceneDriver publishes once per frame what layers re-derived:**
+    - the real altitudes in degrees (`sunAltDeg` / `moonAltDeg`; converted in 10 places);
+    - the display-space sun colour (`sunColorDisplay`; encoded separately by the sun glow, the lens flare and the god rays);
+    - the clouds' light directions (`sunLightDir` / `moonLightDir`, display azimuth at the real altitude). VolumetricClouds recovered them from the display direction through `atan2`.
+  - **One sky-closure ramp.** The sky's `overcast` and `cloudFill` share one `deckRamp` over `skyClosure`. The clouds' daylight adaptation uses `deckClosing` and `TWO_STREAM_K` from cloudPhysics (0.1125 was written in three places).
+  - **Every scene colour comes from `palette.ts`:**
+    - the deck's lit/shade/storm tones, the town glow under night clouds, lightning inside clouds and in the sky, the ground band, stars, the moon disc and its flare tint, the bolt's glow and core, frost, diamond dust;
+    - GLSL takes them through `glslColor()`, at float32 precision (`glslFloat()`);
+    - the lens-flare ghost tints stay in their shader, as part of the effect.
+  - **Shared GLSL:**
+    - `coverMask` / `closeGaps` (the shell and the mid layer wrote the cover mask twice);
+    - `aerial()` (the aerial-perspective fade, three times);
+    - one `BILLBOARD_VERT`, `CELESTIAL_DISTANCE` and `placeBillboard` for the sun glow and the moon (identical shaders and placement);
+    - the layer threshold (`LAYER_MIN`) and the cover fade-in (`COVER_FADE_IN`) shared between the shader and the clear-sky skip.
+  - **Storm darkness (visible).** One `stormDim()` drives the potato deck's storm tint and the volumetric clouds' ambient (× 0.5).
+    - Before, the volumetric path used its own step: 0.3 above 4 mm/h, 0.5 under thunder, nothing for snow.
+    - Now moderate rain darkens a little (2.5 mm/h → 0.1), the 4 mm/h jump is gone, heavy rain and heavy snow reach 0.3, and storms are unchanged.
+  - **Calibration notes.** The noise generator's re-measure note now lists `COVER_NOISE_LOW`. The deck's stats are marked as measured over the 2D texture.
 - Weather domain (no visible change; checked on 20 000 random weathers and override sets, every SceneParams field identical apart from one edge below):
   - The cloud-physics input is built in one place, `physicsFor(scene, measuredSky, override)`. It was written out by hand three times: the default scene, the measured weather and the debug overrides. Their fog flags read differently but always agreed, since a fog code caps visibility under 1 km. The default scene no longer writes its temperature and dew point twice.
   - Precipitation lives in `weather/precip.ts`: the state, the gauge/code mapping with its fallback rates, and one `finalizePrecip()` that keeps each flag only where something falls (drizzle and glaze need rain, grains need snow). The measured path used to keep the grains flag of code 77 when the hourly split reported no snow; the debug path already dropped it.

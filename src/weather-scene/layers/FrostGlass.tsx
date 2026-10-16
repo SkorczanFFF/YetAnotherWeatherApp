@@ -8,13 +8,12 @@ import { useSceneSignals } from "../core/sceneSignals";
 import { FROST_FRAG } from "../shaders/frost.glsl";
 import { fullscreenVert } from "../shaders/fullscreen.glsl";
 import { MAX_DT, RENDER_ORDER } from "../core/constants";
+import { FROST_DAY, FROST_NIGHT } from "../core/palette";
 
 interface FrostGlassProps {
   params: SceneParams;
 }
 
-const DAY_TINT = new Color("#e9f2fb");
-const NIGHT_TINT = new Color("#5d6b82");
 /** Growth / melt speed of the frost, amount per second. */
 const GROW_RATE = 0.12;
 const MELT_RATE = 0.25;
@@ -65,7 +64,7 @@ export function FrostGlass({ params }: FrostGlassProps) {
     u.uNoise.value ??= getCloudNoiseTexture();
     u.uAmount.value = amount.current;
     u.uAspect.value = size.width / Math.max(1, size.height);
-    (u.uTint.value as Color).copy(DAY_TINT).lerp(NIGHT_TINT, s.night * 0.8);
+    (u.uTint.value as Color).copy(FROST_DAY).lerp(FROST_NIGHT, s.night * 0.8);
   });
 
   return (

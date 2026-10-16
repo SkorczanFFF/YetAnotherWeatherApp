@@ -51,9 +51,10 @@ varying float vFogDepth;
 const float LOW_SCALE = 1.0 / ${DECK_LOW_TILE}.0;
 const vec2 HIGH_SCALE = vec2(1.0 / ${DECK_HIGH_TILES[0]}.0, 1.0 / ${DECK_HIGH_TILES[1]}.0);
 
-// The FBM mixes are near-normal (measured: low mix μ 0.552 σ 0.081, single
-// sample μ 0.552 σ 0.111); their logistic CDF gives an even 0..1 rank, so a
-// cover c thresholds off exactly that share of the area.
+// Measured over the 2D FBM texture (core/noiseTexture.ts), not the volumetric 3D
+// noise: the mixes are near-normal (low mix μ 0.552 σ 0.081, single sample
+// μ 0.552 σ 0.111); their logistic CDF gives an even 0..1 rank, so a cover c
+// thresholds off exactly that share of the area.
 const vec2 DECK_NOISE = vec2(0.552, 0.081);
 const vec2 HIGH_NOISE = vec2(0.552, 0.111);
 ${NOISE_RANK}

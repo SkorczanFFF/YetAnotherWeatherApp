@@ -1,5 +1,16 @@
 // GLSL helpers shared by several shaders, interpolated into their sources.
 
+import type { Color } from "three";
+
+/** A number as a GLSL float literal, at float32 precision (7 significant digits). */
+export const glslFloat = (v: number) => {
+  const n = Number(v.toPrecision(7));
+  return Number.isInteger(n) ? n.toFixed(1) : String(n);
+};
+
+/** A palette colour as a GLSL `vec3` literal (its linear components, as stored). */
+export const glslColor = (c: Color) => `vec3(${glslFloat(c.r)}, ${glslFloat(c.g)}, ${glslFloat(c.b)})`;
+
 /** Rank (0..1) of a near-normal noise value with stats = (mean, σ), via the logistic CDF: an even share of the area. */
 export const NOISE_RANK = /* glsl */ `
 float noiseRank(float n, vec2 stats) {
@@ -34,5 +45,14 @@ float cirrusAlpha(float rank, float high) {
   float streaks = smoothstep(1.0 - high - 0.08, 1.0 - high + 0.12, rank) * (0.35 + 0.3 * high);
   float veil = smoothstep(0.55, 1.0, high) * 0.18;
   return min(streaks + veil, 0.7);
+}
+`;
+
+/** Vertex shader of a camera-facing quad (sun glow, moon): passes the UV through. */
+export const BILLBOARD_VERT = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;

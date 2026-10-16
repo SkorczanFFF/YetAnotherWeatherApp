@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { type Group, type InterleavedBufferAttribute, MathUtils, Vector3 } from "three";
+import { type Color, type Group, type InterleavedBufferAttribute, MathUtils, Vector3 } from "three";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
@@ -8,6 +8,7 @@ import { useSceneSignals } from "../core/sceneSignals";
 import { halfWidthAt, type ViewFrame } from "../core/viewVolume";
 import { METRES_PER_UNIT } from "../core/worldFrame";
 import { RENDER_ORDER } from "../core/constants";
+import { BOLT_CORE, BOLT_GLOW } from "../core/palette";
 
 /** Bolt top in scene units: just inside the cloud base from the cloud physics. */
 const boltTopY = (cloudBaseM: number) => (Math.max(300, cloudBaseM) * 1.05) / METRES_PER_UNIT;
@@ -94,13 +95,13 @@ export function Thunder({ enabled, cloudBaseM, nonce, frame, isMobile }: Thunder
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(MAX_SEGMENTS * 6));
     geometry.instanceCount = 0;
-    const make = (color: string, linewidth: number, opacity: number) => {
+    const make = (color: Color, linewidth: number, opacity: number) => {
       const material = new LineMaterial({ color, linewidth, transparent: true, opacity, toneMapped: false, fog: false });
       const line = new LineSegments2(geometry, material);
       line.frustumCulled = false;
       return line;
     };
-    return { geometry, glow: make("#c9d6ff", 7, 0.3), core: make("#f4f7ff", 2.4, 1) };
+    return { geometry, glow: make(BOLT_GLOW, 7, 0.3), core: make(BOLT_CORE, 2.4, 1) };
   }, []);
   useEffect(
     () => () => {
