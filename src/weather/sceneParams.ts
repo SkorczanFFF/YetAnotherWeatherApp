@@ -87,12 +87,14 @@ function fromWeather(weather: WeatherData, units: Units): SceneParams {
   const { toCelsius, toMs } = UNITS[units];
   const temperatureC = toCelsius(weather.temp);
 
-  const total =
-    typeof weather.cloud_cover === "number"
-      ? clamp01(weather.cloud_cover / 100)
-      : info.cover;
+  const measuredTotal = typeof weather.cloud_cover === "number" ? clamp01(weather.cloud_cover / 100) : null;
+  const total = measuredTotal ?? info.cover;
+  // No layer covers more sky than all of them together. A model whose layers
+  // say otherwise (MET Nordic: a corrected total over raw layers) is held to
+  // its total — the cover the label and icon show.
+  const layerMax = measuredTotal ?? 1;
   const layer = (v: number | undefined, fallback: number) =>
-    typeof v === "number" ? clamp01(v / 100) : fallback;
+    typeof v === "number" ? Math.min(clamp01(v / 100), layerMax) : fallback;
   // Rain or a storm needs a few cells to fall from, even when the model's
   // cloud fraction says scattered (it often does for showers).
   const rainMinimum =

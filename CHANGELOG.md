@@ -25,6 +25,16 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - The 2D noise texture is baked only when frost or the potato deck first shows; the star field no longer reshuffles on resize.
 
 ### Fixed
+- **Cloud cover vs the label.** No cloud layer is drawn above the measured total cover any more, so a "Mainly clear 26 %" sky no longer draws a nearly closed grey deck.
+  - **Cause.** In Scandinavia and the Baltics Open-Meteo's `best_match` is MET Nordic. Its total cover is corrected; its layers are raw, and they can contradict the total (Jēkabpils 14:00: total 18 %, low 100 %, 925 hPa 27 %; ECMWF and ICON had no such contradiction). No overlap lets one layer cover more than all of them together, so the scene now trusts the total, which the label and icon already show.
+  - **Measured on 4,032 real place-hours** (42 places, 3 days, run through the real mapper and cloud physics):
+    - layers above the total: 0.7 % of hours, nearly all in Oslo, Jēkabpils and Helsinki;
+    - closed decks under a total below 50 %: 12 → 0;
+    - decks more than 0.2 above the total: 30 → 1 (Reykjavik drizzle, held at the 0.25 drizzle floor on purpose);
+    - 96 hours changed in all (2.4 %). Outside the Nordics only by 0.01–0.06, where a layer sat a point or two above the total.
+  - **Rejected:** capping the low cover by the pressure levels. It would cut 20 % of consistent decks by more than 0.3, because thin decks fall between the levels (overcast at 100 % with the levels below 2.5 km at 16–70 %).
+  - **Not compensated:** a broken deck still looks fuller than its percentage towards the horizon, as a real one does: slant lines of sight cross several cells.
+  - Checked on screen with live Jēkabpils data and with the screenshot-time values pinned.
 - **Debug menu keyboard handling.** It now closes on Escape, moves focus to its close button, keeps Tab inside, and gives focus back on close, like the map drawer. Its dialog role sits on the panel, not the backdrop.
   - With both the menu and the drawer open, Escape closes only the top one. Before, it closed the drawer underneath.
   - The drawer's Escape listener is registered only while it is open.
