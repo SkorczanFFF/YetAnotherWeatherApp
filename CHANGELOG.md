@@ -61,10 +61,19 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
   - "every overcast base went black", "a dot pattern once the lanes got contrast";
   - the Sesvete and autumn-τ anecdotes.
 
-  Each keeps the reason it was protecting against, in one line, and the long form stays in CLAUDE.md. The ANGLE note in the cloud noise is a pointer to the CLAUDE.md gotcha.
+  Each keeps the reason it was protecting against, in one line; the long form is in this changelog. The ANGLE note in the cloud noise is a pointer to the CLAUDE.md gotcha.
 
   12 files: sky light, celestial, sky layer and grade, sun glow, cloud density, lighting, rays, composite and lighting model, precipitation kinds, cloud physics. Each was proven comment-only: with comments and whitespace stripped, every file is identical to the previous commit.
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
+
+### Changed (docs)
+- **CLAUDE.md as rules.** CLAUDE.md holds the rules and gotchas only (43.5 → 33 KB). Gone from it:
+  - how each value was tuned and what it drew before ("a 900 m slab that closed the frame", "autumn mornings read as τ 100–250", "before this, 20 % cover drew nothing");
+  - the long sun-in-view, god-ray and cloud-physics paragraphs, rewritten as rule lists with the constants they name.
+
+  The history stays here. The directory map follows the module split (celestial, sky light, cloud passes, lighting, drift, precipitation kinds, debug-menu and hero parts, the dialog and clock hooks). New conventions: pure logic out of frame loops, derived per-frame values published once in `SceneSignals`, shader constants interpolated from one TS export, comments without history.
+- The weather catalogue is the presets: each preset in `scenePresets.ts` carries a note of what the scene should show, shown as the button's tooltip in the debug menu. `SCENE_REFACTOR.md` (the finished scene-rewrite plan) is removed.
+- `REVIEW.md` (the 2026-10-13 code review) is removed: its findings were worked through in the entries recorded here.
 
 ### Changed (file organisation)
 - **UI components split.**

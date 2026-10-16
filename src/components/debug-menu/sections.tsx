@@ -27,7 +27,7 @@ export function PresetSection({ active, onApply }: PresetSectionProps) {
           auto
         </OptionButton>
         {WEATHER_PRESETS.map((p) => (
-          <OptionButton key={p.id} active={active === p.id} onClick={() => onApply(p.id)}>
+          <OptionButton key={p.id} active={active === p.id} onClick={() => onApply(p.id)} title={p.note}>
             {p.label}
           </OptionButton>
         ))}
