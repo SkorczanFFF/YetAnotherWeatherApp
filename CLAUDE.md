@@ -86,6 +86,7 @@ src/
       Moon.tsx                  moon.jpg disc with the real phase, lit limb towards the on-screen sun
       clouds/                   VolumetricClouds (state, easing, per-frame wiring of the passes), cloudPasses (materials +
                                 targets), cloudLighting (pure: key light, ambient, adaptation, haze), godRays (strength + pass),
+                                cloudDrift (drifts wrapped by the noise tile periods — float32 stays exact on a page left open),
                                 shellTargets (weather → shell, pure), cloudNoise3D (generator + cache), fullscreenPass
       CloudDeck.tsx             "potato"-tier fallback: flat world-space plane at DECK_Y
       precip/                   three.quarks: Precipitation (static KINDS table; rebuilt only when the set of kinds changes,

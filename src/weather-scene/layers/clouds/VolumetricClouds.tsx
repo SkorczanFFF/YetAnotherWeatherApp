@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { type Data3DTexture, MathUtils, Matrix4, type Mesh, Vector2, Vector3 } from "three";
+import { type Data3DTexture, MathUtils, Matrix4, type Mesh, Vector2, Vector3, type Vector4 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
 import type { VolumetricBudget } from "../../core/quality";
 import { useSceneSignals } from "../../core/sceneSignals";
 import { CAMERA_ALTITUDE_M, CLOUD_TIMELAPSE, METRES_PER_UNIT } from "../../core/worldFrame";
 import { MAX_DT, RENDER_ORDER } from "../../core/constants";
 import { getCloudNoise3D } from "./cloudNoise3D";
+import { highDrift, lowDrift } from "./cloudDrift";
 import { cloudLighting, createCloudLight } from "./cloudLighting";
 import {
   createClearSkyTexture,
@@ -142,13 +143,16 @@ export function VolumetricClouds({ params, budget }: VolumetricCloudsProps) {
     u.uMaxDist.value = budget.maxDistance;
 
     // Low/mid clouds ride the 850 hPa wind, cirrus the 300 hPa wind.
-    (u.uWind.value as Vector2).copy(st.windNoise);
-    (u.uWindHigh.value as Vector2).set(
+    lowDrift(st.windNoise, u.uWind.value as Vector2, u.uWindDetail.value as Vector2);
+    const wh = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
+    const highDir = (u.uHighWindDir.value as Vector2).set(s.windVelocityHigh.x / wh, s.windVelocityHigh.z / wh);
+    highDrift(
       s.windOffsetHigh.x * CLOUD_TIMELAPSE,
       s.windOffsetHigh.z * CLOUD_TIMELAPSE,
+      highDir,
+      u.uMidDrift.value as Vector2,
+      u.uCirrusDrift.value as Vector4,
     );
-    const wh = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
-    (u.uHighWindDir.value as Vector2).set(s.windVelocityHigh.x / wh, s.windVelocityHigh.z / wh);
     u.uEvolve.value = frameState.clock.elapsedTime * 0.002;
 
     // Writes the lighting uniforms in place (they are `light`'s objects).

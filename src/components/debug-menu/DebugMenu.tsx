@@ -140,26 +140,26 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
   onForceLightning,
 }) => {
   const o = overrides ?? {};
-  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   if (!open) return null;
+
+  // Derived, so editing any weather field after picking a preset unhighlights it.
+  const activePreset = PRESET_KEYS.every((k) => o[k] === undefined || o[k] === "auto")
+    ? null
+    : (WEATHER_PRESETS.find((p) => PRESET_KEYS.every((k) => o[k] === p.overrides[k]))?.id ?? "custom");
 
   const set = <K extends keyof SceneOverrides>(key: K, value: SceneOverrides[K]) => {
     onOverridesChange({ ...o, [key]: value });
   };
 
   const applyPreset = (id: string | null) => {
-    setActivePreset(id);
     const cleared: SceneOverrides = { ...o };
     PRESET_KEYS.forEach((k) => delete cleared[k]);
     const preset = WEATHER_PRESETS.find((p) => p.id === id);
     onOverridesChange(preset ? { ...cleared, ...preset.overrides } : cleared);
   };
 
-  const resetAll = () => {
-    setActivePreset(null);
-    onOverridesChange(null);
-  };
+  const resetAll = () => onOverridesChange(null);
 
   const time = e.time ?? Date.now();
   const sunAlt = SunCalc.getPosition(new Date(time), e.lat, e.lon).altitude;

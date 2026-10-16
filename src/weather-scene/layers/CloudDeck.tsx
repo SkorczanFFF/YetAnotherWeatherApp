@@ -24,6 +24,7 @@ import {
 } from "../core/worldFrame";
 import { CLOUD_DECK_FRAG, CLOUD_DECK_VERT } from "../shaders/cloudDeck.glsl";
 import { RENDER_ORDER } from "../core/constants";
+import { deckDrift } from "./clouds/cloudDrift";
 
 interface CloudDeckProps {
   params: SceneParams;
@@ -114,10 +115,17 @@ export function CloudDeck({ params, frame }: CloudDeckProps) {
     const u = material.uniforms;
     // Same winds aloft and time-lapse as the volumetric clouds, in scene units.
     const k = CLOUD_TIMELAPSE / METRES_PER_UNIT;
-    (u.uDrift.value as Vector2).set(s.windOffsetLow.x * k, s.windOffsetLow.z * k);
-    (u.uDriftHigh.value as Vector2).set(s.windOffsetHigh.x * k, s.windOffsetHigh.z * k);
     const wl = Math.hypot(s.windVelocityHigh.x, s.windVelocityHigh.z) || 1;
-    (u.uWindDir.value as Vector2).set(s.windVelocityHigh.x / wl, s.windVelocityHigh.z / wl);
+    const highDir = (u.uWindDir.value as Vector2).set(s.windVelocityHigh.x / wl, s.windVelocityHigh.z / wl);
+    deckDrift(
+      s.windOffsetLow.x * k,
+      s.windOffsetLow.z * k,
+      s.windOffsetHigh.x * k,
+      s.windOffsetHigh.z * k,
+      highDir,
+      u.uDrift.value as Vector2,
+      u.uDriftHigh.value as Vector2,
+    );
     u.uLow.value = deck;
     u.uHigh.value = clouds.high;
     u.uFlash.value = s.flash;

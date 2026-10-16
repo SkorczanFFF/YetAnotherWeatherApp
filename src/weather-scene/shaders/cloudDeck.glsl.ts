@@ -11,6 +11,11 @@
 
 import { CIRRUS_ALPHA, NOISE_RANK } from "./chunks.glsl";
 
+/** Noise tiles of the deck, scene units: the low cover (and its ×2.7 octave), the cirrus along / across the wind. */
+export const DECK_LOW_TILE = 220;
+export const DECK_LOW_OCTAVE = 2.7;
+export const DECK_HIGH_TILES = [700, 160] as const;
+
 export const CLOUD_DECK_VERT = /* glsl */ `
 varying vec3 vWorld;
 varying float vFogDepth;
@@ -26,8 +31,8 @@ void main() {
 
 export const CLOUD_DECK_FRAG = /* glsl */ `
 uniform sampler2D uNoise;
-uniform vec2 uDrift;       // accumulated 850 hPa drift, world units (xz)
-uniform vec2 uDriftHigh;   // accumulated 300 hPa drift (cirrus), world units (xz)
+uniform vec2 uDrift;       // accumulated 850 hPa drift, world units (xz), wrapped (cloudDrift.ts)
+uniform vec2 uDriftHigh;   // accumulated 300 hPa drift (cirrus), along / across uWindDir, in HIGH_SCALE tiles
 uniform vec2 uWindDir;     // unit, world xz — 300 hPa direction for the cirrus streaks
 uniform float uLow;        // 0..1 deck cover (low, or mid when it dominates)
 uniform float uHigh;       // 0..1 high cloud cover
@@ -42,8 +47,8 @@ uniform float uFogDensity;  // exp² density per scene unit
 varying vec3 vWorld;
 varying float vFogDepth;
 
-const float LOW_SCALE = 1.0 / 220.0;
-const vec2 HIGH_SCALE = vec2(1.0 / 700.0, 1.0 / 160.0);
+const float LOW_SCALE = 1.0 / ${DECK_LOW_TILE}.0;
+const vec2 HIGH_SCALE = vec2(1.0 / ${DECK_HIGH_TILES[0]}.0, 1.0 / ${DECK_HIGH_TILES[1]}.0);
 
 // The FBM mixes are near-normal (measured: low mix μ 0.552 σ 0.081, single
 // sample μ 0.552 σ 0.111); their logistic CDF gives an even 0..1 rank, so a
@@ -58,7 +63,7 @@ void main() {
 
   // LOW
   vec2 uvL = (p - uDrift) * LOW_SCALE;
-  float n = texture2D(uNoise, uvL).r * 0.62 + texture2D(uNoise, uvL * 2.7 + 0.31).r * 0.38;
+  float n = texture2D(uNoise, uvL).r * 0.62 + texture2D(uNoise, uvL * ${DECK_LOW_OCTAVE} + 0.31).r * 0.38;
   float rank = noiseRank(n, DECK_NOISE);
   float aLow = smoothstep(1.0 - uLow - 0.1, 1.0 - uLow + 0.1, rank) * smoothstep(0.0, 0.05, uLow);
   // Overcast: the gaps close into a blanket that keeps some texture.
@@ -68,10 +73,9 @@ void main() {
   vec3 colLow = mix(uLit, uShade, clamp(density * 0.75 + blanket * 0.3, 0.0, 1.0));
 
   // HIGH — rotate into the wind frame and stretch along it.
-  vec2 q = p - uDriftHigh;
   vec2 w = uWindDir;
-  vec2 qw = vec2(dot(q, w), dot(q, vec2(-w.y, w.x)));
-  float nh = texture2D(uNoise, qw * HIGH_SCALE + 0.57).r;
+  vec2 qw = vec2(dot(p, w), dot(p, vec2(-w.y, w.x)));
+  float nh = texture2D(uNoise, qw * HIGH_SCALE - uDriftHigh + 0.57).r;
   float rankHigh = noiseRank(nh, HIGH_NOISE);
   float aHigh = cirrusAlpha(rankHigh, uHigh) * smoothstep(0.0, 0.05, uHigh);
 

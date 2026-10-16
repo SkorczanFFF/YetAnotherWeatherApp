@@ -9,7 +9,7 @@ import { LENS_FLARE_FRAG, LENS_FLARE_VERT } from "../shaders/lensFlare.glsl";
 /** Display brightness of the sun's flare at full strength (tuned by eye). */
 const SUN_GAIN = 0.11;
 /** …and of a full moon's at night. */
-const MOON_GAIN = 0.05;
+const MOON_GAIN = 0.0225;
 const MOON_TINT = new Color("#dfe7ff");
 /** Cloud-cover taps around the source, frame heights. */
 const TAP = 0.012;
@@ -58,9 +58,11 @@ export function LensFlare({ source }: LensFlareProps) {
     const altDeg = (sun ? s.sunAlt : s.moonAlt) * MathUtils.RAD2DEG;
     const { u, v, w, offFrame } = projectToScreen(dir, state.camera, onScreen);
     const weather = (1 - s.overcast) * (1 - MathUtils.smoothstep(s.haze, 0.35, 0.85));
+    // Night, altitude and phase once each; clouds and haze come in through `weather`
+    // (moonIntensity, the clouds' moonlight, already holds night and overcast).
     const body = sun
       ? MathUtils.smoothstep(altDeg, -1, 2)
-      : s.night * s.moonIntensity * MathUtils.smoothstep(s.moonFraction, 0.4, 1) * MathUtils.smoothstep(altDeg, 0, 3);
+      : s.night * MathUtils.smoothstep(s.moonFraction, 0.4, 1) * MathUtils.smoothstep(altDeg, 0, 3);
     const strength =
       w > 0 ? body * weather * (1 - MathUtils.smoothstep(offFrame, 0, 0.15)) * (sun ? SUN_GAIN : MOON_GAIN) : 0;
     mesh.visible = strength > 0.002;

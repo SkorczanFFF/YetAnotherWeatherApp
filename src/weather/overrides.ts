@@ -165,13 +165,8 @@ export function applyOverrides(base: SceneParams, o: SceneOverrides): SceneParam
 
   // The model's radiation and winds aloft describe the REAL sky — drop them
   // when the debug menu reshapes the weather, so the physics stays coherent.
-  const skyTouched =
-    layersTouched ||
-    isSet(o.rain) ||
-    isSet(o.snow) ||
-    isSet(o.thunder) ||
-    isSet(o.showers) ||
-    isSet(o.visibility);
+  // Every precipitation pin counts: each can change the rate, and with it τ.
+  const skyTouched = layersTouched || precipPinned || isSet(o.visibility) || isSet(o.rime);
   const windTouched = isSet(o.windSpeed) || isSet(o.windFrom);
   const atmosphere =
     base.atmosphere && windTouched

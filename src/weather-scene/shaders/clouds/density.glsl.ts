@@ -2,10 +2,17 @@
 // at a point. Interpolated into CLOUD_MARCH_FRAG after its uniforms and the
 // shared chunks (remap, noiseRank, FBM_WEIGHTS).
 
+/** Noise tiles, m of noise space (the 3D noise repeats every tile) — cloudDrift.ts wraps the drift by them. */
+export const SHAPE_TILE_M = 3200;
+export const DETAIL_TILE_M = 520;
+export const COVER_TILE_M = 10000;
+/** The cover field's lookups, × the cover tile's scale: large cells, their mid part, the fine rims. */
+export const COVER_OCTAVES = [1, 0.43, 2.3] as const;
+
 export const CLOUD_DENSITY = /* glsl */ `
-const float SHAPE_SCALE = 1.0 / 3200.0;   // one noise tile ≈ 3.2 km
-const float DETAIL_SCALE = 1.0 / 520.0;
-const float WEATHER_SCALE = 1.0 / 10000.0;
+const float SHAPE_SCALE = 1.0 / ${SHAPE_TILE_M}.0;
+const float DETAIL_SCALE = 1.0 / ${DETAIL_TILE_M}.0;
+const float WEATHER_SCALE = 1.0 / ${COVER_TILE_M}.0;
 
 // Every noise lookup is explicit-LOD (the 3D noise has no mips, so the values
 // are the same): implicit derivatives are undefined inside the march's
@@ -59,9 +66,9 @@ vec2 coverRank(vec2 xz, float hf) {
   // Perlin-Worley + Worley at two scales — irregular cells, not round blobs.
   // Drifting through the third axis with height makes rims lean and bulge
   // instead of extruding into vertical curtains; every slice has the same stats.
-  float large = noise3(vec3(q, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
-              + noise3(vec3(q * 0.43 + 0.29, 0.52 + hf * 0.12)).g * 0.25;
-  float n = large + noise3(vec3(q * 2.3 + 0.17, 0.73 + hf * 0.3)).g * 0.2;
+  float large = noise3(vec3(q * ${COVER_OCTAVES[0]}.0, 0.31 + uEvolve * 0.05 + hf * 0.06)).r * 0.55
+              + noise3(vec3(q * ${COVER_OCTAVES[1]} + 0.29, 0.52 + hf * 0.12)).g * 0.25;
+  float n = large + noise3(vec3(q * ${COVER_OCTAVES[2]} + 0.17, 0.73 + hf * 0.3)).g * 0.2;
   return vec2(noiseRank(n, COVER_NOISE), noiseRank(large / 0.8, COVER_NOISE_LOW));
 }
 
@@ -75,7 +82,8 @@ float density(vec3 p, float hf, bool detail) {
   if (hf < 0.0 || hf > 1.0) return 0.0;
   // Noise space is metres ÷ uFeatureScale, so a low deck keeps cumulus-sized cells
   // on screen. uWind is already in noise space: a changing scale zooms around the camera.
-  vec2 xz = p.xz / uFeatureScale - uWind;
+  vec2 pn = p.xz / uFeatureScale;
+  vec2 xz = pn - uWind;
   float y = p.y / uFeatureScale;
   float c = uCoverage;
   vec2 ranks = coverRank(xz, hf);
@@ -108,7 +116,9 @@ float density(vec3 p, float hf, bool detail) {
   if (base <= 0.0) return 0.0;
 
   if (detail) {
-    vec3 duvw = vec3(xz.x, y, xz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
+    // Its own drift: the same wind, wrapped by the detail tile instead.
+    vec2 dxz = pn - uWindDetail;
+    vec3 duvw = vec3(dxz.x, y, dxz.y) * DETAIL_SCALE + vec3(uEvolve * 2.0);
     vec4 d = noise3(duvw);
     float hfFbm = dot(d.gba, FBM_WEIGHTS);
     // Wispy bottoms, billowy tops; above the freezing level the cloud is

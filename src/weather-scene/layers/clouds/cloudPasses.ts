@@ -7,6 +7,7 @@ import {
   ShaderMaterial,
   Vector2,
   Vector3,
+  Vector4,
   WebGLRenderTarget,
 } from "three";
 import type { VolumetricBudget } from "../../core/quality";
@@ -74,7 +75,9 @@ export function createMarchPass(budget: VolumetricBudget, light: CloudLight): Fu
         uDeckTau: { value: 10 },
         uFeatureScale: { value: 1 },
         uWind: { value: new Vector2() },
-        uWindHigh: { value: new Vector2() },
+        uWindDetail: { value: new Vector2() },
+        uMidDrift: { value: new Vector2() },
+        uCirrusDrift: { value: new Vector4() },
         uHighWindDir: { value: new Vector2(1, 0) },
         uCirrusAlt: { value: 8500 },
         uMid: { value: 0 },

@@ -6,6 +6,7 @@ import { LoaderPill } from "../loader/Loader";
 import { CloseIcon, LineIcon, PIN_PATH, PinIcon } from "../icons";
 import { clamp } from "../../utils/math";
 import { formatCoords, formatLatLon } from "../../utils/format";
+import { DEFAULT_LOCATION } from "../../weather/sceneParams";
 import "./MapPicker.scss";
 
 const DRAWER_WIDTH_MIN = 385;
@@ -26,7 +27,7 @@ const MARKER_ICON = L.divIcon({
   iconAnchor: [PIN_SIZE / 2, PIN_SIZE],
 });
 
-const DEFAULT_CENTER: [number, number] = [52, 21];
+const DEFAULT_CENTER: [number, number] = [DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon];
 const DEFAULT_ZOOM = 4;
 
 interface MapPickerProps {

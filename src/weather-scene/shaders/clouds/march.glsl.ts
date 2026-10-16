@@ -41,8 +41,11 @@ uniform float uType;         // 0 stratus · 0.3 altocumulus · 0.5 cumulus · 1
 uniform float uDensity;      // extinction per metre at density 1
 uniform float uDeckTau;      // optical depth of the whole deck
 uniform float uFeatureScale; // noise size multiplier, ≤ 1 — a low deck gets smaller cells
-uniform vec2 uWind;          // accumulated drift of the low/mid layer (850 hPa), in noise space (xz)
-uniform vec2 uWindHigh;      // accumulated drift at cirrus level (300 hPa), m (xz)
+// Accumulated drifts, wrapped by the tiles of the lookups that read them (cloudDrift.ts):
+uniform vec2 uWind;          // low/mid layer (850 hPa), noise space (xz) — cover and shape
+uniform vec2 uWindDetail;    // the same, for the detail noise
+uniform vec2 uMidDrift;      // thin mid layer, half the 300 hPa drift, m (xz)
+uniform vec4 uCirrusDrift;   // cirrus (300 hPa), in tiles of its two lookups
 uniform vec2 uHighWindDir;   // unit, xz — cirrus streaks stretch along it
 uniform float uCirrusAlt;    // m above ground
 uniform float uFreezeAlt;    // 0 °C level above ground, m — ice above it

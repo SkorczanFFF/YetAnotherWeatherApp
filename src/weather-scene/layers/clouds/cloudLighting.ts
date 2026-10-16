@@ -1,7 +1,7 @@
 import { Color, MathUtils, Vector3 } from "three";
 import type { SceneParams } from "../../../weather/sceneParams";
 import type { SceneSignals } from "../../core/sceneSignals";
-import { directionFromRelative } from "../../core/worldFrame";
+import { directionFromRelative, effectiveVisibilityM } from "../../core/worldFrame";
 import { CLOUD_MOON, CLOUD_SUN_HIGH, CLOUD_SUN_LOW } from "../../core/palette";
 import type { ShellTargets } from "./shellTargets";
 
@@ -105,6 +105,7 @@ export function cloudLighting(
   ambientBottom.b += NIGHT_GLOW.b * s.night;
   // Sky radiance is tone-mapped at exposure 0.5 — the haze target is in the same units.
   out.hazeColor.copy(s.horizonColor).multiplyScalar(1.4);
-  out.hazeDist = MathUtils.clamp(params.fog.visibilityM * 1.2, 1200, 60000);
+  // The same visibility as the sky's haze (heat shimmer included).
+  out.hazeDist = MathUtils.clamp(effectiveVisibilityM(params.fog.visibilityM, params.temperatureC) * 1.2, 1200, 60000);
   return out;
 }
