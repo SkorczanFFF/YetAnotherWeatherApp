@@ -66,6 +66,17 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
   12 files: sky light, celestial, sky layer and grade, sun glow, cloud density, lighting, rays, composite and lighting model, precipitation kinds, cloud physics. Each was proven comment-only: with comments and whitespace stripped, every file is identical to the previous commit.
 - Comments cut to the why: no history narration or essays duplicating CLAUDE.md, short file headers; wrong ones fixed (WMO ranges in `PrecipState`, precipitation units, flash range, fall-speed units, `uType` list, fetch cancellation wording).
 
+### Changed (places, disc fades, leftovers)
+- **Geocoding once per place.** Resolved places are cached per query (a city name → its coordinates and name, a picked point → its reverse-geocoded name), so the 15-min silent refresh and a °C/°F switch go straight to the forecast. Only named places are kept, so a failed reverse lookup is retried.
+  - Measured: the search (120–330 ms) or the Nominatim lookup (120–430 ms) ran before the forecast (~210 ms) every time, in series, on every refresh and toggle.
+  - In Chrome a toggle sent search + forecast before and sends only the forecast now. It also eases the load on Nominatim, whose usage policy asks for light use.
+- **One disc-visibility ramp per body.** `signals.sunDisc` (−1° → 0.5°) and `signals.moonDisc` (−1° → 2°), written in `skyLight`. The sky's sun disc, `SunGlow` and the sun's flare follow the first; the moon and its flare the second.
+  - Measured at the horizon (0°): the disc was 74 % visible, its glow 35 % and its flare 26 %; the moon's flare was 0 % with its disc at 26 %.
+  - Visible change: the glow and flare reach full strength together with the disc in the last ~1.5° before sunset, and fade with it after. Checked on screen at a pinned 0.5° sunset.
+  - God rays and the clouds' moonlight keep their own ramps: they are light through the air mass, not the disc.
+- `DISPLAY_OVERLAY` (`core/constants.ts`): the flags of a light added in display space (additive, no depth, never tone-mapped), used by `SunGlow` and `LensFlare`, which had the same five lines.
+- **Not done:** a `useDisposable` hook. Each of the 12 disposals is already one effect line next to its `useMemo`, so the hook would save about a line per site and add one more pattern.
+
 ### Changed (docs)
 - **CLAUDE.md as rules.** CLAUDE.md holds the rules and gotchas only (43.5 → 33 KB). Gone from it:
   - how each value was tuned and what it drew before ("a 900 m slab that closed the frame", "autumn mornings read as τ 100–250", "before this, 20 % cover drew nothing");

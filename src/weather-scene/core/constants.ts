@@ -1,5 +1,7 @@
 /** Scene-wide constants shared by several layers. */
 
+import { AdditiveBlending } from "three";
+
 /** Draw order of the layers, back to front (the composite and particles are transparent). */
 export const RENDER_ORDER = {
   sky: -2,
@@ -26,3 +28,16 @@ export const CELESTIAL_DISTANCE = 1400;
 
 /** Sun disc radius, degrees (drei <Sky> is patched to it; the glow hugs it). Preetham's real ~0.53° is a dot at FOV 50 on a phone. */
 export const SUN_DISC_DEG = 1.4;
+
+/**
+ * Material flags of a light added in display space (sun glow, lens flare):
+ * over everything drawn so far, never tone-mapped or encoded — sRGB's toe
+ * would lift its faint falloff into a blob.
+ */
+export const DISPLAY_OVERLAY = {
+  transparent: true,
+  depthTest: false,
+  depthWrite: false,
+  toneMapped: false,
+  blending: AdditiveBlending,
+} as const;

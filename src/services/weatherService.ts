@@ -10,43 +10,55 @@ import { mapCurrent, mapForecast } from "./openMeteoMapper";
 /** Forecast tiles after today. */
 const FORECAST_DAYS = 6;
 
-export const fetchWeather = async (
-  searchParams: WeatherQuery & { units: Units },
-): Promise<WeatherData> => {
-  let lat = searchParams.lat;
-  let lon = searchParams.lon;
-  let locationName: string | undefined;
-  let countryCode: string | undefined;
+interface Place {
+  lat: number;
+  lon: number;
+  name?: string;
+  countryCode?: string;
+}
 
-  if (searchParams.q && (lat == null || lon == null)) {
-    const geocodingResult = await geocodeCity(searchParams.q);
-    if (!geocodingResult) {
-      throw new WeatherError(
-        `Could not find coordinates for city: ${searchParams.q}`,
-        "GEOCODE_FAILED",
-      );
+/**
+ * Resolved places per query: a name's coordinates and a point's name don't
+ * change, so the silent refresh and a units switch go straight to the forecast.
+ * Only named places are kept — a failed reverse lookup is retried next time.
+ */
+const places = new Map<string, Place>();
+
+const placeKey = ({ q, lat, lon }: WeatherQuery): string =>
+  q && (lat == null || lon == null) ? `q:${q.trim().toLowerCase()}` : `${lat},${lon}`;
+
+async function resolvePlace(query: WeatherQuery): Promise<Place> {
+  const key = placeKey(query);
+  const cached = places.get(key);
+  if (cached) return cached;
+
+  let place: Place;
+  if (query.q && (query.lat == null || query.lon == null)) {
+    const found = await geocodeCity(query.q);
+    if (!found) {
+      throw new WeatherError(`Could not find coordinates for city: ${query.q}`, "GEOCODE_FAILED");
     }
-    lat = geocodingResult.latitude;
-    lon = geocodingResult.longitude;
-    locationName = geocodingResult.name;
-    countryCode = geocodingResult.country_code;
-  }
-
-  if (lat == null || lon == null) {
-    throw new WeatherError("Latitude and longitude are required", "GEOCODE_FAILED");
-  }
-
-  if (!locationName) {
+    place = { lat: found.latitude, lon: found.longitude, name: found.name, countryCode: found.country_code };
+  } else if (query.lat != null && query.lon != null) {
+    place = { lat: query.lat, lon: query.lon };
     try {
-      const reverse = await reverseGeocode(lat, lon);
-      if (reverse) {
-        locationName = reverse.name;
-        countryCode = reverse.countryCode;
-      }
+      const reverse = await reverseGeocode(query.lat, query.lon);
+      if (reverse) place = { ...place, name: reverse.name, countryCode: reverse.countryCode };
     } catch {
       // Optional: mapCurrent falls back to the timezone's city name.
     }
+  } else {
+    throw new WeatherError("Latitude and longitude are required", "GEOCODE_FAILED");
   }
+
+  if (place.name) places.set(key, place);
+  return place;
+}
+
+export const fetchWeather = async (
+  searchParams: WeatherQuery & { units: Units },
+): Promise<WeatherData> => {
+  const { lat, lon, name, countryCode } = await resolvePlace(searchParams);
 
   const { temperatureApi, windApi } = UNITS[searchParams.units];
   const data = await getForecast({
@@ -63,5 +75,5 @@ export const fetchWeather = async (
     forecast_days: FORECAST_DAYS + 1,
   });
 
-  return { ...mapCurrent(data, locationName, countryCode), ...mapForecast(data) };
+  return { ...mapCurrent(data, name, countryCode), ...mapForecast(data) };
 };

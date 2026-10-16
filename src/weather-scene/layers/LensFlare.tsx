@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial, Vector2 } from "three";
+import { Color, type Mesh, MathUtils, ShaderMaterial, Vector2 } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
-import { RENDER_ORDER } from "../core/constants";
+import { DISPLAY_OVERLAY, RENDER_ORDER } from "../core/constants";
 import { projectToScreen, type ScreenPoint } from "../core/celestial";
 import { MOON_FLARE } from "../core/palette";
 import { LENS_FLARE_FRAG, LENS_FLARE_VERT } from "../shaders/lensFlare.glsl";
@@ -38,11 +38,7 @@ export function LensFlare({ source }: LensFlareProps) {
         },
         vertexShader: LENS_FLARE_VERT,
         fragmentShader: LENS_FLARE_FRAG,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        toneMapped: false,
-        blending: AdditiveBlending,
+        ...DISPLAY_OVERLAY,
       }),
     [],
   );
@@ -53,14 +49,13 @@ export function LensFlare({ source }: LensFlareProps) {
     if (!mesh) return;
     const sun = source === "sun";
     const dir = sun ? s.sunDir : s.moonDir;
-    const altDeg = sun ? s.sunAltDeg : s.moonAltDeg;
     const { u, v, w, offFrame } = projectToScreen(dir, state.camera, onScreen);
     const weather = (1 - s.overcast) * (1 - MathUtils.smoothstep(s.haze, 0.35, 0.85));
     // Night, altitude and phase once each; clouds and haze come in through `weather`
     // (moonIntensity, the clouds' moonlight, already holds night and overcast).
     const body = sun
-      ? MathUtils.smoothstep(altDeg, -1, 2)
-      : s.night * MathUtils.smoothstep(s.moonFraction, 0.4, 1) * MathUtils.smoothstep(altDeg, 0, 3);
+      ? s.sunDisc
+      : s.night * MathUtils.smoothstep(s.moonFraction, 0.4, 1) * s.moonDisc;
     const strength =
       w > 0 ? body * weather * (1 - MathUtils.smoothstep(offFrame, 0, 0.15)) * (sun ? SUN_GAIN : MOON_GAIN) : 0;
     mesh.visible = strength > 0.002;

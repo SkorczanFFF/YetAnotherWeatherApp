@@ -49,7 +49,7 @@ export function SkyLayer() {
     u.mieCoefficient.value = 0.0025 + 0.02 * s.haze;
     // The disc follows the REAL sun: its squeezed display position sits in the
     // ground haze's soft edge for a while after sunset.
-    if (u.uDiscVisible) u.uDiscVisible.value = MathUtils.smoothstep(s.sunAltDeg, -1, 0.5);
+    if (u.uDiscVisible) u.uDiscVisible.value = s.sunDisc;
   });
 
   return <Sky ref={ref} distance={3000} mieDirectionalG={0.86} />;

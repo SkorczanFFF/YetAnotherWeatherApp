@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, Color, type Mesh, MathUtils, ShaderMaterial } from "three";
+import { Color, type Mesh, MathUtils, ShaderMaterial } from "three";
 import { useSceneSignals } from "../core/sceneSignals";
-import { CELESTIAL_DISTANCE, RENDER_ORDER, SUN_DISC_DEG } from "../core/constants";
+import { CELESTIAL_DISTANCE, DISPLAY_OVERLAY, RENDER_ORDER, SUN_DISC_DEG } from "../core/constants";
 import { SUN_GLOW_FRAG } from "../shaders/sunGlow.glsl";
 import { BILLBOARD_VERT } from "../shaders/chunks.glsl";
 import { placeBillboard } from "../core/celestial";
@@ -31,11 +31,7 @@ export function SunGlow() {
         },
         vertexShader: BILLBOARD_VERT,
         fragmentShader: SUN_GLOW_FRAG,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        toneMapped: false,
-        blending: AdditiveBlending,
+        ...DISPLAY_OVERLAY,
       }),
     [],
   );
@@ -45,7 +41,7 @@ export function SunGlow() {
     const mesh = ref.current;
     if (!mesh) return;
     const strength =
-      MathUtils.smoothstep(s.sunAltDeg, -1, 1.5) *
+      s.sunDisc *
       (1 - s.overcast) *
       (1 - MathUtils.smoothstep(s.haze, 0.55, 1));
     mesh.visible = strength > 0.01;

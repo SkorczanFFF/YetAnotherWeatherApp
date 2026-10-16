@@ -45,7 +45,7 @@ src/
   App.tsx                       top-level state + layout
   hooks/                        useWeather, useDebugToggle (F7, or 5 taps on the footer status), useGlassSpotlight,
                                 useLiveClock (location time, 15 s), useDialogFocus (modal panels: focus in, Tab trap, Escape, focus back)
-  services/                     weatherService (fetchWeather), weatherApi (+ requested field lists), geocoder,
+  services/                     weatherService (fetchWeather, places cached per query), weatherApi (+ requested field lists), geocoder,
                                 openMeteoMapper (API → WeatherData), errors
   utils/                        format.ts (display: times, °, speeds, UV, compass, coords), math.ts (clamp, smoothstep, lerp)
   weather/
@@ -177,6 +177,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **`frameloop="demand"` + `FrameRateGate` is mandatory**, or the scene renders at monitor rate. The gate renders every N-th rAF tick — never gate on `elapsed >= 1000/fps` (rAF jitter drops random frames, and `PerformanceMonitor` lowers the tier).
 - **Frost is a scene layer, not DOM.** `getFrostAmount` eases 0 at 0 °C → 1 at −20 °C, × humidity, ≥ 0.35 for freezing rain / rime; `FrostGlass` grows and melts towards it, reach ≤ 0.32 of the short side, opacity ≤ ~0.55 — the middle stays clear. The noise is mip-biased and domain-warped so the tile never repeats visibly.
 - **Thunder uses the R3F clock only** (`performance.now()` would offset the first flash by the page's age). Bolts reuse one preallocated line geometry: drei `<Line>` disposes its material whenever the points change.
+- **The disc, its glow and its flare fade on one ramp per body** (`signals.sunDisc` / `moonDisc`, real altitude). Light through the air (god rays, moonlight on the clouds) has its own ramps.
 - **Scene time**: live = `Date.now()` + suncalc. Open-Meteo (`timezone=auto`) returns location-local ISO strings without an offset; parse them in the location zone (`localSeconds`), never the browser's.
 - **Cloud noise lookups are `textureLod(…, 0)` (`noise3()`).** Implicit-derivative `texture()` in the march's data-dependent loops is undefined, and ANGLE's D3D11 backend (Chrome on Windows) returns an empty ray wherever the march breaks out early — every opaque nearby cloud vanishes. Keep it for any new lookup in a loop.
 - **Never sRGB-encode premultiplied colour.** Encoding inflates thin edges (sRGB's linear toe is ×12.92) into white outlines; the composite divides by alpha first, then tone-maps/encodes. The same toe is why display-space layers (sun glow, flare, rays) are never encoded.
@@ -218,7 +219,7 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - Per-frame values go through `SceneSignals` (written once in `SceneDriver`), not React state; derived ones (`sunAltDeg`, `sunLightDir`, `sunColorDisplay`, …) are published there, not re-derived. No allocations in `useFrame`.
 - Materials, geometries and textures created in `useMemo` are disposed in an effect cleanup.
 - Display formatting lives in `utils/format.ts`. Don't duplicate.
-- Layer draw order from `core/constants.ts::RENDER_ORDER`, scene colours from `core/palette.ts`, the frame delta cap from `MAX_DT`, shader constants shared with TS interpolated from one export.
+- Layer draw order from `core/constants.ts::RENDER_ORDER`, scene colours from `core/palette.ts`, display-space overlay flags from `DISPLAY_OVERLAY`, the frame delta cap from `MAX_DT`, shader constants shared with TS interpolated from one export.
 - SCSS: breakpoints via `@include below($bp-tablet | $bp-phone)`, labels via `mono-label`, `$ease-out` and the `$z-*` scale from `styles/_tokens.scss`; colours are `:root` tokens (`--fg*`, `--fill*`, `--stroke*`, `--accent-warm`, `--danger`, `--panel`) and their tints `color-mix(in oklch, var(--token) N%, transparent)`, never a copied OKLCH literal.
 - Comments state a why in one or two lines — no history ("before this it drew…"); the history goes in CHANGELOG.md.
 

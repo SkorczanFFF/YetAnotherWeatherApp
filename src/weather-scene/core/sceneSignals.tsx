@@ -33,6 +33,9 @@ export interface SceneSignals {
   overcast: number;
   /** 0 with the sun ≥ 10° … 1 at or below the horizon: an overcast's dusk tint (night takes over after). */
   lowSun: number;
+  /** 0..1 the REAL sun's / moon's disc above the horizon — the disc, its glow and its flare fade on it. */
+  sunDisc: number;
+  moonDisc: number;
   /** 0..1 how much of the frame low/mid cloud fills (UI backlight). */
   cloudFill: number;
   /** 0..1 horizon haze / fog strength (sky overlay). */
@@ -80,6 +83,8 @@ export function createSceneSignals(): SceneSignals {
     moonFraction: 0,
     day: 0,
     night: 0,
+    sunDisc: 0,
+    moonDisc: 0,
     warmth: 0,
     overcast: 0,
     lowSun: 0,

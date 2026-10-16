@@ -29,7 +29,7 @@ const smoothstep = MathUtils.smoothstep;
 const scratch = new Color();
 
 /**
- * Writes day, night, warmth, lowSun, overcast, cloudFill, haze, horizonColor,
+ * Writes day, night, warmth, lowSun, sunDisc, moonDisc, overcast, cloudFill, haze, horizonColor,
  * sunColor, moonIntensity, hemiSky and hemiGround. Needs this frame's
  * sunAlt, moonAlt and moonFraction.
  */
@@ -47,6 +47,9 @@ function daylight(s: SceneSignals, a: number): void {
   s.night = 1 - smoothstep(a, -12, -3);
   s.warmth = (1 - smoothstep(a, 2, 18)) * smoothstep(a, -8, 0);
   s.lowSun = 1 - smoothstep(a, 0, 10);
+  s.sunDisc = smoothstep(a, -1, 0.5);
+  // The moon's display position sits low in the horizon haze for longer.
+  s.moonDisc = smoothstep(s.moonAltDeg, -1, 2);
 }
 
 /** The low cover closing from `lowFrom`, or (× 0.8) the low/mid sky closing from `skyFrom`. */
