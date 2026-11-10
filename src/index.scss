@@ -26,6 +26,8 @@
   --danger: oklch(0.78 0.14 30);
   // Opaque base of the dark panels (map drawer, its popups); tint with color-mix.
   --panel: oklch(0.18 0.02 240);
+  // A see-through panel blurs this hard, or the cards under it read through.
+  --panel-blur: 32px;
 
   --gap: 20px;
   --pad: 28px;

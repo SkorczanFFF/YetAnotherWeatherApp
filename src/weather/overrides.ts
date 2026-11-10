@@ -1,4 +1,4 @@
-/** Debug-menu overrides: the keys, "is anything pinned", and applying them to measured SceneParams. */
+/** Debug-menu overrides: the keys and applying them to measured SceneParams. */
 
 import { DateTime } from "luxon";
 import { clamp, clamp01 } from "../utils/math";
@@ -52,18 +52,6 @@ export interface SceneOverrides {
   quality?: Auto<QualityTier>;
 }
 
-/** Every override key; a key missing here (or a stale one) is a type error. */
-const OVERRIDE_KEY_SET = {
-  hour: 1, date: 1,
-  cloudLow: 1, cloudMid: 1, cloudHigh: 1,
-  windSpeed: 1, windGust: 1, windFrom: 1,
-  rain: 1, snow: 1, drizzle: 1, freezing: 1, showers: 1, hail: 1, grains: 1, thunder: 1,
-  visibility: 1, rime: 1, temperature: 1, humidity: 1,
-  cloudBase: 1, cloudTop: 1, cape: 1, opticalDepth: 1,
-  parallax: 1, quality: 1,
-} satisfies Record<keyof SceneOverrides, 1>;
-const OVERRIDE_KEYS = Object.keys(OVERRIDE_KEY_SET) as (keyof SceneOverrides)[];
-
 /** Overrides that make it precipitate (they bring a deck to fall from). */
 const PRECIP_KEYS = [
   "rain", "snow", "drizzle", "showers", "thunder", "hail", "freezing", "grains",
@@ -73,11 +61,6 @@ const PRECIP_KEYS = [
 export type BoolOverrideKey = {
   [K in keyof SceneOverrides]-?: NonNullable<SceneOverrides[K]> extends Auto<boolean> ? K : never;
 }[keyof SceneOverrides];
-
-export function isOverridesDirty(overrides: SceneOverrides | null): boolean {
-  if (!overrides) return false;
-  return OVERRIDE_KEYS.some((k) => isSet(overrides[k]));
-}
 
 function isSet<T>(override: Auto<T> | undefined): override is T {
   return override !== undefined && override !== "auto";

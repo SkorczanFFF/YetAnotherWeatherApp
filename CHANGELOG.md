@@ -24,7 +24,11 @@ Notable changes, newest first. Dates are commit dates; history before 2026-10 is
 - Precipitation: a fresh particle renderer per rebuild, the old one fully disposed (emptied batches piled up before).
 - The 2D noise texture is baked only when frost or the potato deck first shows; the star field no longer reshuffles on resize.
 
+### Changed (UI)
+- The navbar keeps its `YET ANOTHER` / `WEATHER APP` logo while debug pins are set; it used to turn into `DEBUG` / `MODE`. `isOverridesDirty()` and the override key list, used only for that, are gone.
+
 ### Fixed
+- **Map drawer show-through.** The drawer's see-through panel blurs what's under it at 32 px (`--panel-blur`, was the 6 px `--blur`). At 6 px the hero stats, chart and forecast tiles read through its header and action strip, and through the whole panel while it slid out (the map unmounts on close). Compared in Chrome at 6 / 24 / 32 px over a night overcast and a bright pinned sky: from 24 px no card shape is left. The overlay over the rest of the app blurs only 1 px (was 6 px), so the page stays readable beside the drawer.
 - **Cloud cover vs the label.** No cloud layer is drawn above the measured total cover any more, so a "Mainly clear 26 %" sky no longer draws a nearly closed grey deck.
   - **Cause.** In Scandinavia and the Baltics Open-Meteo's `best_match` is MET Nordic. Its total cover is corrected; its layers are raw, and they can contradict the total (Jēkabpils 14:00: total 18 %, low 100 %, 925 hPa 27 %; ECMWF and ICON had no such contradiction). No overlap lets one layer cover more than all of them together, so the scene now trusts the total, which the label and icon already show.
   - **Measured on 4,032 real place-hours** (42 places, 3 days, run through the real mapper and cloud physics):

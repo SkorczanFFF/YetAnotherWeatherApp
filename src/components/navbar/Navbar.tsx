@@ -11,7 +11,6 @@ export type LoadSource = "initial" | "search" | "location" | "map" | "units";
 
 interface NavbarProps {
   setQuery: (query: WeatherQuery, source: LoadSource) => void;
-  isDebugMode: boolean;
   onOpenMapPicker: () => void;
   units: Units;
   setUnits: (units: Units) => void;
@@ -27,7 +26,6 @@ const isValidCityName = (name: string): boolean =>
 
 export const Navbar: React.FC<NavbarProps> = ({
   setQuery,
-  isDebugMode,
   onOpenMapPicker,
   units,
   setUnits,
@@ -83,10 +81,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </LineIcon>
         </span>
         <span className="brand-text">
-          <span className="brand-line brand-line--top">
-            {isDebugMode ? "DEBUG" : "YET ANOTHER"}
-          </span>
-          <span className="brand-line">{isDebugMode ? "MODE" : "WEATHER APP"}</span>
+          <span className="brand-line brand-line--top">YET ANOTHER</span>
+          <span className="brand-line">WEATHER APP</span>
         </span>
       </a>
 

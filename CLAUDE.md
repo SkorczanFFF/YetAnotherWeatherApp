@@ -50,7 +50,7 @@ src/
   utils/                        format.ts (display: times, °, speeds, UV, compass, coords), math.ts (clamp, smoothstep, lerp)
   weather/
     sceneParams.ts              WeatherData + units → SceneParams (fromWeather, DEFAULT_SCENE, mapToSceneParams)
-    overrides.ts                SceneOverrides, key set, isOverridesDirty, pinned, applyOverrides (precipitation / cloud steps)
+    overrides.ts                SceneOverrides, pinned, applyOverrides (precipitation / cloud steps)
     precip.ts                   PrecipState, gauge/code → rates (fallbacks), finalizePrecip (flags only where something falls)
     fog.ts                      visibility thresholds (fog, fog-code cap, rime cap, clear default)
     frost.ts                    getFrostAmount, hasDiamondDust
@@ -191,9 +191,9 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 
 ## UI conventions
 
-- **Liquid glass** = `@include liquid-glass` (`styles/_glass.scss`: hero, hourly, forecast tiles, navbar controls, footer pill, loaders). Adaptive: `--scene-light` (0 night … 1 white overcast/fog at noon, written by `<UiBacklight>`, fallback 0.4) darkens the backdrop, thickens a smoke tint, firms up `--fg-dim/mute/faint` + `--stroke`, and fades in a text halo. Hover/active raise `--glass-lift` (registered `@property`, non-inherited) instead of replacing `background`. Blur is `--glass-blur` (16 px, 12 px ≤ 720 px).
+- **Liquid glass** = `@include liquid-glass` (`styles/_glass.scss`: hero, hourly, forecast tiles, navbar controls, footer pill, loaders). Adaptive: `--scene-light` (0 night … 1 white overcast/fog at noon, written by `<UiBacklight>`, fallback 0.4) darkens the backdrop, thickens a smoke tint, firms up `--fg-dim/mute/faint` + `--stroke`, and fades in a text halo. Hover/active raise `--glass-lift` (registered `@property`, non-inherited) instead of replacing `background`. Blur is `--glass-blur` (16 px, 12 px ≤ 720 px); the map drawer's see-through dark panel takes `--panel-blur` (32 px), or the cards under it read through.
 - **Cursor reveal** on every boxed UI element: `@include glass-reveal` (liquid glass includes it). It sets `--glass-spot: 1`; `hooks/useGlassSpotlight.ts` writes `--mx`/`--my` once per frame to every such element within `--glass-reveal` (160 px, `:root`) of the cursor, parking the rest off-screen. The mixin's `::after` is a masked 1.5 px ring lit at that point, and `:hover` fades `--glass-glow` in. The mixin owns `::after` and sets `position: relative` (pass `null` if already absolute/fixed); components use `::before`. A component with its own `transition` list adds `$glass-glow-transition`. Replaced elements can't carry it. Mouse only.
-- Full-height overlays use `100dvh` after a `100vh` fallback (mobile `100vh` hides the bottom under the browser bars). Under 440 px the map drawer is a full-width sheet. The brand is the two-line logo (`YET ANOTHER` / `WEATHER APP`; `DEBUG` / `MODE` in debug).
+- Full-height overlays use `100dvh` after a `100vh` fallback (mobile `100vh` hides the bottom under the browser bars). Under 440 px the map drawer is a full-width sheet. The brand is the two-line logo (`YET ANOTHER` / `WEATHER APP`); debug pins don't change it.
 - Shared SVG icons in `components/icons.tsx` (`PinIcon`, `PIN_PATH`, `CLOUD_PATH`, `LineIcon`, `CloseIcon`, `WeatherIcon`). `WeatherIcon` is the one weather-code → icon mapping (day/night, sun/moon masked behind clouds, precipitation marks by type and intensity). Scaled shapes divide their stroke by the scale. No remote icons, no icon library.
 - Small labels: `@include mono-label(size, spacing)` (Geist Mono, uppercase unless `$upper: false`); body and temperatures in Chakra Petch.
 - Footer: a 2-row block inside `.stack` — `[status] … [attrib]`, then the centred GitHub pill.
@@ -207,14 +207,14 @@ Below `low` sits **`potato`** (1 DPR, 30 fps, smaller particle budgets, flat `<C
 - **Presets** (`weather/scenePresets.ts`) pin every weather key, one per catalogue row. "auto" clears exactly those keys; the highlight is derived from the pins.
 - Setters go through the latest state (`onOverridesChange(prev => …)`), so two changes in one tick both land.
 - Time: local-hour slider (location timezone) + date; a pinned time stops the live clock.
-- Every override is a literal or `"auto"`. `isOverridesDirty()` drives the Navbar `DEBUG` badge over `OVERRIDE_KEYS` (from `OVERRIDE_KEY_SET`, a `Record<keyof SceneOverrides, 1>` — a missing key is a type error). Quality and parallax pins are view settings: App resolves them with `pinned()` into `<WeatherScene>` props.
+- Every override is a literal or `"auto"`. Quality and parallax pins are view settings: App resolves them with `pinned()` into `<WeatherScene>` props.
 - Auto-bumps in `applyOverrides`: precipitation *pinned* raises low cloud (≥ 0.85; showers ≥ 0.6; thunder ≥ 0.95) — measured weather keeps the model's cover (with only a floor in `fromWeather`: 0.25 under rain/snow codes, 0.35 under thunder); thunder/hail/drizzle/freezing/grains *pinned* without a rate bring a typical one; rime caps visibility at 400 m.
 - Cloud physics row: base / top / CAPE / τ pins (τ "auto" = estimated once the sky is pinned), plus a readout of the derived physics, the drawn deck, winds aloft and frost %. Tools: quality tier pin, perf readout, ⚡ force lightning.
 
 ## Conventions
 
 - Files use named exports; only `App` (imported by `index.tsx`) default-exports.
-- New scene input: add it to `SceneParams` (+ `DEFAULT_SCENE`, `fromWeather`; `physicsFor` if the cloud physics reads it), a `SceneOverrides` key + `OVERRIDE_KEY_SET` entry + `applyOverrides` line, and to `CALM` in `scenePresets.ts` if it describes weather (plus what the presets that change it show).
+- New scene input: add it to `SceneParams` (+ `DEFAULT_SCENE`, `fromWeather`; `physicsFor` if the cloud physics reads it), a `SceneOverrides` key + `applyOverrides` line, and to `CALM` in `scenePresets.ts` if it describes weather (plus what the presets that change it show).
 - Pure logic stays out of frame loops and components (`celestial`, `skyLight`, `cloudLighting`, `shellTargets`, `kinds`, the weather modules); components and `useFrame` wire it.
 - Per-frame values go through `SceneSignals` (written once in `SceneDriver`), not React state; derived ones (`sunAltDeg`, `sunLightDir`, `sunColorDisplay`, …) are published there, not re-derived. No allocations in `useFrame`.
 - Materials, geometries and textures created in `useMemo` are disposed in an effect cleanup.

@@ -16,8 +16,8 @@
   border: 0;
   padding: 0;
   background: oklch(0 0 0 / 0.32);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.25s ease-out;
@@ -37,8 +37,8 @@
   z-index: 1; // over the overlay, inside the backdrop's stacking context
   background: color-mix(in oklch, var(--panel) 55%, transparent);
   border-left: 1px solid var(--stroke);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
   color: var(--fg);
   box-shadow: -16px 0 40px oklch(0 0 0 / 0.4);
   display: flex;

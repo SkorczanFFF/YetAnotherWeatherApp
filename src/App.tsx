@@ -13,7 +13,7 @@ import { useDebugToggle } from "./hooks/useDebugToggle";
 import { useGlassSpotlight } from "./hooks/useGlassSpotlight";
 import { useWeather } from "./hooks/useWeather";
 import { DEFAULT_LOCATION, mapToSceneParams } from "./weather/sceneParams";
-import { isOverridesDirty, pinned, type SceneOverrides } from "./weather/overrides";
+import { pinned, type SceneOverrides } from "./weather/overrides";
 import { DEFAULT_PARALLAX } from "./weather-scene/core/worldFrame";
 import { formatCoords, formatGmtOffset, formatLatLon, tempSymbol } from "./utils/format";
 import type { Units, WeatherQuery } from "./weather/types";
@@ -45,7 +45,6 @@ const App = (): React.ReactElement => {
   const [showPerf, setShowPerf] = useState(true);
   const [lightningNonce, setLightningNonce] = useState(0);
   const [mapPanelOpen, setMapPanelOpen] = useState(false);
-  const isDebugMode = isOverridesDirty(debugOverrides);
   const currentParams = useMemo(
     () => mapToSceneParams(weather, weatherUnits, null),
     [weather, weatherUnits],
@@ -82,7 +81,6 @@ const App = (): React.ReactElement => {
       <div className="shell">
         <Navbar
           setQuery={requestQuery}
-          isDebugMode={isDebugMode}
           onOpenMapPicker={() => setMapPanelOpen(true)}
           units={units}
           setUnits={changeUnits}
